@@ -47,7 +47,14 @@ class PerturbedAttentionGuidanceForForge(scripts.Script):
             PerturbedAttentionGuidanceForForge.doPAG = False
 
     def process_before_every_sampling(self, p, *script_args, **kwargs):
-        enabled, scale, attenuation, start_step, end_step = script_args
+        # Provide defaults for API-only mode (5 arguments expected)
+        defaults = [False, 3.0, 0.0, 0.0, 1000.0]
+        args = list(script_args) + defaults[len(script_args):] if len(script_args) < len(defaults) else list(script_args[:len(defaults)])
+
+        enabled, scale, attenuation, start_step, end_step = args
+
+        # Ensure proper types
+        enabled = bool(enabled) if enabled is not None else False
 
         if not enabled:
             return

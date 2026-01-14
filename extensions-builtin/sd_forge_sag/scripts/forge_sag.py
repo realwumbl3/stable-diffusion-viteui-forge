@@ -194,7 +194,14 @@ class SAGForForge(scripts.Script):
         return enabled, scale, blur_sigma, threshold
 
     def process_before_every_sampling(self, p, *script_args, **kwargs):
-        enabled, scale, blur_sigma, threshold = script_args
+        # Provide defaults for API-only mode (4 arguments expected)
+        defaults = [False, 1.0, 1.0, 1.0]
+        args = list(script_args) + defaults[len(script_args):] if len(script_args) < len(defaults) else list(script_args[:len(defaults)])
+
+        enabled, scale, blur_sigma, threshold = args
+
+        # Ensure proper types
+        enabled = bool(enabled) if enabled is not None else False
 
         if not enabled:
             return

@@ -2,9 +2,13 @@ from __future__ import annotations
 import base64
 import io
 import time
+import json
+import asyncio
+from typing import Dict, Set
 
 import gradio as gr
 from pydantic import BaseModel, Field
+from fastapi import WebSocket, WebSocketDisconnect, Path
 
 from modules.shared import opts
 
@@ -19,6 +23,67 @@ pending_tasks = OrderedDict()
 finished_tasks = []
 recorded_results = []
 recorded_results_limit = 2
+
+
+class WebSocketProgressManager:
+    """Manages WebSocket connections for real-time progress updates"""
+
+    def __init__(self):
+        self.active_connections: Set[WebSocket] = set()
+        self._lock = asyncio.Lock()
+
+    async def connect(self, websocket: WebSocket):
+        """Accept and register a new WebSocket connection"""
+        await websocket.accept()
+        async with self._lock:
+            self.active_connections.add(websocket)
+
+    async def disconnect(self, websocket: WebSocket):
+        """Remove a WebSocket connection"""
+        async with self._lock:
+            self.active_connections.discard(websocket)
+
+    async def broadcast_progress(self, progress_data: Dict):
+        """Broadcast progress update to all connected clients"""
+        message = json.dumps(progress_data)
+
+        # Create a copy of connections to avoid modification during iteration
+        async with self._lock:
+            connections_to_remove = set()
+
+            for connection in self.active_connections:
+                try:
+                    await connection.send_text(message)
+                except Exception:
+                    # Connection is dead, mark for removal
+                    connections_to_remove.add(connection)
+
+            # Remove dead connections
+            self.active_connections -= connections_to_remove
+
+    async def broadcast_task_progress(self, task_id: str, progress_data: Dict):
+        """Broadcast progress update for a specific task"""
+        message_data = {
+            "task_id": task_id,
+            **progress_data
+        }
+        await self.broadcast_progress(message_data)
+
+    def broadcast_task_progress_sync(self, task_id: str, progress_data: Dict):
+        """Synchronous version of broadcast_task_progress for use in non-async contexts"""
+        import asyncio
+        try:
+            # Try to get the current event loop
+            loop = asyncio.get_running_loop()
+            # If there's a running loop, create a task
+            loop.create_task(self.broadcast_task_progress(task_id, progress_data))
+        except RuntimeError:
+            # No running event loop, run in a new one
+            asyncio.run(self.broadcast_task_progress(task_id, progress_data))
+
+
+# Global WebSocket manager instance
+websocket_manager = WebSocketProgressManager()
 
 
 def start_task(id_task):
@@ -74,9 +139,48 @@ class ProgressResponse(BaseModel):
     textinfo: str | None = Field(default=None, title="Info text", description="Info text used by WebUI.")
 
 
+async def websocket_progress_endpoint(websocket: WebSocket, task_id: str | None = None):
+    """WebSocket endpoint for real-time progress updates"""
+    await websocket_manager.connect(websocket)
+    try:
+        # Send initial connection confirmation
+        await websocket.send_text(json.dumps({"type": "connected", "task_id": task_id}))
+
+        # Keep connection alive and listen for client messages
+        while True:
+            try:
+                # Wait for client messages (could be used for ping/pong or task subscription)
+                data = await websocket.receive_text()
+                # For now, just echo back to keep connection alive
+                await websocket.send_text(json.dumps({"type": "pong", "data": data}))
+            except WebSocketDisconnect:
+                break
+    except Exception as e:
+        print(f"WebSocket error: {e}")
+    finally:
+        await websocket_manager.disconnect(websocket)
+
+
 def setup_progress_api(app):
     app.add_api_route("/internal/pending-tasks", get_pending_tasks, methods=["GET"])
-    return app.add_api_route("/internal/progress", progressapi, methods=["POST"], response_model=ProgressResponse)
+    app.add_api_route("/internal/progress", progressapi, methods=["POST"], response_model=ProgressResponse)
+    app.add_websocket_route("/internal/progress-ws", websocket_progress_endpoint)
+    app.add_websocket_route("/internal/progress-ws/{task_id}", websocket_progress_endpoint)
+    return app
+
+
+# Register the progress API setup as an app started callback
+def register_progress_api(demo, app):
+    setup_progress_api(app)
+
+
+# Import and register the callback
+try:
+    from modules import script_callbacks
+    script_callbacks.on_app_started(register_progress_api)
+except ImportError:
+    # Fallback for when script_callbacks is not available
+    pass
 
 
 def get_pending_tasks():
@@ -139,7 +243,24 @@ def progressapi(req: ProgressRequest):
                 live_preview = f"data:image/{opts.live_previews_image_format};base64,{base64_image}"
                 id_live_preview = shared.state.id_live_preview
 
-    return ProgressResponse(active=active, queued=queued, completed=completed, progress=progress, eta=eta, live_preview=live_preview, id_live_preview=id_live_preview, textinfo=shared.state.textinfo)
+    response = ProgressResponse(active=active, queued=queued, completed=completed, progress=progress, eta=eta, live_preview=live_preview, id_live_preview=id_live_preview, textinfo=shared.state.textinfo)
+
+    # Broadcast progress update via WebSocket if there's an active task
+    if req.id_task:
+        progress_data = {
+            "active": active,
+            "queued": queued,
+            "completed": completed,
+            "progress": progress,
+            "eta": eta,
+            "live_preview": live_preview,
+            "id_live_preview": id_live_preview,
+            "textinfo": shared.state.textinfo
+        }
+        # Broadcast in background to avoid blocking the API response
+        asyncio.create_task(websocket_manager.broadcast_task_progress(req.id_task, progress_data))
+
+    return response
 
 
 def restore_progress(id_task):

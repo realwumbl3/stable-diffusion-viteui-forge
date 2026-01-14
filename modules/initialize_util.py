@@ -9,7 +9,7 @@ import starlette
 from modules.timer import startup_timer
 
 
-def gradio_server_name():
+def server_name():
     from modules.shared_cmd_options import cmd_opts
 
     if cmd_opts.server_name:

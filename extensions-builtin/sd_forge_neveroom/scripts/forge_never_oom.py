@@ -24,7 +24,15 @@ class NeverOOMForForge(scripts.Script):
         return unet_enabled, vae_enabled
 
     def process(self, p, *script_args, **kwargs):
-        unet_enabled, vae_enabled = script_args
+        # Provide defaults for API-only mode
+        if len(script_args) >= 2:
+            unet_enabled, vae_enabled = script_args[:2]
+        else:
+            unet_enabled, vae_enabled = False, False
+
+        # Ensure values are boolean
+        unet_enabled = bool(unet_enabled) if unet_enabled is not None else False
+        vae_enabled = bool(vae_enabled) if vae_enabled is not None else False
 
         if unet_enabled:
             print('NeverOOM Enabled for UNet (always maximize offload)')

@@ -15,7 +15,7 @@ export default {
           panelHover: '#2a2a2a',
           border: '#333333',
           accent: '#00d4ff',
-          accentHover: '#33ddff',
+          'accent-hover': '#33ddff',
           text: '#ffffff',
           textSecondary: '#cccccc',
           textMuted: '#888888',

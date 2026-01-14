@@ -9,11 +9,22 @@ import {
   EyeOff
 } from 'lucide-react'
 import { cn } from '../lib/utils.js'
+import PromptFooter from './PromptFooter.jsx'
 
-const Canvas = ({ currentImage, loading }) => {
+const Canvas = ({
+  currentImage,
+  livePreview,
+  loading,
+  progress,
+  prompt,
+  setPrompt,
+  negativePrompt,
+  setNegativePrompt
+}) => {
   const [zoom, setZoom] = useState(1)
   const [showGrid, setShowGrid] = useState(false)
   const [fitToScreen, setFitToScreen] = useState(true)
+  const [footerCollapsed, setFooterCollapsed] = useState(false)
   const canvasRef = useRef(null)
   const imageRef = useRef(null)
 
@@ -37,139 +48,183 @@ const Canvas = ({ currentImage, loading }) => {
     setZoom(1)
   }
 
-  // Loading skeleton
-  if (loading && !currentImage) {
-    return (
-      <main className="studio-canvas flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-studio-accent border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-studio-textSecondary">Generating image...</p>
-        </div>
-      </main>
-    )
-  }
-
-  // Empty state
-  if (!currentImage) {
-    return (
-      <main className="studio-canvas flex items-center justify-center">
-        <div className="text-center text-studio-text-muted">
-          <div className="w-24 h-24 border-2 border-dashed border-studio-border rounded-lg flex items-center justify-center mb-4 mx-auto">
-            <div className="w-8 h-8 border-2 border-studio-text-muted border-t-transparent rounded-full animate-spin" />
-          </div>
-          <h3 className="text-lg font-medium mb-2">Ready to Create</h3>
-          <p className="text-sm">Set your parameters and generate your first image</p>
-        </div>
-      </main>
-    )
-  }
-
   return (
-    <main className="studio-canvas relative">
+    <main className="studio-canvas relative flex flex-col">
       {/* Canvas Controls */}
-      <div className="absolute top-4 left-4 z-10 flex gap-2">
-        <div className="studio-panel p-2">
-          <div className="flex gap-1">
-            <button
-              onClick={handleZoomOut}
-              className="studio-btn-ghost p-2"
-              title="Zoom Out"
-            >
-              <ZoomOut size={16} />
-            </button>
-            <button
-              onClick={handleResetZoom}
-              className="studio-btn-ghost px-3 py-2 text-xs font-mono min-w-[60px]"
-              title="Reset Zoom"
-            >
-              {Math.round(zoom * 100)}%
-            </button>
-            <button
-              onClick={handleZoomIn}
-              className="studio-btn-ghost p-2"
-              title="Zoom In"
-            >
-              <ZoomIn size={16} />
-            </button>
-            <div className="w-px h-6 bg-studio-border mx-1" />
-            <button
-              onClick={handleFitToScreen}
-              className={cn(
-                "studio-btn-ghost p-2",
-                fitToScreen && "text-studio-accent"
-              )}
-              title="Fit to Screen"
-            >
-              <Maximize size={16} />
-            </button>
-            <button
-              onClick={() => setShowGrid(!showGrid)}
-              className={cn(
-                "studio-btn-ghost p-2",
-                showGrid && "text-studio-accent"
-              )}
-              title="Toggle Grid"
-            >
-              <Grid3X3 size={16} />
-            </button>
+      {currentImage && (
+        <div className="absolute top-4 left-4 z-10 flex gap-2">
+          <div className="studio-panel p-2">
+            <div className="flex gap-1">
+              <button
+                onClick={handleZoomOut}
+                className="studio-btn-ghost p-2"
+                title="Zoom Out"
+              >
+                <ZoomOut size={16} />
+              </button>
+              <button
+                onClick={handleResetZoom}
+                className="studio-btn-ghost px-3 py-2 text-xs font-mono min-w-[60px]"
+                title="Reset Zoom"
+              >
+                {Math.round(zoom * 100)}%
+              </button>
+              <button
+                onClick={handleZoomIn}
+                className="studio-btn-ghost p-2"
+                title="Zoom In"
+              >
+                <ZoomIn size={16} />
+              </button>
+              <div className="w-px h-6 bg-studio-border mx-1" />
+              <button
+                onClick={handleFitToScreen}
+                className={cn(
+                  "studio-btn-ghost p-2",
+                  fitToScreen && "text-studio-accent"
+                )}
+                title="Fit to Screen"
+              >
+                <Maximize size={16} />
+              </button>
+              <button
+                onClick={() => setShowGrid(!showGrid)}
+                className={cn(
+                  "studio-btn-ghost p-2",
+                  showGrid && "text-studio-accent"
+                )}
+                title="Toggle Grid"
+              >
+                <Grid3X3 size={16} />
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Canvas Area */}
-      <div
-        ref={canvasRef}
-        className="w-full h-full flex items-center justify-center p-8 overflow-hidden"
-      >
+      <div className="flex-1 overflow-hidden">
         <div
-          className="relative"
-          style={{
-            transform: fitToScreen ? 'scale(1)' : `scale(${zoom})`,
-            transformOrigin: 'center',
-            transition: fitToScreen ? 'none' : 'transform 0.2s ease-out'
-          }}
+          ref={canvasRef}
+          className="w-full h-full flex items-center justify-center p-8 overflow-hidden"
         >
-          {/* Grid Overlay */}
-          {showGrid && (
+          {/* Loading State - Show when generating and no image yet */}
+          {loading && !currentImage ? (
+            <div className="text-center">
+              <div className="w-24 h-24 border-4 border-studio-accent border-t-transparent rounded-full animate-spin mx-auto mb-6" />
+              {progress ? (
+                <>
+                  <p className="text-studio-text text-lg mb-4">
+                    {progress.textinfo || 'Generating image...'}
+                  </p>
+                  <div className="w-64 h-3 bg-studio-bg/30 rounded-full overflow-hidden mb-2">
+                    <div
+                      className="h-full bg-studio-accent transition-all duration-300 ease-out"
+                      style={{ width: `${progress.progress * 100}%` }}
+                    />
+                  </div>
+                  <p className="text-studio-textSecondary text-sm">
+                    {Math.round(progress.progress * 100)}%
+                    {progress.eta && ` • ETA: ${Math.round(progress.eta)}s`}
+                  </p>
+                </>
+              ) : (
+                <p className="text-studio-textSecondary text-lg">Starting generation...</p>
+              )}
+            </div>
+          ) : currentImage ? (
+            /* Image Display */
             <div
-              className="absolute inset-0 pointer-events-none opacity-20"
+              className="relative"
               style={{
-                backgroundImage: `
-                  linear-gradient(to right, var(--studio-border) 1px, transparent 1px),
-                  linear-gradient(to bottom, var(--studio-border) 1px, transparent 1px)
-                `,
-                backgroundSize: '32px 32px'
+                transform: fitToScreen ? 'scale(1)' : `scale(${zoom})`,
+                transformOrigin: 'center',
+                transition: fitToScreen ? 'none' : 'transform 0.2s ease-out'
               }}
-            />
-          )}
+            >
+              {/* Grid Overlay */}
+              {showGrid && (
+                <div
+                  className="absolute inset-0 pointer-events-none opacity-20"
+                  style={{
+                    backgroundImage: `
+                      linear-gradient(to right, var(--studio-border) 1px, transparent 1px),
+                      linear-gradient(to bottom, var(--studio-border) 1px, transparent 1px)
+                    `,
+                    backgroundSize: '32px 32px'
+                  }}
+                />
+              )}
 
-          {/* Main Image */}
-          <img
-            ref={imageRef}
-            src={currentImage}
-            alt="Generated"
-            className="max-w-none shadow-studio-lg rounded-lg"
-            style={{
-              maxWidth: fitToScreen ? '100%' : 'none',
-              maxHeight: fitToScreen ? '100%' : 'none'
-            }}
-            draggable={false}
-          />
+              {/* Main Image */}
+              <img
+                ref={imageRef}
+                src={livePreview || currentImage}
+                alt="Generated"
+                className="max-w-none shadow-studio-lg rounded-lg"
+                style={{
+                  maxWidth: fitToScreen ? '100%' : 'none',
+                  maxHeight: fitToScreen ? '100%' : 'none'
+                }}
+                draggable={false}
+              />
 
-          {/* Loading Overlay */}
-          {loading && (
-            <div className="absolute inset-0 bg-black/50 rounded-lg flex items-center justify-center">
-              <div className="text-center">
-                <div className="w-8 h-8 border-3 border-studio-accent border-t-transparent rounded-full animate-spin mx-auto mb-2" />
-                <p className="text-studio-text text-sm">Regenerating...</p>
+              {/* Loading Overlay */}
+              {loading && (
+                <div className="absolute inset-0 bg-black/50 rounded-lg flex items-center justify-center">
+                  <div className="text-center">
+                    {progress ? (
+                      <>
+                        <div className="w-8 h-8 border-3 border-studio-accent border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+                        <p className="text-studio-text text-sm mb-2">
+                          {progress.textinfo || 'Generating...'}
+                        </p>
+                        <div className="w-32 h-2 bg-studio-bg/30 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-studio-accent transition-all duration-300 ease-out"
+                            style={{ width: `${progress.progress * 100}%` }}
+                          />
+                        </div>
+                        <p className="text-studio-textSecondary text-xs mt-1">
+                          {Math.round(progress.progress * 100)}%
+                          {progress.eta && ` • ETA: ${Math.round(progress.eta)}s`}
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <div className="w-8 h-8 border-3 border-studio-accent border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+                        <p className="text-studio-text text-sm">Regenerating...</p>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            /* Empty State */
+            <div className="text-center text-studio-text-muted">
+              <div className="w-24 h-24 border-2 border-dashed border-studio-border rounded-lg flex items-center justify-center mb-4 mx-auto">
+                <div className="w-8 h-8 border-2 border-studio-text-muted border-t-transparent rounded-full animate-spin" />
               </div>
+              <h3 className="text-lg font-medium mb-2">Ready to Create</h3>
+              <p className="text-sm">Set your parameters and generate your first image</p>
             </div>
           )}
         </div>
       </div>
 
+      {/* Prompt Footer */}
+      <PromptFooter
+        prompt={prompt}
+        setPrompt={setPrompt}
+        negativePrompt={negativePrompt}
+        setNegativePrompt={setNegativePrompt}
+        collapsed={footerCollapsed}
+        onToggle={() => setFooterCollapsed(!footerCollapsed)}
+      />
+
       {/* Status Bar */}
-      <div className="absolute bottom-0 left-0 right-0 studio-toolbar justify-between text-xs text-studio-textSecondary">
+      <div className="studio-toolbar justify-between text-xs text-studio-textSecondary">
         <div className="flex items-center gap-4">
           <span>Canvas</span>
           {currentImage && (
@@ -178,9 +233,28 @@ const Canvas = ({ currentImage, loading }) => {
               <span>{zoom !== 1 ? `${Math.round(zoom * 100)}%` : 'Fit to screen'}</span>
             </>
           )}
+          {progress && loading && (
+            <>
+              <span>•</span>
+              <span>Step {progress.sampling_step || 0}/{progress.sampling_steps || 0}</span>
+              <span>•</span>
+              <span>{Math.round(progress.progress * 100)}%</span>
+              {progress.eta && (
+                <>
+                  <span>•</span>
+                  <span>ETA: {Math.round(progress.eta)}s</span>
+                </>
+              )}
+            </>
+          )}
         </div>
         <div className="flex items-center gap-4">
           <span>Stable Diffusion WebUI</span>
+          {progress && loading && (
+            <span className="text-studio-accent">
+              {progress.textinfo}
+            </span>
+          )}
         </div>
       </div>
     </main>

@@ -46,9 +46,16 @@ class DynamicThresholdingForForge(scripts.Script):
         # This will be called before every sampling.
         # If you use highres fix, this will be called twice.
 
+        # Provide defaults for API-only mode (12 arguments expected)
+        defaults = [False, 7.0, 100.0, "Constant", 0.0, "Constant", 0.0, 0.0, "enable", "ZERO", "AD", 0.0]
+        args = list(script_args) + defaults[len(script_args):] if len(script_args) < len(defaults) else list(script_args[:len(defaults)])
+
         enabled, mimic_scale, threshold_percentile, mimic_mode, mimic_scale_min, cfg_mode, cfg_scale_min, \
             sched_val, separate_feature_channels, scaling_startpoint, variability_measure, \
-            interpolate_phi = script_args
+            interpolate_phi = args
+
+        # Ensure enabled is boolean
+        enabled = bool(enabled) if enabled is not None else False
 
         if not enabled:
             return

@@ -30,7 +30,14 @@ class StyleAlignForForge(scripts.Script):
         # This will be called before every sampling.
         # If you use highres fix, this will be called twice.
 
-        shared_attention, strength = script_args
+        # Provide defaults for API-only mode (2 arguments expected)
+        defaults = [False, 0.5]
+        args = list(script_args) + defaults[len(script_args):] if len(script_args) < len(defaults) else list(script_args[:len(defaults)])
+
+        shared_attention, strength = args
+
+        # Ensure proper types
+        shared_attention = bool(shared_attention) if shared_attention is not None else False
 
         if not shared_attention:
             return

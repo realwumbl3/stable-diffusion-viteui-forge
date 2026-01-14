@@ -29,8 +29,24 @@ class StableDiffusionAPI {
     }
   }
 
-  // Text to Image
+  // Text to Image (legacy - generates its own task ID)
   async txt2img(params) {
+    // Add a task ID to track progress
+    const taskId = `task(txt2img-${Date.now()}-${Math.random().toString(36).substr(2, 9)})`
+    const paramsWithTaskId = { ...params, force_task_id: taskId }
+
+    const result = await this.request('/sdapi/v1/txt2img', {
+      method: 'POST',
+      body: JSON.stringify(paramsWithTaskId),
+    });
+
+    // Add task ID to result for progress tracking
+    result.taskId = taskId
+    return result
+  }
+
+  // Text to Image with external task ID control
+  async txt2imgSimple(params) {
     return this.request('/sdapi/v1/txt2img', {
       method: 'POST',
       body: JSON.stringify(params),
@@ -39,10 +55,18 @@ class StableDiffusionAPI {
 
   // Image to Image
   async img2img(params) {
-    return this.request('/sdapi/v1/img2img', {
+    // Add a task ID to track progress
+    const taskId = `task(img2img-${Date.now()}-${Math.random().toString(36).substr(2, 9)})`
+    const paramsWithTaskId = { ...params, force_task_id: taskId }
+
+    const result = await this.request('/sdapi/v1/img2img', {
       method: 'POST',
-      body: JSON.stringify(params),
+      body: JSON.stringify(paramsWithTaskId),
     });
+
+    // Add task ID to result for progress tracking
+    result.taskId = taskId
+    return result
   }
 
   // Get available models

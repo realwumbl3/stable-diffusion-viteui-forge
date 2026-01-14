@@ -30,7 +30,7 @@ from typing import Any, Union, get_origin, get_args
 import piexif
 import piexif.helper
 from contextlib import closing
-from modules.progress import create_task_id, add_task_to_queue, start_task, finish_task, current_task
+from modules.progress import create_task_id, add_task_to_queue, start_task, finish_task, current_task, websocket_progress_endpoint
 
 def script_name_to_index(name, scripts):
     try:
@@ -247,6 +247,10 @@ class Api:
             self.add_api_route("/sdapi/v1/server-restart", self.restart_webui, methods=["POST"])
             self.add_api_route("/sdapi/v1/server-stop", self.stop_webui, methods=["POST"])
 
+        # Add WebSocket routes for progress tracking
+        self.app.add_websocket_route("/internal/progress-ws", websocket_progress_endpoint)
+        self.app.add_websocket_route("/internal/progress-ws/{task_id}", websocket_progress_endpoint)
+
         self.default_script_arg_txt2img = []
         self.default_script_arg_img2img = []
 
@@ -312,21 +316,24 @@ class Api:
     def init_default_script_args(self, script_runner):
         #find max idx from the scripts in runner and generate a none array to init script_args
         last_arg_index = 1
+        current_arg_index = 1  # Start after the script selector at index 0
+
+        # Initialize script argument ranges for API-only mode
+        for script in script_runner.scripts:
+            if script.args_from is None:
+                script.args_from = current_arg_index
+                # For API-only mode, scripts handle their own defaults since Gradio UI is removed
+                # Assume minimal arguments for API compatibility - scripts should handle missing args
+                script.args_to = current_arg_index  # No args by default
+
         for script in script_runner.scripts:
             if script.args_to is not None and last_arg_index < script.args_to:
                 last_arg_index = script.args_to
+
         # None everywhere except position 0 to initialize script args
         script_args = [None]*last_arg_index
         script_args[0] = 0
 
-        # get default values - simplified for API-only service
-        # Removed Gradio UI dependency per STRIP_WEB_UI_PLAN.md
-        for script in script_runner.scripts:
-            if script.args_from is not None and script.args_to is not None:
-                # Set basic defaults for scripts without requiring Gradio UI
-                script_range = script.args_to - script.args_from
-                if script_range > 0:
-                    script_args[script.args_from:script.args_to] = [None] * script_range
         return script_args
 
     def init_script_args(self, request, default_script_args, selectable_scripts, selectable_idx, script_runner, *, input_script_args=None):
@@ -482,6 +489,55 @@ class Api:
                 try:
                     shared.state.begin(job="scripts_txt2img")
                     start_task(task_id)
+
+                    # Start a background thread to broadcast progress updates during generation
+                    import threading
+                    from modules.progress import websocket_manager, current_task
+
+                    def progress_broadcaster():
+                        """Broadcast progress updates periodically during generation"""
+                        try:
+                            start_time = time.time()
+                            last_progress = -1
+                            while shared.state.job == "scripts_txt2img" and current_task == task_id and shared.state.sampling_step != -1 and (time.time() - start_time) < 300:  # Max 5 minutes
+                                current_progress = 0
+                                if shared.state.sampling_steps > 0:
+                                    current_progress = min(shared.state.sampling_step / shared.state.sampling_steps, 1.0)
+
+                                # Only broadcast if progress has changed
+                                if current_progress != last_progress:
+                                    elapsed = time.time() - shared.state.time_start
+                                    eta = None
+                                    if current_progress > 0:
+                                        predicted_duration = elapsed / current_progress
+                                        eta = predicted_duration - elapsed
+
+                                    progress_data = {
+                                        "active": True,
+                                        "queued": False,
+                                        "completed": False,
+                                        "progress": current_progress,
+                                        "eta": eta,
+                                        "textinfo": shared.state.textinfo or "Generating...",
+                                        "sampling_step": shared.state.sampling_step,
+                                        "sampling_steps": shared.state.sampling_steps,
+                                    }
+
+                                    websocket_manager.broadcast_task_progress_sync(task_id, progress_data)
+                                    last_progress = current_progress
+
+                                # Stop if generation appears complete (sampling_step reached sampling_steps)
+                                if shared.state.sampling_step >= shared.state.sampling_steps and shared.state.sampling_steps > 0:
+                                    break
+
+                                time.sleep(0.5)  # Update every 0.5 seconds
+                        except Exception as e:
+                            print(f"Progress broadcaster error: {e}")
+
+                    # Start the progress broadcaster thread
+                    progress_thread = threading.Thread(target=progress_broadcaster, daemon=True)
+                    progress_thread.start()
+
                     if selectable_scripts is not None:
                         p.script_args = script_args
                         processed = scripts.scripts_txt2img.run(p, *p.script_args) # Need to pass args as list here
@@ -489,6 +545,27 @@ class Api:
                         p.script_args = tuple(script_args) # Need to pass args as tuple here
                         processed = process_images(p)
                     process_extra_images(processed)
+
+                    # Send completion message before shared.state gets reset
+                    completion_data = {
+                        "active": False,
+                        "queued": False,
+                        "completed": True,
+                        "progress": 1.0,
+                        "eta": None,
+                        "textinfo": "Completed",
+                        "sampling_step": shared.state.sampling_steps,
+                        "sampling_steps": shared.state.sampling_steps,
+                    }
+                    websocket_manager.broadcast_task_progress_sync(task_id, completion_data)
+
+                    # Signal the progress thread to stop
+                    shared.state.job = ""
+                    shared.state.sampling_step = -1  # This will cause the progress thread to exit
+
+                    # Wait for progress thread to finish
+                    progress_thread.join(timeout=2)
+
                     finish_task(task_id)
                 finally:
                     shared.state.end()
@@ -554,6 +631,49 @@ class Api:
                 try:
                     shared.state.begin(job="scripts_img2img")
                     start_task(task_id)
+
+                    # Start a background thread to broadcast progress updates during generation
+                    import threading
+                    from modules.progress import websocket_manager, current_task
+
+                    def progress_broadcaster():
+                        """Broadcast progress updates periodically during generation"""
+                        try:
+                            start_time = time.time()
+                            while shared.state.job == "scripts_img2img" and current_task == task_id and shared.state.sampling_step != -1 and (time.time() - start_time) < 300:  # Max 5 minutes
+                                if shared.state.sampling_steps > 0 and shared.state.sampling_step <= shared.state.sampling_steps:
+                                    progress = min(shared.state.sampling_step / shared.state.sampling_steps, 1.0)
+                                    elapsed = time.time() - shared.state.time_start
+                                    eta = None
+                                    if progress > 0:
+                                        predicted_duration = elapsed / progress
+                                        eta = predicted_duration - elapsed
+
+                                    progress_data = {
+                                        "active": True,
+                                        "queued": False,
+                                        "completed": False,
+                                        "progress": progress,
+                                        "eta": eta,
+                                        "textinfo": shared.state.textinfo or "Generating...",
+                                        "sampling_step": shared.state.sampling_step,
+                                        "sampling_steps": shared.state.sampling_steps,
+                                    }
+
+                                    websocket_manager.broadcast_task_progress_sync(task_id, progress_data)
+
+                                # Stop if generation appears complete (sampling_step reached sampling_steps)
+                                if shared.state.sampling_step >= shared.state.sampling_steps and shared.state.sampling_steps > 0:
+                                    break
+
+                                time.sleep(1)  # Update every second
+                        except Exception as e:
+                            print(f"Progress broadcaster error: {e}")
+
+                    # Start the progress broadcaster thread
+                    progress_thread = threading.Thread(target=progress_broadcaster, daemon=True)
+                    progress_thread.start()
+
                     if selectable_scripts is not None:
                         p.script_args = script_args
                         processed = scripts.scripts_img2img.run(p, *p.script_args) # Need to pass args as list here
@@ -561,6 +681,27 @@ class Api:
                         p.script_args = tuple(script_args) # Need to pass args as tuple here
                         processed = process_images(p)
                     process_extra_images(processed)
+
+                    # Send completion message before shared.state gets reset
+                    completion_data = {
+                        "active": False,
+                        "queued": False,
+                        "completed": True,
+                        "progress": 1.0,
+                        "eta": None,
+                        "textinfo": "Completed",
+                        "sampling_step": shared.state.sampling_steps,
+                        "sampling_steps": shared.state.sampling_steps,
+                    }
+                    websocket_manager.broadcast_task_progress_sync(task_id, completion_data)
+
+                    # Signal the progress thread to stop
+                    shared.state.job = ""
+                    shared.state.sampling_step = -1  # This will cause the progress thread to exit
+
+                    # Wait for progress thread to finish
+                    progress_thread.join(timeout=2)
+
                     finish_task(task_id)
                 finally:
                     shared.state.end()

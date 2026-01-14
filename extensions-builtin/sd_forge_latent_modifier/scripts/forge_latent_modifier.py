@@ -93,7 +93,15 @@ class LatentModifierForForge(scripts.Script):
         # This will be called before every sampling.
         # If you use highres fix, this will be called twice.
 
-        enabled, sharpness_multiplier, sharpness_method, tonemap_multiplier, tonemap_method, tonemap_percentile, contrast_multiplier, combat_method, combat_cfg_drift, rescale_cfg_phi, extra_noise_type, extra_noise_method, extra_noise_multiplier, extra_noise_lowpass, divisive_norm_size, divisive_norm_multiplier, spectral_mod_mode, spectral_mod_percentile, spectral_mod_multiplier, affect_uncond, dyn_cfg_augmentation = script_args
+        # Provide defaults for API-only mode (21 arguments expected)
+        defaults = [False, 0.0, "none", 0.0, "none", 0.5, 0.0, "none", 0.0, 0.7, "none", "none", 0.0, 0.0, 0.0, 0.0, "none", 0.5, 0.0, False, 0.0]
+        args = list(script_args) + defaults[len(script_args):] if len(script_args) < len(defaults) else list(script_args[:len(defaults)])
+
+        enabled, sharpness_multiplier, sharpness_method, tonemap_multiplier, tonemap_method, tonemap_percentile, contrast_multiplier, combat_method, combat_cfg_drift, rescale_cfg_phi, extra_noise_type, extra_noise_method, extra_noise_multiplier, extra_noise_lowpass, divisive_norm_size, divisive_norm_multiplier, spectral_mod_mode, spectral_mod_percentile, spectral_mod_multiplier, affect_uncond, dyn_cfg_augmentation = args
+
+        # Ensure proper types
+        enabled = bool(enabled) if enabled is not None else False
+        affect_uncond = bool(affect_uncond) if affect_uncond is not None else False
 
         if not enabled:
             return

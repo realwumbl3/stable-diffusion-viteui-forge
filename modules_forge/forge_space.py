@@ -205,7 +205,7 @@ class ForgeSpace:
         from modules import initialize_util
         from modules.shared import cmd_opts
 
-        server_name = initialize_util.gradio_server_name()
+        server_name = initialize_util.server_name()
         port = find_free_port(server_name=server_name, start_port=cmd_opts.port)
 
         self.gradio_metas = demo.launch(

@@ -10,11 +10,12 @@ import {
   Wand2,
   Image as ImageIcon,
   Palette,
-  Layers
+  Layers,
+  Type
 } from 'lucide-react'
 import { cn } from '../lib/utils.js'
 
-const Header = ({ loading, onGenerate, canGenerate, activeTool, onToolChange }) => {
+const Header = ({ loading, progress, onGenerate, canGenerate, activeTool, onToolChange, generationMode, setGenerationMode }) => {
   const tools = [
     { id: 'generate', icon: Wand2, label: 'Generate', shortcut: 'Ctrl+G' },
     { id: 'edit', icon: Palette, label: 'Edit', shortcut: 'Ctrl+E' },
@@ -44,15 +45,59 @@ const Header = ({ loading, onGenerate, canGenerate, activeTool, onToolChange }) 
       {/* Center Section - Main Actions */}
       <div className="flex-1 flex justify-center">
         <div className="flex items-center gap-2">
+          {/* Generation Mode Buttons */}
+          <div className="flex items-center bg-studio-surface rounded-lg p-1 border border-studio-border">
+            <button
+              onClick={() => setGenerationMode('txt2img')}
+              className={cn(
+                "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all duration-200",
+                generationMode === 'txt2img'
+                  ? "bg-studio-accent text-studio-bg shadow-sm"
+                  : "text-studio-textSecondary hover:text-studio-text hover:bg-studio-surface"
+              )}
+              title="Text to Image (Alt+T)"
+            >
+              <Type size={16} />
+              <span className="hidden sm:inline">Text</span>
+            </button>
+            <button
+              onClick={() => setGenerationMode('img2img')}
+              className={cn(
+                "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all duration-200",
+                generationMode === 'img2img'
+                  ? "bg-studio-accent text-studio-bg shadow-sm"
+                  : "text-studio-textSecondary hover:text-studio-text hover:bg-studio-surface"
+              )}
+              title="Image to Image (Alt+I)"
+            >
+              <ImageIcon size={16} />
+              <span className="hidden sm:inline">Image</span>
+            </button>
+          </div>
+
           <button
             onClick={onGenerate}
             disabled={!canGenerate || loading}
             className={cn(
-              "studio-btn-primary flex items-center gap-2 px-6 py-2",
+              "studio-btn-primary flex items-center gap-2 px-6 py-2 relative",
               (!canGenerate || loading) && "opacity-50 cursor-not-allowed"
             )}
           >
-            {loading ? (
+            {loading && progress ? (
+              <>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 border-2 border-studio-bg border-t-transparent rounded-full animate-spin" />
+                  <span>{Math.round(progress.progress * 100)}%</span>
+                </div>
+                {/* Progress bar overlay */}
+                <div className="absolute bottom-0 left-0 right-0 h-1 bg-studio-bg/20 rounded-b-md overflow-hidden">
+                  <div
+                    className="h-full bg-studio-accent transition-all duration-300 ease-out"
+                    style={{ width: `${progress.progress * 100}%` }}
+                  />
+                </div>
+              </>
+            ) : loading ? (
               <>
                 <div className="w-4 h-4 border-2 border-studio-bg border-t-transparent rounded-full animate-spin" />
                 Generating...

@@ -546,7 +546,7 @@ def start():
     print(f"Launching API server with arguments: {shlex.join(sys.argv[1:])}")
     import webui  # This imports webui and runs initialization
 
-    webui.main_worker()  # Call main_worker directly since import doesn't trigger it
+    webui.api_worker()  # Call api_worker directly since import doesn't trigger it
 
     from modules_forge import main_thread
 

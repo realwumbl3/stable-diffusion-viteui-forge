@@ -4,6 +4,7 @@ import threading
 import time
 import traceback
 import torch
+import asyncio
 from contextlib import nullcontext
 
 from modules import errors, shared, devices
@@ -148,8 +149,19 @@ class State:
         if not shared.parallel_processing_allowed:
             return
 
-        if self.sampling_step - self.current_image_sampling_step >= shared.opts.show_progress_every_n_steps and shared.opts.live_previews_enable and shared.opts.show_progress_every_n_steps != -1:
+        # Check if we should generate live preview or just broadcast progress
+        should_generate_preview = (self.sampling_step - self.current_image_sampling_step >= shared.opts.show_progress_every_n_steps
+                                  and shared.opts.live_previews_enable and shared.opts.show_progress_every_n_steps != -1)
+
+        # Always broadcast progress at regular intervals (every 5 steps minimum)
+        progress_interval = max(5, shared.opts.show_progress_every_n_steps) if shared.opts.show_progress_every_n_steps > 0 else 5
+        should_broadcast_progress = (self.sampling_step % progress_interval == 0)
+
+        if should_generate_preview:
             self.do_set_current_image()
+        elif should_broadcast_progress:
+            # Broadcast progress update without generating new image
+            self._broadcast_progress_update()
 
     @torch.inference_mode()
     def do_set_current_image(self):
@@ -187,3 +199,143 @@ class State:
             image = image.convert('RGB')
         self.current_image = image
         self.id_live_preview += 1
+
+        # Broadcast progress update with new preview image via WebSocket
+        self._broadcast_progress_update()
+
+    async def _broadcast_progress_update_async(self):
+        """Async version of broadcast progress update for use in asyncio contexts"""
+        try:
+            # Import here to avoid circular imports
+            from modules.progress import websocket_manager, current_task
+            import io
+            import base64
+
+            # Only broadcast if we have an active task
+            if current_task:
+                live_preview = None
+                id_live_preview = self.id_live_preview
+
+                # Include live preview if available and enabled
+                if shared.opts.live_previews_enable and self.current_image is not None:
+                    # Encode the current image as base64
+                    buffered = io.BytesIO()
+
+                    if shared.opts.live_previews_image_format == "png":
+                        if max(*self.current_image.size) <= 256:
+                            save_kwargs = {"optimize": True}
+                        else:
+                            save_kwargs = {"optimize": False, "compress_level": 1}
+                    else:
+                        save_kwargs = {}
+
+                    self.current_image.save(buffered, format=shared.opts.live_previews_image_format, **save_kwargs)
+                    base64_image = base64.b64encode(buffered.getvalue()).decode('ascii')
+                    live_preview = f"data:image/{shared.opts.live_previews_image_format};base64,{base64_image}"
+
+                # Calculate progress
+                progress = 0
+                job_count, job_no = self.job_count, self.job_no
+                sampling_steps, sampling_step = self.sampling_steps, self.sampling_step
+
+                if job_count > 0:
+                    progress += job_no / job_count
+                if sampling_steps > 0 and job_count > 0:
+                    progress += 1 / job_count * sampling_step / sampling_steps
+                progress = min(progress, 1)
+
+                # Calculate ETA
+                elapsed_since_start = time.time() - self.time_start
+                predicted_duration = elapsed_since_start / progress if progress > 0 else None
+                eta = predicted_duration - elapsed_since_start if predicted_duration is not None else None
+
+                progress_data = {
+                    "active": True,
+                    "queued": False,
+                    "completed": False,
+                    "progress": progress,
+                    "eta": eta,
+                    "live_preview": live_preview,
+                    "id_live_preview": id_live_preview,
+                    "textinfo": self.textinfo,
+                    "sampling_step": self.sampling_step,
+                    "sampling_steps": self.sampling_steps,
+                    "job_no": self.job_no,
+                    "job_count": self.job_count
+                }
+
+                # Broadcast directly (already in async context)
+                await websocket_manager.broadcast_task_progress(current_task, progress_data)
+
+        except Exception as e:
+            # Don't let WebSocket broadcasting errors interrupt generation
+            print(f"WebSocket progress broadcast error: {e}")
+
+    def _broadcast_progress_update(self):
+        """Broadcast current progress state via WebSocket"""
+        try:
+            # Import here to avoid circular imports
+            from modules.progress import websocket_manager, current_task
+            import io
+            import base64
+
+            # Only broadcast if we have an active task
+            if current_task:
+                live_preview = None
+                id_live_preview = self.id_live_preview
+
+                # Include live preview if available and enabled
+                if shared.opts.live_previews_enable and self.current_image is not None:
+                    # Encode the current image as base64
+                    buffered = io.BytesIO()
+
+                    if shared.opts.live_previews_image_format == "png":
+                        if max(*self.current_image.size) <= 256:
+                            save_kwargs = {"optimize": True}
+                        else:
+                            save_kwargs = {"optimize": False, "compress_level": 1}
+                    else:
+                        save_kwargs = {}
+
+                    self.current_image.save(buffered, format=shared.opts.live_previews_image_format, **save_kwargs)
+                    base64_image = base64.b64encode(buffered.getvalue()).decode('ascii')
+                    live_preview = f"data:image/{shared.opts.live_previews_image_format};base64,{base64_image}"
+
+                # Calculate progress
+                progress = 0
+                job_count, job_no = self.job_count, self.job_no
+                sampling_steps, sampling_step = self.sampling_steps, self.sampling_step
+
+                if job_count > 0:
+                    progress += job_no / job_count
+                if sampling_steps > 0 and job_count > 0:
+                    progress += 1 / job_count * sampling_step / sampling_steps
+                progress = min(progress, 1)
+
+                # Calculate ETA
+                elapsed_since_start = time.time() - self.time_start
+                predicted_duration = elapsed_since_start / progress if progress > 0 else None
+                eta = predicted_duration - elapsed_since_start if predicted_duration is not None else None
+
+                progress_data = {
+                    "active": True,
+                    "queued": False,
+                    "completed": False,
+                    "progress": progress,
+                    "eta": eta,
+                    "live_preview": live_preview,
+                    "id_live_preview": id_live_preview,
+                    "textinfo": self.textinfo,
+                    "sampling_step": self.sampling_step,
+                    "sampling_steps": self.sampling_steps,
+                    "job_no": self.job_no,
+                    "job_count": self.job_count
+                }
+
+                # Broadcast in background to avoid blocking generation
+                import asyncio
+                asyncio.create_task(websocket_manager.broadcast_task_progress(current_task, progress_data))
+
+        except Exception as e:
+            # Don't let WebSocket broadcasting errors interrupt generation
+            print(f"WebSocket progress broadcast error: {e}")

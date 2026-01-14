@@ -1,24 +1,23 @@
-# 🎨 Stable Diffusion ViteUI Forge
+# 🚀 Stable Diffusion API Server
 
-> **Modern React UI for Stable Diffusion WebUI Forge** - A complete rewrite of the user interface using React, Vite, and modern web technologies for a faster, more responsive, and professional experience.
+> **Pure API Service for Stable Diffusion** - A streamlined, API-only version of Stable Diffusion WebUI Forge that provides FastAPI endpoints for image generation without any web UI overhead.
 
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
-[![React](https://img.shields.io/badge/React-18.2.0-blue)](https://reactjs.org/)
-[![Vite](https://img.shields.io/badge/Vite-5.0.0-646CFF)](https://vitejs.dev/)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.3.0-38B2AC)](https://tailwindcss.com/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.104.1-009688)](https://fastapi.tiangolo.com/)
+[![Python](https://img.shields.io/badge/Python-3.10+-blue)](https://www.python.org/)
 
 ## ✨ What is This?
 
-**Stable Diffusion ViteUI Forge** is a modern fork of [Stable Diffusion WebUI Forge](https://github.com/lllyasviel/stable-diffusion-webui-forge) that replaces the traditional Gradio interface with a sleek, responsive React application built with cutting-edge web technologies.
+**Stable Diffusion API Server** is a pure API service based on [Stable Diffusion WebUI Forge](https://github.com/lllyasviel/stable-diffusion-webui-forge) that provides RESTful and WebSocket endpoints for stable diffusion image generation. No web UI is included - this is designed to be consumed by external applications and services.
 
-### 🚀 Key Improvements
+### 🚀 Key Features
 
-- **⚡ Lightning Fast**: Built with Vite for instant hot reloading and optimized builds
-- **🎨 Modern Design**: Clean, professional UI inspired by contemporary web applications
-- **📱 Responsive**: Optimized for desktop, tablet, and mobile devices
-- **🔧 Developer Friendly**: Modern JavaScript/TypeScript with hot module replacement
-- **🎯 Enhanced UX**: Intuitive workflows and real-time parameter adjustments
-- **🖼️ Advanced Canvas**: Professional drawing and editing tools
+- **🎯 Pure API**: Clean RESTful endpoints with OpenAPI documentation
+- **⚡ High Performance**: No UI overhead, optimized for server deployment
+- **🔌 WebSocket Support**: Real-time progress updates and notifications
+- **📚 Full Documentation**: Interactive API docs at `/docs`
+- **🛠️ Developer Friendly**: Well-structured endpoints for easy integration
+- **🔧 Extensible**: Full extension support maintained
 
 ## 📋 Prerequisites
 
@@ -32,94 +31,98 @@
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/realwumbl3/stable-diffusion-viteui-forge.git
-cd stable-diffusion-viteui-forge
+git clone https://github.com/realwumbl3/stable-diffusion-api-server.git
+cd stable-diffusion-api-server
 ```
 
-### 2. Backend Setup (Forge API)
+### 2. Install Dependencies
 
 ```bash
 # Install Python dependencies
 pip install -r requirements_versions.txt
-
-# Start the Forge backend API
-python webui.py --port 7861 --api --no-gradio
 ```
 
-The API will be available at `http://localhost:7861` with documentation at `http://localhost:7861/docs`.
-
-### 3. Frontend Setup (React UI)
+### 3. Start the API Server
 
 ```bash
-# Navigate to the client directory
-cd client
+# On Windows
+nowebui.bat
 
-# Install dependencies
-npm install
-
-# Start the development server
-npm run dev
+# On Linux/Mac
+python launch.py
 ```
 
-The React UI will be available at `http://localhost:5173` and will connect to the Forge API automatically.
+The API server will start on `http://localhost:7861` with:
+- **API Documentation**: `http://localhost:7861/docs`
+- **WebSocket Progress**: `ws://localhost:7861/ws`
+- **Health Check**: `http://localhost:7861/health`
 
 ## 🎯 Features
 
-### Modern React Interface
-- **Component-Based Architecture**: Modular, reusable components
-- **State Management**: Efficient state handling with React hooks
-- **Real-time Updates**: Live parameter adjustments and previews
-- **Professional Styling**: Tailwind CSS for consistent, modern design
+### RESTful API Endpoints
+- **Image Generation**: Text-to-image with advanced parameters
+- **Image-to-Image**: Transform existing images with prompts
+- **Model Management**: Load, switch, and manage models
+- **Progress Tracking**: Real-time generation progress via WebSocket
+- **Extension Support**: Full compatibility with Forge extensions
 
-### Enhanced User Experience
-- **Intuitive Navigation**: Clean, organized interface layout
-- **Advanced Canvas Tools**: Drawing, masking, and image editing
-- **Responsive Design**: Works seamlessly across all devices
-- **Keyboard Shortcuts**: Productivity-boosting hotkeys
-- **Dark/Light Themes**: Customizable appearance
+### API Documentation
+- **OpenAPI/Swagger**: Interactive API documentation at `/docs`
+- **Request/Response Examples**: Complete with sample payloads
+- **Authentication Support**: API key and token-based auth
+- **Rate Limiting**: Configurable request limits
 
-### Developer Experience
-- **Hot Module Replacement**: Instant updates during development
-- **TypeScript Support**: Type-safe development
-- **ESLint & Prettier**: Code quality and formatting
-- **Modern Build Tools**: Vite for fast development and optimized production builds
+### Production Ready
+- **High Performance**: Optimized for server deployment
+- **Concurrent Requests**: Queue-based processing system
+- **Health Monitoring**: Built-in health checks and metrics
+- **Docker Support**: Container-ready deployment
+- **Logging**: Comprehensive request and error logging
 
 ## 📁 Project Structure
 
 ```
-stable-diffusion-viteui-forge/
-├── client/                 # React frontend application
-│   ├── public/            # Static assets
-│   ├── src/
-│   │   ├── components/    # Reusable UI components
-│   │   ├── pages/         # Main application pages
-│   │   ├── hooks/         # Custom React hooks
-│   │   └── utils/         # Utility functions
-│   ├── package.json
-│   └── vite.config.js
+stable-diffusion-api-server/
 ├── backend/               # Python backend (Forge)
+├── modules/               # Core modules
 ├── modules_forge/         # Forge-specific modules
-├── .newui/               # UI development planning docs
+├── extensions-builtin/    # Built-in extensions
+├── models/                # Model storage directory
 ├── requirements_versions.txt
-└── webui.py              # Main backend entry point
+├── webui.py              # Main API entry point
+├── launch.py             # Launch script
+└── nowebui.bat          # Windows launcher
 ```
 
 ## 🔧 Development
 
-### Frontend Development
+### API Development
 
 ```bash
-cd client
-npm install          # Install dependencies
-npm run dev          # Start development server
-npm run build        # Build for production
-npm run preview      # Preview production build
-npm run lint         # Run ESLint
+# Install dependencies
+pip install -r requirements_versions.txt
+
+# Run the API server
+python launch.py
+
+# Access API documentation
+curl http://localhost:7861/docs
 ```
 
-### Backend Development
+### Testing API Endpoints
 
-The backend is based on Stable Diffusion WebUI Forge. For backend development and API documentation, refer to the [original Forge repository](https://github.com/lllyasviel/stable-diffusion-webui-forge).
+```bash
+# Health check
+curl http://localhost:7861/health
+
+# List available models
+curl http://localhost:7861/sdapi/v1/sd-models
+
+# Generate an image (example)
+curl -X POST http://localhost:7861/sdapi/v1/txt2img \
+  -H "Content-Type: application/json" \
+  -d '{"prompt": "a beautiful landscape", "steps": 20}'
+```
 
 ### Environment Variables
 
@@ -132,20 +135,47 @@ VITE_API_DOCS_URL=http://localhost:7861/docs
 
 ## 🚀 Deployment
 
-### Building for Production
+### Production Server
 
 ```bash
-# Build the React app
-cd client
-npm run build
+# Install dependencies
+pip install -r requirements_versions.txt
 
-# The built files will be in client/dist/
-# Serve these files with any static file server
+# Start production server
+python launch.py --port 7861 --listen
 ```
 
-### Docker Support
+### Docker Deployment
 
-Coming soon - Docker configuration for easy deployment.
+```dockerfile
+FROM python:3.10-slim
+
+WORKDIR /app
+COPY requirements_versions.txt .
+RUN pip install -r requirements_versions.txt
+
+COPY . .
+EXPOSE 7861
+
+CMD ["python", "launch.py", "--port", "7861", "--listen"]
+```
+
+### Reverse Proxy Configuration
+
+For production deployments, use a reverse proxy like Nginx:
+
+```nginx
+server {
+    listen 80;
+    server_name your-domain.com;
+
+    location / {
+        proxy_pass http://localhost:7861;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
+```
 
 ## 🤝 Contributing
 
@@ -166,6 +196,7 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 
 - [Stable Diffusion WebUI Forge](https://github.com/lllyasviel/stable-diffusion-webui-forge) - Original backend
 - [Stable Diffusion WebUI](https://github.com/AUTOMATIC1111/stable-diffusion-webui) - Base WebUI
+- [Automatic1111 API](https://github.com/AUTOMATIC1111/stable-diffusion-webui/wiki/API) - API reference
 
 ## 📝 License
 
@@ -173,14 +204,14 @@ This project is licensed under the AGPL-3.0 License - see the [LICENSE](LICENSE.
 
 ## ⚠️ Disclaimer
 
-This project is not affiliated with the original Stable Diffusion WebUI Forge project. It is an independent fork focused on UI modernization.
+This project is not affiliated with the original Stable Diffusion WebUI Forge project. It is an independent fork focused on providing a clean API-only interface.
 
 ## 🙏 Acknowledgments
 
 - **lllyasviel** for the amazing Stable Diffusion WebUI Forge backend
-- **AUTOMATIC1111** for the original Stable Diffusion WebUI
-- **React & Vite communities** for the fantastic development tools
+- **AUTOMATIC1111** for the original Stable Diffusion WebUI and API design
+- **FastAPI** community for the excellent web framework
 
 ---
 
-**Ready to experience Stable Diffusion with a modern UI?** Get started with the Quick Start guide above! 🎨✨
+**Ready to integrate Stable Diffusion into your applications?** Get started with the Quick Start guide above! 🚀✨

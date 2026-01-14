@@ -76,7 +76,16 @@ class KohyaHRFixForForge(scripts.Script):
         return enabled, block_number, downscale_factor, start_percent, end_percent, downscale_after_skip, downscale_method, upscale_method
 
     def process_before_every_sampling(self, p, *script_args, **kwargs):
-        enabled, block_number, downscale_factor, start_percent, end_percent, downscale_after_skip, downscale_method, upscale_method = script_args
+        # enabled, block_number, downscale_factor, start_percent, end_percent, downscale_after_skip, downscale_method, upscale_method = script_args
+        # Provide defaults for API-only mode (8 arguments expected) 
+        defaults = [False, 3, 2.0, 0.0, 1.0, True, "LR", "Nearest"]
+        args = list(script_args) + defaults[len(script_args):] if len(script_args) < len(defaults) else list(script_args[:len(defaults)])
+
+        enabled, block_number, downscale_factor, start_percent, end_percent, downscale_after_skip, downscale_method, upscale_method = args
+
+        # Ensure proper types
+        enabled = bool(enabled) if enabled is not None else False
+        block_number = int(block_number) if block_number is not None else 3
         block_number = int(block_number)
 
         if not enabled:

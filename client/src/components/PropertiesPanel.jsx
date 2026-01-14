@@ -16,10 +16,8 @@ const PropertiesPanel = ({
   collapsed,
   onToggle,
   // Generation settings
-  prompt,
-  setPrompt,
-  negativePrompt,
-  setNegativePrompt,
+  generationMode,
+  setGenerationMode,
   models,
   selectedModel,
   onModelChange,
@@ -35,12 +33,16 @@ const PropertiesPanel = ({
   height,
   setHeight,
   batchSize,
-  setBatchSize
+  setBatchSize,
+  denoisingStrength,
+  setDenoisingStrength,
+  inputImage,
+  onImageUpload
 }) => {
-  const [activeSection, setActiveSection] = useState('prompt')
+  const [activeSection, setActiveSection] = useState('mode')
 
   const sections = [
-    { id: 'prompt', icon: Type, label: 'Prompt', description: 'Text input' },
+    { id: 'mode', icon: Wand2, label: 'Mode', description: 'Generation type' },
     { id: 'model', icon: Settings, label: 'Model', description: 'AI model settings' },
     { id: 'generation', icon: Wand2, label: 'Generation', description: 'Parameters' },
     { id: 'dimensions', icon: ImageIcon, label: 'Dimensions', description: 'Size & format' },
@@ -49,70 +51,161 @@ const PropertiesPanel = ({
 
   return (
     <aside className={cn(
-      "studio-properties-panel transition-all duration-300 ease-in-out",
-      collapsed && "w-12"
+      "studio-properties-panel relative overflow-hidden transition-all duration-300 ease-in-out",
+      collapsed ? "w-12" : "w-80"
     )}>
-      {/* Properties Header */}
-      <div className="studio-sidebar-header">
-        {!collapsed && (
-          <h3 className="text-studio-text font-semibold text-sm">Properties</h3>
-        )}
-      </div>
-
-      {/* Section Navigation */}
-      {!collapsed && (
-        <div className="px-4 pb-4 space-y-1">
+      {/* Always-full-width Content Container */}
+      <div className="w-80 h-full">
+        {/* Collapsed Icon List */}
+        <div className={cn(
+          "absolute inset-0 flex flex-col items-center gap-4 py-6 px-2 transition-opacity duration-300 ease-in-out",
+          collapsed ? "opacity-100" : "opacity-0 pointer-events-none"
+        )}>
           {sections.map((section) => (
             <button
               key={section.id}
-              onClick={() => setActiveSection(section.id)}
+              onClick={() => {
+                setActiveSection(section.id)
+                onToggle()
+              }}
               className={cn(
-                "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors",
+                "w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200 hover:scale-110",
                 activeSection === section.id
-                  ? "bg-studio-accent/20 text-studio-accent border border-studio-accent/30"
-                  : "text-studio-textSecondary hover:text-studio-text hover:bg-studio-surface"
+                  ? "bg-studio-accent text-studio-bg shadow-lg"
+                  : "bg-studio-panel text-studio-textSecondary hover:text-studio-text hover:bg-studio-surface"
               )}
+              title={section.label}
             >
-              <section.icon size={16} />
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium truncate">{section.label}</div>
-                <div className="text-xs opacity-70 truncate">{section.description}</div>
-              </div>
+              <section.icon size={20} />
             </button>
           ))}
         </div>
-      )}
 
-      {/* Properties Content */}
-      <div className="studio-sidebar-content scrollbar-thin">
-        {!collapsed && (
-          <div className="p-4 space-y-6">
-            {/* Prompt Section */}
-            {activeSection === 'prompt' && (
+        {/* Expanded Content */}
+        <div className={cn(
+          "h-full transition-opacity duration-300 ease-in-out",
+          collapsed ? "opacity-0 pointer-events-none" : "opacity-100"
+        )}>
+          {/* Properties Header */}
+          <div className="studio-sidebar-header">
+            <h3 className="text-studio-text font-semibold text-sm">Properties</h3>
+          </div>
+
+          {/* Section Navigation */}
+          <div className="px-4 pb-4 space-y-1">
+            {sections.map((section) => (
+              <button
+                key={section.id}
+                onClick={() => setActiveSection(section.id)}
+                className={cn(
+                  "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors",
+                  activeSection === section.id
+                    ? "bg-studio-accent/20 text-studio-accent border border-studio-accent/30"
+                    : "text-studio-textSecondary hover:text-studio-text hover:bg-studio-surface"
+                )}
+              >
+                <section.icon size={16} />
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium truncate">{section.label}</div>
+                  <div className="text-xs opacity-70 truncate">{section.description}</div>
+                </div>
+              </button>
+            ))}
+          </div>
+
+          {/* Properties Content */}
+          <div className="studio-sidebar-content">
+            <div className="p-4 space-y-6">
+            {/* Mode Section */}
+            {activeSection === 'mode' && (
               <div className="space-y-4">
                 <div>
-                  <label className="studio-label">Positive Prompt</label>
-                  <textarea
-                    value={prompt}
-                    onChange={(e) => setPrompt(e.target.value)}
-                    placeholder="Describe what you want to generate... (e.g., 'a beautiful landscape, sunset, mountains')"
-                    className="studio-textarea w-full resize-none"
-                    rows={6}
-                  />
+                  <label className="studio-label">Generation Mode</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => setGenerationMode('txt2img')}
+                      className={cn(
+                        "studio-btn-secondary py-3 px-4 text-sm",
+                        generationMode === 'txt2img' && "bg-studio-accent text-studio-bg border-studio-accent"
+                      )}
+                    >
+                      <Type size={16} className="mx-auto mb-1" />
+                      Text to Image
+                    </button>
+                    <button
+                      onClick={() => setGenerationMode('img2img')}
+                      className={cn(
+                        "studio-btn-secondary py-3 px-4 text-sm",
+                        generationMode === 'img2img' && "bg-studio-accent text-studio-bg border-studio-accent"
+                      )}
+                    >
+                      <ImageIcon size={16} className="mx-auto mb-1" />
+                      Image to Image
+                    </button>
+                  </div>
                 </div>
 
-                <div>
-                  <label className="studio-label">Negative Prompt</label>
-                  <textarea
-                    value={negativePrompt}
-                    onChange={(e) => setNegativePrompt(e.target.value)}
-                    placeholder="Describe what you don't want... (e.g., 'blurry, low quality, distorted')"
-                    className="studio-textarea w-full resize-none"
-                    rows={4}
-                  />
-                </div>
+                {generationMode === 'img2img' && (
+                  <>
+                    <div>
+                      <label className="studio-label">Input Image</label>
+                      <div className="space-y-2">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            const file = e.target.files[0]
+                            if (file) {
+                              const reader = new FileReader()
+                              reader.onload = (e) => onImageUpload(e.target.result)
+                              reader.readAsDataURL(file)
+                            }
+                          }}
+                          className="w-full text-sm text-studio-text file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-studio-accent file:text-studio-bg hover:file:bg-studio-accent/80"
+                        />
+                        {inputImage && (
+                          <div className="relative">
+                            <img
+                              src={inputImage}
+                              alt="Input"
+                              className="w-full h-32 object-cover rounded-lg border border-studio-border"
+                            />
+                            <button
+                              onClick={() => onImageUpload(null)}
+                              className="absolute top-2 right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="studio-label">Denoising Strength</label>
+                      <input
+                        type="range"
+                        min="0"
+                        max="1"
+                        step="0.01"
+                        value={denoisingStrength}
+                        onChange={(e) => setDenoisingStrength(parseFloat(e.target.value))}
+                        className="studio-slider w-full"
+                      />
+                      <div className="flex justify-between text-xs text-studio-textSecondary mt-1">
+                        <span>0.0</span>
+                        <span className="font-medium">{denoisingStrength.toFixed(2)}</span>
+                        <span>1.0</span>
+                      </div>
+                      <p className="text-xs text-studio-text-muted mt-1">
+                        Higher values = more creative changes, lower values = more faithful to original
+                      </p>
+                    </div>
+                  </>
+                )}
               </div>
             )}
+
 
             {/* Model Section */}
             {activeSection === 'model' && (
@@ -262,16 +355,17 @@ const PropertiesPanel = ({
                 </div>
               </div>
             )}
+            </div>
           </div>
-        )}
+        </div>
       </div>
 
       {/* Collapse Toggle */}
       <button
         onClick={onToggle}
-        className="absolute top-1/2 -left-4 w-8 h-8 bg-studio-panel border border-studio-border rounded-full flex items-center justify-center hover:bg-studio-panelHover transition-colors shadow-studio"
+        className="absolute top-1/2 -right-4 w-8 h-8 bg-studio-panel border border-studio-border rounded-full flex items-center justify-start hover:bg-studio-panelHover transition-all duration-200 shadow-studio"
       >
-        {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+        <ChevronRight size={16} className="transition-transform duration-200" style={{ transform: collapsed ? 'rotate(180deg)' : 'rotate(0deg)' }} />
       </button>
     </aside>
   )

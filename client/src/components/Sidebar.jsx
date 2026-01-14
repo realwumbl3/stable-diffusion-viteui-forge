@@ -25,63 +25,89 @@ const Sidebar = ({ collapsed, onToggle, images, currentImage, onImageSelect }) =
 
   return (
     <aside className={cn(
-      "studio-sidebar transition-all duration-300 ease-in-out",
-      collapsed && "w-12"
+      "studio-sidebar relative overflow-hidden transition-all duration-300 ease-in-out",
+      collapsed ? "w-12" : "w-90"
     )}>
-      {/* Sidebar Header */}
-      <div className="studio-sidebar-header">
-        {!collapsed && (
-          <div className="flex items-center justify-between">
-            <h3 className="text-studio-text font-semibold text-sm">Library</h3>
-            <div className="flex gap-1">
-              <button
-                onClick={() => setViewMode('grid')}
-                className={cn(
-                  "p-1 rounded text-studio-textSecondary hover:text-studio-text",
-                  viewMode === 'grid' && "text-studio-accent bg-studio-accent/10"
-                )}
-              >
-                <Grid3X3 size={14} />
-              </button>
-              <button
-                onClick={() => setViewMode('list')}
-                className={cn(
-                  "p-1 rounded text-studio-textSecondary hover:text-studio-text",
-                  viewMode === 'list' && "text-studio-accent bg-studio-accent/10"
-                )}
-              >
-                <List size={14} />
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Tab Navigation */}
-        <div className="flex gap-1 mt-2">
+      {/* Always-full-width Content Container */}
+      <div className="w-80 h-full">
+        {/* Collapsed Icon List */}
+        <div className={cn(
+          "absolute inset-0 flex flex-col items-center gap-4 py-6 px-2 transition-opacity duration-300 ease-in-out",
+          collapsed ? "opacity-100" : "opacity-0 pointer-events-none"
+        )}>
           {tabs.map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => {
+                setActiveTab(tab.id)
+                onToggle()
+              }}
               className={cn(
-                "flex items-center gap-2 px-2 py-1 rounded text-xs transition-colors",
+                "w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200 hover:scale-110",
                 activeTab === tab.id
-                  ? "bg-studio-accent/20 text-studio-accent"
-                  : "text-studio-textSecondary hover:text-studio-text hover:bg-studio-surface",
-                collapsed && "justify-center px-1"
+                  ? "bg-studio-accent text-studio-bg shadow-lg"
+                  : "bg-studio-panel text-studio-textSecondary hover:text-studio-text hover:bg-studio-surface"
               )}
-              title={collapsed ? tab.label : undefined}
+              title={tab.label}
             >
-              <tab.icon size={16} />
-              {!collapsed && <span>{tab.label}</span>}
+              <tab.icon size={20} />
             </button>
           ))}
         </div>
-      </div>
 
-      {/* Sidebar Content */}
-      <div className="studio-sidebar-content">
-        {!collapsed && (
-          <>
+        {/* Expanded Content */}
+        <div className={cn(
+          "h-full transition-opacity duration-300 ease-in-out",
+          collapsed ? "opacity-0 pointer-events-none" : "opacity-100"
+        )}>
+          {/* Sidebar Header */}
+          <div className="studio-sidebar-header">
+            <div className="flex items-center justify-between">
+              <h3 className="text-studio-text font-semibold text-sm">Library</h3>
+              <div className="flex gap-1">
+                <button
+                  onClick={() => setViewMode('grid')}
+                  className={cn(
+                    "p-1 rounded text-studio-textSecondary hover:text-studio-text",
+                    viewMode === 'grid' && "text-studio-accent bg-studio-accent/10"
+                  )}
+                >
+                  <Grid3X3 size={14} />
+                </button>
+                <button
+                  onClick={() => setViewMode('list')}
+                  className={cn(
+                    "p-1 rounded text-studio-textSecondary hover:text-studio-text",
+                    viewMode === 'list' && "text-studio-accent bg-studio-accent/10"
+                  )}
+                >
+                  <List size={14} />
+                </button>
+              </div>
+            </div>
+
+            {/* Tab Navigation */}
+            <div className="flex gap-1 mt-2">
+              {tabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={cn(
+                    "flex items-center gap-2 px-2 py-1 rounded text-xs transition-colors",
+                    activeTab === tab.id
+                      ? "bg-studio-accent/20 text-studio-accent"
+                      : "text-studio-textSecondary hover:text-studio-text hover:bg-studio-surface"
+                  )}
+                >
+                  <tab.icon size={16} />
+                  <span>{tab.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Sidebar Content */}
+          <div className="studio-sidebar-content">
             {/* Search Bar */}
             <div className="p-4 border-b border-studio-border">
               <div className="relative">
@@ -160,16 +186,16 @@ const Sidebar = ({ collapsed, onToggle, images, currentImage, onImageSelect }) =
                 </div>
               )}
             </div>
-          </>
-        )}
+          </div>
+        </div>
       </div>
 
       {/* Collapse Toggle */}
       <button
         onClick={onToggle}
-        className="absolute top-1/2 -right-4 w-8 h-8 bg-studio-panel border border-studio-border rounded-full flex items-center justify-center hover:bg-studio-panelHover transition-colors shadow-studio"
+        className="absolute top-1/2 -left-4 w-8 h-8 bg-studio-panel border border-studio-border rounded-full flex items-center justify-end hover:bg-studio-panelHover transition-all duration-200 shadow-studio"
       >
-        {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+        <ChevronLeft size={16} className="transition-transform duration-200" style={{ transform: collapsed ? 'rotate(180deg)' : 'rotate(0deg)' }} />
       </button>
     </aside>
   )

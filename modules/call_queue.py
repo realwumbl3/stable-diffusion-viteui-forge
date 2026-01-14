@@ -3,6 +3,7 @@ from functools import wraps
 import html
 import time
 import traceback
+import asyncio
 
 from modules_forge import main_thread
 from modules import shared, progress, errors, devices, fifo_lock, profiling
@@ -35,9 +36,41 @@ def wrap_gradio_gpu_call(func, extra_outputs=None):
             shared.state.begin(job=id_task)
             progress.start_task(id_task)
 
+            # Broadcast task started
+            if id_task:
+                asyncio.create_task(progress.websocket_manager.broadcast_task_progress(id_task, {
+                    "active": True,
+                    "queued": False,
+                    "completed": False,
+                    "progress": 0,
+                    "textinfo": "Starting task..."
+                }))
+
             try:
                 res = func(*args, **kwargs)
                 progress.record_results(id_task, res)
+
+                # Broadcast task completed successfully
+                if id_task:
+                    asyncio.create_task(progress.websocket_manager.broadcast_task_progress(id_task, {
+                        "active": False,
+                        "queued": False,
+                        "completed": True,
+                        "progress": 1,
+                        "textinfo": "Task completed successfully"
+                    }))
+
+            except Exception as e:
+                # Broadcast task failed
+                if id_task:
+                    asyncio.create_task(progress.websocket_manager.broadcast_task_progress(id_task, {
+                        "active": False,
+                        "queued": False,
+                        "completed": True,
+                        "progress": 0,
+                        "textinfo": f"Task failed: {str(e)}"
+                    }))
+                raise
             finally:
                 progress.finish_task(id_task)
 

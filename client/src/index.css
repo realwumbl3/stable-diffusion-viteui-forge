@@ -51,7 +51,7 @@
 
   /* Studio Button Variants */
   .studio-btn-primary {
-    @apply bg-studio-accent hover:bg-studio-accentHover text-studio-bg font-medium px-4 py-2 rounded-md transition-colors duration-200 shadow-studio;
+    @apply bg-studio-accent hover:bg-studio-accent-hover text-studio-bg font-medium px-4 py-2 rounded-md transition-colors duration-200 shadow-studio;
   }
 
   .studio-btn-secondary {
@@ -116,4 +116,27 @@
   }
 
   /* Utility Classes */
+
+  /* Custom Scrollbar Styles */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--studio-border) var(--studio-panel);
+  }
+
+  *::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: var(--studio-panel);
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background: var(--studio-border);
+    border-radius: 2px;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background: var(--studio-text-muted);
+  }
 }

@@ -33,7 +33,14 @@ class MultiDiffusionForForge(scripts.Script):
         # This will be called before every sampling.
         # If you use highres fix, this will be called twice.
 
-        enabled, method, tile_width, tile_height, tile_overlap, tile_batch_size = script_args
+        # Provide defaults for API-only mode (6 arguments expected)
+        defaults = [False, "MultiDiffusion", 512, 512, 0, 1]
+        args = list(script_args) + defaults[len(script_args):] if len(script_args) < len(defaults) else list(script_args[:len(defaults)])
+
+        enabled, method, tile_width, tile_height, tile_overlap, tile_batch_size = args
+
+        # Ensure proper types
+        enabled = bool(enabled) if enabled is not None else False
 
         if not enabled:
             return

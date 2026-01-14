@@ -140,7 +140,14 @@ class FreeUForForge(scripts.Script):
     def process_before_every_sampling(self, p, *script_args, **kwargs):
         # If you use highres fix, this will be called twice.
 
-        freeu_enabled, freeu_b1, freeu_b2, freeu_s1, freeu_s2, freeu_start, freeu_end = script_args
+        # Provide defaults for API-only mode (7 arguments expected)
+        defaults = [False, 1.2, 1.4, 0.9, 0.2, 0.0, 1.0]
+        args = list(script_args) + defaults[len(script_args):] if len(script_args) < len(defaults) else list(script_args[:len(defaults)])
+
+        freeu_enabled, freeu_b1, freeu_b2, freeu_s1, freeu_s2, freeu_start, freeu_end = args
+
+        # Ensure enabled is boolean
+        freeu_enabled = bool(freeu_enabled) if freeu_enabled is not None else False
 
         if not freeu_enabled:
             return
