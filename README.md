@@ -1,3 +1,28 @@
+# 🎨 Stable Diffusion WebUI Forge - Modern UI Fork
+
+> **✨ Enhanced with Modern React UI** - A fork featuring a completely rebuilt user interface using React, providing a faster, more responsive, and modern experience for Stable Diffusion generation.
+
+## 🚀 Unique Features of This Fork
+
+### Modern React Client
+- **Complete UI Rewrite**: Brand new React-based client application (`client/` directory)
+- **Modern UX**: Sleek, responsive interface built with React and Tailwind CSS
+- **Fast Performance**: Optimized rendering and state management for smooth operation
+- **Extensible Architecture**: Modular component system for easy customization
+
+### Enhanced User Experience
+- **Canvas Integration**: Advanced drawing and editing capabilities
+- **Real-time Updates**: Live preview and parameter adjustments
+- **Professional UI**: Clean, modern design inspired by contemporary web applications
+- **Mobile Responsive**: Optimized for various screen sizes and devices
+
+### Developer Friendly
+- **Planning Documentation**: Organized development plans in `.newui/` folder
+- **Clean Architecture**: Separated concerns between API backend and UI frontend
+- **Modern Tooling**: Vite build system, ESLint, and modern JavaScript practices
+
+---
+
 # Stable Diffusion Forge API
 
 Stable Diffusion Forge API is a high-performance API-only backend for Stable Diffusion, derived from [Stable Diffusion WebUI Forge](https://github.com/lllyasviel/stable-diffusion-webui-forge). This project strips away all frontend components to provide a pure REST API service that can power external web applications and interfaces.
