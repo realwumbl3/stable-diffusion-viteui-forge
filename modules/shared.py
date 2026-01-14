@@ -1,9 +1,7 @@
 import os
 import sys
 
-import gradio as gr
-
-from modules import shared_cmd_options, shared_gradio_themes, options, shared_items, sd_models_types
+from modules import shared_cmd_options, options, shared_items, sd_models_types
 from modules.paths_internal import models_path, script_path, data_path, sd_configs_path, sd_default_config, sd_model_file, default_sd_model_file, extensions_dir, extensions_builtin_dir  # noqa: F401
 from modules import util
 from typing import TYPE_CHECKING
@@ -17,11 +15,17 @@ parser = shared_cmd_options.parser
 
 batch_cond_uncond = True  # old field, unused now in favor of shared.opts.batch_cond_uncond
 parallel_processing_allowed = True
-styles_filename = cmd_opts.styles_file = cmd_opts.styles_file if len(cmd_opts.styles_file) > 0 else [os.path.join(data_path, 'styles.csv'), os.path.join(data_path, 'styles_integrated.csv')]
-config_filename = cmd_opts.ui_settings_file
-hide_dirs = {"visible": not cmd_opts.hide_ui_dir_config}
+default_styles_paths = [os.path.join(data_path, 'styles.csv'), os.path.join(data_path, 'styles_integrated.csv')]
+styles_filename = getattr(cmd_opts, 'styles_file', default_styles_paths)
+if hasattr(cmd_opts, 'styles_file') and len(cmd_opts.styles_file) > 0:
+    cmd_opts.styles_file = styles_filename
+elif hasattr(cmd_opts, 'styles_file') and len(cmd_opts.styles_file) == 0:
+    # If styles_file is explicitly set to empty list, use default paths
+    styles_filename = default_styles_paths
+config_filename = getattr(cmd_opts, 'ui_settings_file', os.path.join(data_path, 'config.json'))
+hide_dirs = {"visible": not getattr(cmd_opts, 'hide_ui_dir_config', False)}
 
-demo: gr.Blocks = None
+demo = None
 
 device: str = None
 
@@ -68,7 +72,7 @@ clip_model = None
 
 progress_print_out = sys.stdout
 
-gradio_theme = gr.themes.Base()
+gradio_theme = None
 
 total_tqdm: 'shared_total_tqdm.TotalTQDM' = None
 
@@ -85,7 +89,7 @@ html = util.html
 walk_files = util.walk_files
 ldm_print = util.ldm_print
 
-reload_gradio_theme = shared_gradio_themes.reload_gradio_theme
+reload_gradio_theme = lambda: None  # Mock for API-only mode
 
 list_checkpoint_tiles = shared_items.list_checkpoint_tiles
 refresh_checkpoints = shared_items.refresh_checkpoints

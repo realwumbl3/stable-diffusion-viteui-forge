@@ -6,9 +6,71 @@ import os
 import re
 import sys
 
+# Mock gradio for API-only mode
+class MockInterface:
+    def __init__(self, *args, **kwargs):
+        pass
+
+class MockGradioModule:
+    __version__ = "4.40.0"
+
+    @staticmethod
+    def update(*args, **kwargs):
+        return None
+
+    @staticmethod
+    def Number(*args, **kwargs):
+        return None
+
+    @staticmethod
+    def Button(*args, **kwargs):
+        return None
+
+    @staticmethod
+    def Textbox(*args, **kwargs):
+        return None
+
+    Interface = MockInterface
+
+    @staticmethod
+    def Slider(*args, **kwargs):
+        return None
+
+    @staticmethod
+    def Image(*args, **kwargs):
+        return None
+
+    @staticmethod
+    def Dropdown(*args, **kwargs):
+        return None
+
+    @staticmethod
+    def Checkbox(*args, **kwargs):
+        return None
+
+    @staticmethod
+    def Radio(*args, **kwargs):
+        return None
+
+    @staticmethod
+    def Blocks(*args, **kwargs):
+        return None
+
+# Mock gradio_rangeslider
+class MockRangeSlider:
+    def __init__(self, *args, **kwargs):
+        pass
+
+# Set up gradio_rangeslider module with RangeSlider
+import types
+gradio_rangeslider_module = types.ModuleType('gradio_rangeslider')
+gradio_rangeslider_module.RangeSlider = MockRangeSlider
+sys.modules['gradio_rangeslider'] = gradio_rangeslider_module
+
+sys.modules['gradio'] = MockGradioModule
 import gradio as gr
 from modules.paths import data_path
-from modules import shared, ui_tempdir, script_callbacks, processing, infotext_versions, images, prompt_parser, errors
+from modules import shared, script_callbacks, processing, infotext_versions, images, prompt_parser, errors
 from PIL import Image
 
 from modules_forge import main_entry

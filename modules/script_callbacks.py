@@ -6,7 +6,9 @@ import os
 from typing import Optional, Any
 
 from fastapi import FastAPI
-from gradio import Blocks
+# Mock Blocks for API-only mode
+class Blocks:
+    pass
 
 from modules import errors, timer, extensions, shared, util
 

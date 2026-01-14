@@ -5,7 +5,46 @@ import inspect
 from collections import namedtuple
 from dataclasses import dataclass
 
-import gradio as gr
+# Mock gradio for API-only mode
+class MockBlock:
+    pass
+
+class MockBlocks:
+    Block = MockBlock
+
+class MockGradio:
+    blocks = MockBlocks()
+
+    @staticmethod
+    def Column(*args, **kwargs):
+        return None
+
+    @staticmethod
+    def Row(*args, **kwargs):
+        return None
+
+    @staticmethod
+    def Group(*args, **kwargs):
+        return None
+
+    @staticmethod
+    def Tab(*args, **kwargs):
+        return None
+
+    @staticmethod
+    def Tabs(*args, **kwargs):
+        return None
+
+    class components:
+        @staticmethod
+        def FormRow(*args, **kwargs):
+            return None
+
+    @staticmethod
+    def update(*args, **kwargs):
+        return None
+
+gr = MockGradio()
 
 from modules import shared, paths, script_callbacks, extensions, script_loading, scripts_postprocessing, errors, timer, util
 
@@ -523,7 +562,8 @@ def load_scripts():
             current_basedir = scriptfile.basedir
 
             script_module = script_loading.load_module(scriptfile.path)
-            register_scripts_from_module(script_module)
+            if script_module is not None:
+                register_scripts_from_module(script_module)
 
         except Exception:
             errors.report(f"Error loading script: {scriptfile.filename}", exc_info=True)

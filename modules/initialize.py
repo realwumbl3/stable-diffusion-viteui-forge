@@ -18,10 +18,6 @@ def imports():
     warnings.filterwarnings(action="ignore", category=DeprecationWarning, module="pytorch_lightning")
     warnings.filterwarnings(action="ignore", category=UserWarning, module="torchvision")
 
-    os.environ.setdefault('GRADIO_ANALYTICS_ENABLED', 'False')
-    import gradio  # noqa: F401
-    startup_timer.record("import gradio")
-
     from modules import paths, timer, import_hook, errors  # noqa: F401
     startup_timer.record("setup paths")
 
@@ -29,7 +25,7 @@ def imports():
     shared_init.initialize()
     startup_timer.record("initialize shared")
 
-    from modules import processing, gradio_extensions, ui  # noqa: F401
+    from modules import processing  # noqa: F401
     startup_timer.record("other imports")
 
 
@@ -51,19 +47,28 @@ def initialize():
     initialize_util.configure_opts_onchange()
 
     from modules import sd_models
-    sd_models.setup_model()
-    startup_timer.record("setup SD model")
+    try:
+        sd_models.setup_model()
+        startup_timer.record("setup SD model")
+    except Exception as e:
+        print(f"Warning: Failed to setup SD model: {e}")
 
     from modules.shared_cmd_options import cmd_opts
 
     from modules import codeformer_model
     warnings.filterwarnings(action="ignore", category=UserWarning, module="torchvision.transforms.functional_tensor")
-    codeformer_model.setup_model(cmd_opts.codeformer_models_path)
-    startup_timer.record("setup codeformer")
+    try:
+        codeformer_model.setup_model(cmd_opts.codeformer_models_path)
+        startup_timer.record("setup codeformer")
+    except Exception as e:
+        print(f"Warning: Failed to setup codeformer: {e}")
 
     from modules import gfpgan_model
-    gfpgan_model.setup_model(cmd_opts.gfpgan_models_path)
-    startup_timer.record("setup gfpgan")
+    try:
+        gfpgan_model.setup_model(cmd_opts.gfpgan_models_path)
+        startup_timer.record("setup gfpgan")
+    except Exception as e:
+        print(f"Warning: Failed to setup gfpgan: {e}")
 
     initialize_rest(reload_script_modules=False)
 
@@ -87,14 +92,17 @@ def initialize_rest(*, reload_script_modules=False):
     startup_timer.record("restore config state file")
 
     from modules import shared, upscaler, scripts
-    if cmd_opts.ui_debug_mode:
+    if getattr(cmd_opts, 'ui_debug_mode', False):
         shared.sd_upscalers = upscaler.UpscalerLanczos().scalers
         scripts.load_scripts()
         return
 
     from modules import sd_models
-    sd_models.list_models()
-    startup_timer.record("list SD models")
+    try:
+        sd_models.list_models()
+        startup_timer.record("list SD models")
+    except Exception as e:
+        print(f"Warning: Failed to list SD models: {e}")
 
     from modules import localization
     localization.list_localizations(cmd_opts.localizations_dir)
@@ -124,9 +132,6 @@ def initialize_rest(*, reload_script_modules=False):
     shared_items.reload_hypernetworks()
     startup_timer.record("reload hypernetworks")
 
-    from modules import ui_extra_networks
-    ui_extra_networks.initialize()
-    ui_extra_networks.register_default_pages()
 
     from modules import extra_networks
     extra_networks.initialize()

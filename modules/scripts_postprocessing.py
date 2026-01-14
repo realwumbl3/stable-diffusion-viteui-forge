@@ -1,6 +1,16 @@
 import dataclasses
 import os
-import gradio as gr
+# Mock gradio for API-only mode
+class MockGradio:
+    @staticmethod
+    def Gallery(*args, **kwargs):
+        return None
+
+    @staticmethod
+    def update(*args, **kwargs):
+        return None
+
+gr = MockGradio()
 
 from modules import errors, shared
 

@@ -471,6 +471,11 @@ def apply_token_merging(sd_model, token_merging_ratio):
 
 @torch.inference_mode()
 def forge_model_reload():
+    # Ensure forge_loading_parameters are initialized if not already set
+    if not model_data.forge_loading_parameters or 'checkpoint_info' not in model_data.forge_loading_parameters:
+        from modules_forge.main_entry import refresh_model_loading_parameters
+        refresh_model_loading_parameters()
+
     current_hash = str(model_data.forge_loading_parameters)
 
     if model_data.forge_hash == current_hash:

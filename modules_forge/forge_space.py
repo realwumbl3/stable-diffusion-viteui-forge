@@ -3,10 +3,15 @@ import sys
 import uuid
 import time
 import socket
-import gradio as gr
-import importlib.util
+try:
+    import gradio as gr
+    from gradio.context import Context
+except ImportError:
+    # Mock gradio for API-only mode
+    from .gradio_mock import gradio_mock as gr
+    Context = type('Context', (), {'root_block': None, 'block': None})
 
-from gradio.context import Context
+import importlib.util
 from threading import Thread
 from huggingface_hub import snapshot_download
 from backend import memory_management

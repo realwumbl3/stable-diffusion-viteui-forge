@@ -69,9 +69,10 @@ class ExtraOptionsSection(scripts.Script):
         return self.comps
 
     def before_process(self, p, *args):
-        for name, value in zip(self.setting_names, args):
-            if name not in p.override_settings:
-                p.override_settings[name] = value
+        if self.setting_names is not None:
+            for name, value in zip(self.setting_names, args):
+                if name not in p.override_settings:
+                    p.override_settings[name] = value
 
 
 shared.options_templates.update(shared.options_section(('settings_in_ui', "Settings in UI", "ui"), {

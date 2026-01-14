@@ -1,7 +1,71 @@
 import os
-import gradio as gr
+from modules import localization, shared_items, shared, interrogate, util, sd_emphasis
 
-from modules import localization, ui_components, shared_items, shared, interrogate, shared_gradio_themes, util, sd_emphasis
+# Mock gradio for API-only mode
+class MockGradio:
+    @staticmethod
+    def Radio(*args, **kwargs):
+        return None
+
+    @staticmethod
+    def Dropdown(*args, **kwargs):
+        return None
+
+    @staticmethod
+    def Slider(*args, **kwargs):
+        return None
+
+    @staticmethod
+    def Checkbox(*args, **kwargs):
+        return None
+
+    @staticmethod
+    def Button(*args, **kwargs):
+        return None
+
+    @staticmethod
+    def Textbox(*args, **kwargs):
+        return None
+
+    @staticmethod
+    def Number(*args, **kwargs):
+        return None
+
+    @staticmethod
+    def Markdown(*args, **kwargs):
+        return None
+
+    @staticmethod
+    def HTML(*args, **kwargs):
+        return None
+
+    @staticmethod
+    def CheckboxGroup(*args, **kwargs):
+        return None
+
+    @staticmethod
+    def State(*args, **kwargs):
+        return None
+
+    @staticmethod
+    def update(*args, **kwargs):
+        return None
+
+class MockUIComponents:
+    @staticmethod
+    def FormColorPicker(*args, **kwargs):
+        return None
+
+    @staticmethod
+    def DropdownMulti(*args, **kwargs):
+        return None
+
+    @staticmethod
+    def DropdownEditable(*args, **kwargs):
+        return None
+
+gr = MockGradio()
+ui_components = MockUIComponents()
 from modules.paths_internal import models_path, script_path, data_path, sd_configs_path, sd_default_config, sd_model_file, default_sd_model_file, extensions_dir, extensions_builtin_dir, default_output_dir  # noqa: F401
 from modules.shared_cmd_options import cmd_opts
 from modules.options import options_section, OptionInfo, OptionHTML, categories

@@ -3,7 +3,17 @@ import os
 import time
 import httpx
 import warnings
-import gradio.networking
+try:
+    import gradio.networking
+except ImportError:
+    # Mock for API-only mode
+    class MockNetworking:
+        @staticmethod
+        def url_ok(url):
+            return True
+    gradio = type('gradio', (), {'networking': MockNetworking()})()
+    import sys
+    sys.modules['gradio.networking'] = gradio.networking
 import safetensors.torch
 
 from pathlib import Path

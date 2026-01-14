@@ -1,6 +1,6 @@
 import torch
 
-from modules import shared, ui_gradio_extensions
+from modules import shared
 
 
 class Profiler:

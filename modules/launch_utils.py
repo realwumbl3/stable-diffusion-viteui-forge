@@ -15,7 +15,7 @@ from typing import NamedTuple
 from pathlib import Path
 
 from modules import cmd_args, errors
-from modules.paths_internal import script_path, extensions_dir, extensions_builtin_dir
+from modules.paths_internal import script_path, data_path, extensions_dir, extensions_builtin_dir
 from modules.timer import startup_timer
 from modules import logging_config
 from modules_forge import forge_version
@@ -451,7 +451,7 @@ def prepare_environment():
         run_pip(f"install -U -I --no-deps {xformers_package}", "xformers")
         startup_timer.record("install xformers")
 
-    if not is_installed("ngrok") and args.ngrok:
+    if hasattr(args, 'ngrok') and not is_installed("ngrok") and args.ngrok:
         run_pip("install ngrok", "ngrok")
         startup_timer.record("install ngrok")
 
@@ -481,7 +481,8 @@ def prepare_environment():
         startup_timer.record("install requirements_for_npu")
 
     if not args.skip_install:
-        run_extensions_installers(settings_file=args.ui_settings_file)
+        settings_file = getattr(args, 'ui_settings_file', os.path.join(data_path, 'config.json'))
+        run_extensions_installers(settings_file=settings_file)
 
     if args.update_check:
         version_check(commit)
@@ -542,12 +543,10 @@ def configure_forge_reference_checkout(a1111_home: Path):
 
 
 def start():
-    print(f"Launching {'API server' if '--nowebui' in sys.argv else 'Web UI'} with arguments: {shlex.join(sys.argv[1:])}")
-    import webui
-    if '--nowebui' in sys.argv:
-        webui.api_only()
-    else:
-        webui.webui()
+    print(f"Launching API server with arguments: {shlex.join(sys.argv[1:])}")
+    import webui  # This imports webui and runs initialization
+
+    webui.main_worker()  # Call main_worker directly since import doesn't trigger it
 
     from modules_forge import main_thread
 

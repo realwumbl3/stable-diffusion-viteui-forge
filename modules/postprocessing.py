@@ -2,7 +2,7 @@ import os
 
 from PIL import Image
 
-from modules import shared, images, devices, scripts, scripts_postprocessing, ui_common, infotext_utils
+from modules import shared, images, devices, scripts, scripts_postprocessing, infotext_utils
 from modules.shared import opts
 
 

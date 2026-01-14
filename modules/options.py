@@ -3,7 +3,17 @@ import json
 import sys
 from dataclasses import dataclass
 
-import gradio as gr
+# Mock gradio for API-only mode
+class MockGradio:
+    @staticmethod
+    def HTML(*args, **kwargs):
+        return None
+
+    @staticmethod
+    def update(*args, **kwargs):
+        return None
+
+gr = MockGradio()
 
 from modules import errors
 from modules.shared_cmd_options import cmd_opts

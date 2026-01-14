@@ -1,7 +1,7 @@
 import html
 import sys
 
-from modules import script_callbacks, scripts, ui_components
+from modules import script_callbacks, scripts
 from modules.options import OptionHTML, OptionInfo
 from modules.shared_cmd_options import cmd_opts
 

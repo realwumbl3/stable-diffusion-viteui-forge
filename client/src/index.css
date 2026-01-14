@@ -1,0 +1,119 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Professional Studio Design System */
+@layer base {
+  :root {
+    /* Professional Dark Studio Theme */
+    --studio-bg: #0f0f0f;
+    --studio-surface: #1a1a1a;
+    --studio-panel: #252525;
+    --studio-panel-hover: #2a2a2a;
+    --studio-border: #333333;
+    --studio-accent: #00d4ff;
+    --studio-accent-hover: #33ddff;
+    --studio-text: #ffffff;
+    --studio-text-secondary: #cccccc;
+    --studio-text-muted: #888888;
+    --studio-success: #00ff88;
+    --studio-warning: #ffaa00;
+    --studio-error: #ff4444;
+  }
+
+  html, body {
+    overflow: hidden;
+  }
+
+  * {
+    @apply border-studio-border;
+  }
+
+  body {
+    @apply bg-studio-bg text-studio-text font-sans antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+@layer components {
+  /* Studio Panel Components */
+  .studio-panel {
+    @apply bg-studio-panel border border-studio-border rounded-lg shadow-studio;
+  }
+
+  .studio-panel-header {
+    @apply px-4 py-3 border-b border-studio-border bg-studio-surface/50 rounded-t-lg;
+  }
+
+  .studio-panel-content {
+    @apply p-4;
+  }
+
+  /* Studio Button Variants */
+  .studio-btn-primary {
+    @apply bg-studio-accent hover:bg-studio-accentHover text-studio-bg font-medium px-4 py-2 rounded-md transition-colors duration-200 shadow-studio;
+  }
+
+  .studio-btn-secondary {
+    @apply bg-studio-surface hover:bg-studio-panelHover border border-studio-border text-studio-text font-medium px-4 py-2 rounded-md transition-colors duration-200;
+  }
+
+  .studio-btn-ghost {
+    @apply hover:bg-studio-surface text-studio-textSecondary hover:text-studio-text px-3 py-2 rounded-md transition-colors duration-200;
+  }
+
+  /* Studio Input Components */
+  .studio-input {
+    @apply bg-studio-surface border border-studio-border rounded-md px-3 py-2 text-studio-text placeholder:text-studio-textMuted focus:outline-none focus:ring-2 focus:ring-studio-accent focus:border-transparent transition-colors;
+  }
+
+  .studio-select {
+    @apply bg-studio-surface border border-studio-border rounded-md px-3 py-2 text-studio-text focus:outline-none focus:ring-2 focus:ring-studio-accent focus:border-transparent transition-colors;
+  }
+
+  .studio-textarea {
+    @apply bg-studio-surface border border-studio-border rounded-md px-3 py-2 text-studio-text placeholder:text-studio-textMuted focus:outline-none focus:ring-2 focus:ring-studio-accent focus:border-transparent transition-colors resize-none;
+  }
+
+  /* Studio Label */
+  .studio-label {
+    @apply text-studio-textSecondary text-sm font-medium mb-1 block;
+  }
+
+  /* Studio Grid */
+  .studio-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1rem;
+  }
+
+  /* Studio Toolbar */
+  .studio-toolbar {
+    @apply bg-studio-surface border-b border-studio-border px-4 py-2 flex items-center gap-2;
+  }
+
+  /* Studio Sidebar */
+  .studio-sidebar {
+    @apply bg-studio-panel border-r border-studio-border w-96 flex flex-col;
+  }
+
+  /* Studio Properties Panel (right side) */
+  .studio-properties-panel {
+    @apply bg-studio-panel border-l border-studio-border w-96 flex flex-col;
+  }
+
+  .studio-sidebar-header {
+    @apply p-4 border-b border-studio-border;
+  }
+
+  .studio-sidebar-content {
+    @apply flex-1 overflow-hidden;
+  }
+
+  /* Studio Canvas */
+  .studio-canvas {
+    @apply bg-studio-bg flex-1 relative overflow-hidden;
+  }
+
+  /* Utility Classes */
+}

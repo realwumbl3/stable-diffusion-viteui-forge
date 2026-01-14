@@ -10,10 +10,16 @@ loaded_scripts = {}
 def load_module(path):
     module_spec = importlib.util.spec_from_file_location(os.path.basename(path), path)
     module = importlib.util.module_from_spec(module_spec)
-    module_spec.loader.exec_module(module)
-
-    loaded_scripts[path] = module
-    return module
+    try:
+        module_spec.loader.exec_module(module)
+        loaded_scripts[path] = module
+        return module
+    except Exception as e:
+        print(f"*** Error loading script: {os.path.basename(path)}")
+        print(f"    {e}")
+        print("---")
+        # Return None for failed imports instead of crashing
+        return None
 
 
 def preload_extensions(extensions_dir, parser, extension_list=None):

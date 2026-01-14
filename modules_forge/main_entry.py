@@ -1,8 +1,12 @@
 import os
 import torch
-import gradio as gr
-
-from gradio.context import Context
+try:
+    import gradio as gr
+    from gradio.context import Context
+except ImportError:
+    # Mock gradio for API-only mode
+    from .gradio_mock import gradio_mock as gr
+    Context = type('Context', (), {'root_block': None, 'block': None})
 from modules import shared_items, shared, ui_common, sd_models, processing, infotext_utils, paths, ui_loadsave
 from backend import memory_management, stream
 from backend.args import dynamic_args
@@ -441,7 +445,8 @@ def on_preset_change(preset=None):
         gr.update(visible=True, value=ui_settings_from_file['txt2img/Hires Distilled CFG Scale/value']), # ui_txt2img_hr_distilled_cfg
     ]
 
-shared.options_templates.update(shared.options_section(('ui_sd', "UI defaults 'sd'", "ui"), {
+if shared.options_templates is not None:
+    shared.options_templates.update(shared.options_section(('ui_sd', "UI defaults 'sd'", "ui"), {
     "sd_t2i_width":  shared.OptionInfo(512,  "txt2img width",      gr.Slider, {"minimum": 64, "maximum": 2048, "step": 8}),
     "sd_t2i_height": shared.OptionInfo(640,  "txt2img height",     gr.Slider, {"minimum": 64, "maximum": 2048, "step": 8}),
     "sd_t2i_cfg":    shared.OptionInfo(7,    "txt2img CFG",        gr.Slider, {"minimum": 1,  "maximum": 30,   "step": 0.1}),

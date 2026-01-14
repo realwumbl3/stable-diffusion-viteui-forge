@@ -6,7 +6,6 @@ from modules import processing, infotext_utils
 from modules.infotext_utils import create_override_settings_dict, parse_generation_parameters
 from modules.shared import opts
 import modules.shared as shared
-from modules.ui import plaintext_to_html
 from PIL import Image
 import gradio as gr
 from modules_forge import main_thread
@@ -118,7 +117,7 @@ def txt2img_upscale_function(id_task: str, request: gr.Request, gallery, gallery
     else:
         geninfo["infotexts"][gallery_index] = processed.info
 
-    return new_gallery, json.dumps(geninfo), plaintext_to_html(processed.info), plaintext_to_html(processed.comments, classname="comments")
+    return new_gallery, json.dumps(geninfo), processed.info, processed.comments
 
 
 def txt2img_function(id_task: str, request: gr.Request, *args):
@@ -139,7 +138,7 @@ def txt2img_function(id_task: str, request: gr.Request, *args):
     if opts.do_not_show_images:
         processed.images = []
 
-    return processed.images + processed.extra_images, generation_info_js, plaintext_to_html(processed.info), plaintext_to_html(processed.comments, classname="comments")
+    return processed.images + processed.extra_images, generation_info_js, processed.info, processed.comments
 
 
 def txt2img_upscale(id_task: str, request: gr.Request, gallery, gallery_index, generation_info, *args):
