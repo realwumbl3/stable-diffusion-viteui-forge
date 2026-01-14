@@ -49,17 +49,15 @@ export interface PromptComposerProps {
 export interface NodeFieldProps {
   nodes: PromptNode[]
   onChange: (nodes: PromptNode[]) => void
-  draggedNode: PromptNode | null
-  dragOverNode: PromptNode | null
-  dragOverPosition: 'top' | 'bottom' | null
-  setDraggedNode: (node: PromptNode | null) => void
-  setDragOverNode: (node: PromptNode | null) => void
-  setDragOverPosition: (position: 'top' | 'bottom' | null) => void
-  showHint: (text: string, duration?: number) => void
+  dragState: {
+    dragTarget: PromptNode | null;
+    lastDragged: PromptNode | null;
+    sourceField: PromptNode[] | null;
+  }
   generateId: () => string
   parentNode?: PromptNode
   handleDragStart?: (e: React.DragEvent, node: PromptNode, sourceField: PromptNode[]) => void
   handleDragEnd?: () => void
-  handleDragOver?: (e: React.DragEvent, node?: PromptNode) => void
-  handleDrop?: (e: React.DragEvent, targetNode?: PromptNode, insertIndex?: number) => void
+  handleDragEnter?: (e: React.DragEvent, node: PromptNode) => void
+  handleDrop?: (e: React.DragEvent) => void
 }

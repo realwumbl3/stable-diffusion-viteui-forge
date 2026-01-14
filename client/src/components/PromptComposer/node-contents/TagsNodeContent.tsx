@@ -7,13 +7,11 @@ import TagComponent from '../components/TagComponent'
 interface TagsNodeContentProps {
   node: TagsNode
   onUpdate: (updates: Partial<TagsNode>) => void
-  showHint: (text: string) => void
 }
 
 function TagsNodeContent({
   node,
   onUpdate,
-  showHint
 }: TagsNodeContentProps) {
   const tagRefs = useRef<(HTMLInputElement | null)[]>([])
 
@@ -41,6 +39,10 @@ function TagsNodeContent({
 
   const removeTag = (index: number) => {
     if (node.value.length > 1) {
+      // Focus the previous tag if it exists before removing
+      if (index > 0 && tagRefs.current[index - 1]) {
+        tagRefs.current[index - 1]?.focus()
+      }
       onUpdate({ value: node.value.filter((_, i) => i !== index) })
     }
   }
@@ -56,13 +58,11 @@ function TagsNodeContent({
             onUpdate={(updates) => updateTag(index, updates)}
             onRemove={() => removeTag(index)}
             onAddTag={(value, focusNew) => addTag(value, focusNew)}
-            showHint={showHint}
           />
         ))}
         <button
           className="button add-tag-button"
           onClick={() => addTag('')}
-          onMouseEnter={() => showHint("Add a new tag")}
         >
           +
         </button>

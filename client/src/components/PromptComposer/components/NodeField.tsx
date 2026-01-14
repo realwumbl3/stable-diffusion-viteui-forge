@@ -1,43 +1,23 @@
-import React from 'react'
-import type { PromptNode, NodeType } from '../types'
+import React, { useRef, useEffect } from 'react'
+import type { PromptNode, NodeType, TagsNode, TextNode, GroupNode, BreakNode } from '../types'
 import NodeComponent from './NodeComponent'
 
 // NodeField component for managing a collection of nodes
 interface NodeFieldProps {
   nodes: PromptNode[]
   onChange: (nodes: PromptNode[]) => void
-  draggedNode: PromptNode | null
-  dragOverNode: PromptNode | null
-  dragOverPosition: 'top' | 'bottom' | null
-  setDraggedNode: (node: PromptNode | null) => void
-  setDragOverNode: (node: PromptNode | null) => void
-  setDragOverPosition: (position: 'top' | 'bottom' | null) => void
-  showHint: (text: string, duration?: number) => void
   generateId: () => string
   parentNode?: PromptNode
-  handleDragStart?: (e: React.DragEvent, node: PromptNode, sourceField: PromptNode[]) => void
-  handleDragEnd?: () => void
-  handleDragOver?: (e: React.DragEvent, node?: PromptNode) => void
-  handleDrop?: (e: React.DragEvent, targetNode?: PromptNode, insertIndex?: number) => void
+  nodeMapRef: React.MutableRefObject<Map<HTMLElement, { node: PromptNode; field: PromptNode[] }>>
 }
 
 function NodeField({
   nodes,
   onChange,
-  draggedNode,
-  dragOverNode,
-  dragOverPosition,
-  setDraggedNode,
-  setDragOverNode,
-  setDragOverPosition,
-  showHint,
   generateId,
-  parentNode,
-  handleDragStart: customHandleDragStart,
-  handleDragEnd: customHandleDragEnd,
-  handleDragOver: customHandleDragOver,
-  handleDrop: customHandleDrop
+  nodeMapRef
 }: NodeFieldProps) {
+  const fieldRef = useRef<HTMLDivElement>(null)
   const addNode = (type: NodeType, index?: number) => {
     const baseNode = {
       id: generateId(),
@@ -79,123 +59,52 @@ function NodeField({
     ))
   }
 
+  // Register nodes in the map (like liveDomList in vanilla JS)
+  useEffect(() => {
+    if (!fieldRef.current) return;
+    
+    const nodeElements = fieldRef.current.querySelectorAll('.node') as NodeListOf<HTMLElement>;
+    nodeElements.forEach((element, index) => {
+      const node = nodes[index];
+      if (node) {
+        nodeMapRef.current.set(element, { node, field: nodes });
+      }
+    });
 
-  // Use custom handlers if provided, otherwise use defaults
-  const actualHandleDragStart = customHandleDragStart || ((e: React.DragEvent, node: PromptNode) => {
-    // Default drag start behavior for nested NodeFields
-    console.log('Default drag start - this should not be called in main NodeField')
-  })
-
-  const actualHandleDragEnd = customHandleDragEnd || (() => {
-    // Default drag end behavior for nested NodeFields
-    console.log('Default drag end - this should not be called in main NodeField')
-  })
-
-  const actualHandleDragOver = customHandleDragOver || ((e: React.DragEvent, node?: PromptNode) => {
-    e.preventDefault()
-    // Default drag over behavior for nested NodeFields
-    setDragOverPosition(null) // Reset position for nested fields
-  })
-
-  const actualHandleDrop = customHandleDrop || ((e: React.DragEvent, targetNode?: PromptNode, insertIndex?: number) => {
-    e.preventDefault()
-    // Default drop behavior for nested NodeFields
-  })
+    // Cleanup: remove nodes that no longer exist
+    return () => {
+      nodeMapRef.current.forEach((value, element) => {
+        if (value.field === nodes && !nodes.find(n => n.id === value.node.id)) {
+          nodeMapRef.current.delete(element);
+        }
+      });
+    };
+  }, [nodes, nodeMapRef]);
 
   return (
-    <div
-      className="node-field"
-      onDragOver={(e) => actualHandleDragOver(e)}
-      onDrop={(e) => actualHandleDrop(e)}
-    >
+    <div className="node-field" ref={fieldRef}>
       {nodes.length === 0 && (
         <div className="empty-field">
           <button
             className="button"
             onClick={() => addNode('tags')}
-            onMouseEnter={() => showHint("Add your first node")}
           >
             + Add Node
           </button>
         </div>
       )}
       {nodes.map((node, index) => (
-        <React.Fragment key={node.id}>
-          {/* Drop zone before each node (except the first) */}
-          {index > 0 && (
-            <div
-              className="drop-zone between-nodes"
-              onDragOver={(e) => {
-                e.preventDefault()
-                e.stopPropagation()
-                if (draggedNode) {
-                  e.currentTarget.classList.add('active')
-                  setDragOverPosition('top') // Insert before this node
-                }
-              }}
-              onDragLeave={(e) => {
-                e.currentTarget.classList.remove('active')
-                setDragOverPosition(null)
-              }}
-              onDrop={(e) => {
-                e.stopPropagation()
-                e.currentTarget.classList.remove('active')
-                actualHandleDrop(e, undefined, index)
-              }}
-            />
-          )}
-          <NodeComponent
-            node={node}
-            index={index}
-            onUpdate={(updates) => updateNode(node.id, updates)}
-            onRemove={() => removeNode(node.id)}
-            onAddNode={(type, insertIndex) => addNode(type, insertIndex)}
-            onDragStart={(e) => actualHandleDragStart(e, node, nodes)}
-            onDragEnd={actualHandleDragEnd}
-            onDragOver={(e) => {
-              e.stopPropagation()
-              actualHandleDragOver(e, node)
-            }}
-            onDrop={(e) => {
-              e.stopPropagation()
-              actualHandleDrop(e, node)
-            }}
-            isDragged={draggedNode?.id === node.id}
-            isDragOver={dragOverNode?.id === node.id}
-            dragOverPosition={dragOverPosition}
-            showHint={showHint}
-            generateId={generateId}
-            draggedNode={draggedNode}
-            dragOverNode={dragOverNode}
-            setDraggedNode={setDraggedNode}
-            setDragOverNode={setDragOverNode}
-            setDragOverPosition={setDragOverPosition}
-          />
-        </React.Fragment>
-      ))}
-      {/* Drop zone at the end */}
-      {nodes.length > 0 && (
-        <div
-          className="drop-zone end-zone"
-          onDragOver={(e) => {
-            e.preventDefault()
-            e.stopPropagation()
-            if (draggedNode) {
-              e.currentTarget.classList.add('active')
-              setDragOverPosition('bottom') // Insert at the end
-            }
-          }}
-          onDragLeave={(e) => {
-            e.currentTarget.classList.remove('active')
-            setDragOverPosition(null)
-          }}
-          onDrop={(e) => {
-            e.stopPropagation()
-            e.currentTarget.classList.remove('active')
-            actualHandleDrop(e, undefined, nodes.length)
-          }}
+        <NodeComponent
+          key={node.id}
+          node={node}
+          index={index}
+          onUpdate={(updates) => updateNode(node.id, updates)}
+          onRemove={() => removeNode(node.id)}
+          onAddNode={(type, insertIndex) => addNode(type, insertIndex)}
+          generateId={generateId}
+          nodeMapRef={nodeMapRef}
         />
-      )}
+      ))}
     </div>
   )
 }

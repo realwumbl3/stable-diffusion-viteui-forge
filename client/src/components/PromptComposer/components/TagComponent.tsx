@@ -8,7 +8,6 @@ interface TagComponentProps {
   onUpdate: (updates: Partial<Tag>) => void
   onRemove: () => void
   onAddTag: (value?: string, focusNew?: boolean) => void
-  showHint: (text: string) => void
 }
 
 const TagComponent = React.forwardRef<HTMLInputElement, TagComponentProps>(({
@@ -16,21 +15,34 @@ const TagComponent = React.forwardRef<HTMLInputElement, TagComponentProps>(({
   onUpdate,
   onRemove,
   onAddTag,
-  showHint
 }, ref) => {
   const [inputValue, setInputValue] = useState(tag.value)
   const inputRef = useRef<HTMLInputElement>(null)
+  const measureRef = useRef<HTMLSpanElement>(null)
 
   // Forward the ref to the input element
   React.useImperativeHandle(ref, () => inputRef.current!)
 
   useEffect(() => {
     setInputValue(tag.value)
+    // Adjust width when tag value changes from props
+    setTimeout(() => adjustInputWidth(tag.value), 0)
   }, [tag.value])
+
+  const adjustInputWidth = (value: string) => {
+    if (measureRef.current && inputRef.current) {
+      // Measure the text width
+      measureRef.current.textContent = value || 'placeholder'
+      const width = measureRef.current.offsetWidth + 8 // Add some padding
+      const clampedWidth = Math.max(40, Math.min(width, 200)) // Clamp between min and max
+      inputRef.current.style.width = `${clampedWidth}px`
+    }
+  }
 
   const handleInputChange = (value: string) => {
     setInputValue(value)
     onUpdate({ value })
+    adjustInputWidth(value)
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -38,6 +50,7 @@ const TagComponent = React.forwardRef<HTMLInputElement, TagComponentProps>(({
       onAddTag('', true) // Pass true to focus the new tag
     } else if (e.key === 'Backspace' && inputValue === '') {
       onRemove()
+      e.preventDefault() // Prevent backspace from affecting the newly focused input
     } else if (e.altKey && e.key === 'ArrowUp') {
       const newWeight = Math.min(1.7, Number((tag.weight + 0.05).toFixed(2)))
       onUpdate({ weight: newWeight })
@@ -69,10 +82,20 @@ const TagComponent = React.forwardRef<HTMLInputElement, TagComponentProps>(({
       <button
         className="remove"
         onClick={onRemove}
-        onMouseEnter={() => showHint("Remove this tag")}
       >
         X
       </button>
+      {/* Hidden element for measuring text width */}
+      <span
+        ref={measureRef}
+        style={{
+          position: 'absolute',
+          visibility: 'hidden',
+          whiteSpace: 'pre',
+          fontSize: '11px',
+          fontFamily: 'inherit'
+        }}
+      />
     </div>
   )
 })

@@ -30,7 +30,7 @@
   grid-template-rows: max-content 1fr max-content;
   width: 100%;
   min-width: min(160px, 100%);
-  min-height: 200px;
+  min-height: 300px;
 }
 
 .better-prompt .button {
@@ -346,8 +346,8 @@
   border: none;
   outline: none;
   font-size: 11px;
-  flex: 1;
   min-width: 40px;
+  max-width: 200px;
 }
 
 .tag input::placeholder {

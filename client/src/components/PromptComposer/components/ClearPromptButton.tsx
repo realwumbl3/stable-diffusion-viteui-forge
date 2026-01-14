@@ -4,10 +4,9 @@ import { cn } from '../../../lib/utils.js'
 // Clear prompt button component
 interface ClearPromptButtonProps {
   onClear: () => void
-  showHint: (text: string) => void
 }
 
-function ClearPromptButton({ onClear, showHint }: ClearPromptButtonProps) {
+function ClearPromptButton({ onClear }: ClearPromptButtonProps) {
   const [active, setActive] = useState(false)
 
   const handleClear = () => {
@@ -26,7 +25,6 @@ function ClearPromptButton({ onClear, showHint }: ClearPromptButtonProps) {
       <button
         className="button clear"
         onClick={handleClear}
-        onMouseEnter={() => showHint("Clear the prompt")}
       >
         Clear
       </button>
