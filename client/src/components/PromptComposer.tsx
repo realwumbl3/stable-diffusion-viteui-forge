@@ -98,19 +98,12 @@ function PromptComposer({
   }, [])
 
   const composePrompt = useCallback(() => {
-    const prompt = composePromptFromNodes(nodes)
-    onPromptChange?.(prompt)
+    const { positive, negative } = composePromptsFromNodes(nodes)
+    onPromptChange?.(positive)
+    onNegativePromptChange?.(negative)
     setModified(false)
-  }, [nodes, onPromptChange])
+  }, [nodes, onPromptChange, onNegativePromptChange])
 
-  const composePromptWithData = useCallback(() => {
-    const prompt = composePromptFromNodes(nodes)
-    // Embed the node data as base64 encoded JSON in the prompt (similar to original extension)
-    const encodedData = btoa(JSON.stringify(nodes))
-    const promptWithData = `${prompt}\n\n\n\n\n<betterpromptexport:${encodedData}>`
-    onPromptChange?.(promptWithData)
-    setModified(false)
-  }, [nodes, onPromptChange])
 
   const generateId = () => Math.random().toString(36).substr(2, 9)
 
@@ -169,11 +162,6 @@ function PromptComposer({
         e.preventDefault()
         composePrompt()
       }
-      // Ctrl+Shift+Enter to compose with data
-      if (e.ctrlKey && e.shiftKey && e.key === 'Enter') {
-        e.preventDefault()
-        composePromptWithData()
-      }
       // Ctrl+E to export
       if (e.ctrlKey && e.key === 'e') {
         e.preventDefault()
@@ -188,7 +176,7 @@ function PromptComposer({
 
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [composePrompt, composePromptWithData, exportToJson, importFromJson, showHint])
+  }, [composePrompt, exportToJson, importFromJson, showHint])
 
   // Remove duplicate functions that appear later in the file
   // ... rest of component
@@ -243,27 +231,6 @@ function PromptComposer({
       <div className="better-prompt-container">
         <div className="better-prompt">
           {/* Header */}
-          <div className="header">
-            <div className="left-side">
-              <label className="better-prompt-title">BetterPrompt Editor</label>
-              <a
-                href="https://github.com/realwumbl3/sd-webui-BetterPrompt"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="button"
-              >
-                GitHub
-              </a>
-              <div className="better-prompt-hint-info">
-                <div className="hint">
-                  <span>|</span>
-                  <span className="tooltip">{hint}</span>
-                </div>
-              </div>
-            </div>
-            <div className="right-side">
-            </div>
-          </div>
 
           {/* Main Editor */}
           <div className="main-editor">
@@ -350,39 +317,96 @@ function PromptComposer({
 
 export default memo(PromptComposer)
 
-// Helper function to compose prompt from nodes
-function composePromptFromNodes(nodes: PromptNode[]): string {
-  return nodes
-    .map(node => {
-      if (node.hidden) return ''
-      switch (node.type) {
-        case 'tags':
-          return (node as TagsNode).value
-            .map(tag => {
-              if (tag.value.startsWith('<') && tag.value.endsWith('>')) {
-                return tag.value
-              }
-              const underscored = tag.value.replace(/ /g, '_')
-              return tag.weight !== 1 ? `(${underscored}:${tag.weight})` : underscored
-            })
-            .join(', ') + ', '
-        case 'text':
-          return (node as TextNode).value
-            .replace(/\n/g, ' ')
-            .replace(/,+/g, ',')
-            .replace(/  +/g, ' ')
-        case 'group':
-          return composePromptFromNodes((node as GroupNode).value)
-        case 'break':
-          return `${(node as BreakNode).value.toUpperCase()}\n`
-        default:
-          return ''
-      }
-    })
-    .join('')
-    .replace(/, ,/g, ', ')
-    .replace(/,+$/, '')
-    .trim()
+// Helper function to compose prompts from nodes (returns { positive: string, negative: string })
+function composePromptsFromNodes(nodes: PromptNode[]): { positive: string, negative: string } {
+  const positiveParts: string[] = []
+  const negativeParts: string[] = []
+
+  function processNode(node: PromptNode) {
+    if (node.hidden) return
+
+    switch (node.type) {
+      case 'tags':
+        const tagsNode = node as TagsNode
+        const positiveTags: string[] = []
+        const negativeTags: string[] = []
+
+        tagsNode.value.forEach(tag => {
+          if (tag.value.startsWith('<') && tag.value.endsWith('>')) {
+            // LoRA tags always go to positive
+            positiveTags.push(tag.value)
+            return
+          }
+
+          const underscored = tag.value.replace(/ /g, '_')
+          const formattedTag = tag.weight !== 1 ? `(${underscored}:${tag.weight})` : underscored
+
+          if (tag.weight < 0) {
+            // Negative weight tags go to negative prompt
+            const positiveWeight = Math.abs(tag.weight) // Convert to positive weight for negative prompt
+            const negativeFormattedTag = positiveWeight !== 1 ? `(${underscored}:${positiveWeight})` : underscored
+            negativeTags.push(negativeFormattedTag)
+          } else {
+            // Positive or neutral weight tags go to positive prompt
+            positiveTags.push(formattedTag)
+          }
+        })
+
+        if (positiveTags.length > 0) {
+          positiveParts.push(positiveTags.join(', ') + ', ')
+        }
+        if (negativeTags.length > 0) {
+          negativeParts.push(negativeTags.join(', ') + ', ')
+        }
+        break
+
+      case 'text':
+        const textNode = node as TextNode
+        const processedText = textNode.value
+          .replace(/\n/g, ' ')
+          .replace(/,+/g, ',')
+          .replace(/  +/g, ' ')
+
+        if (textNode.weight < 0) {
+          // Negative weight text goes to negative prompt
+          const positiveWeight = Math.abs(textNode.weight)
+          const formattedText = positiveWeight !== 1 ? `(${processedText}:${positiveWeight})` : processedText
+          negativeParts.push(formattedText)
+        } else {
+          // Positive or neutral weight text goes to positive prompt
+          const formattedText = textNode.weight !== 1 ? `(${processedText}:${textNode.weight})` : processedText
+          positiveParts.push(formattedText)
+        }
+        break
+
+      case 'group':
+        const groupResult = composePromptsFromNodes((node as GroupNode).value)
+        if (groupResult.positive) positiveParts.push(groupResult.positive)
+        if (groupResult.negative) negativeParts.push(groupResult.negative)
+        break
+
+      case 'break':
+        const breakValue = `${(node as BreakNode).value.toUpperCase()}\n`
+        positiveParts.push(breakValue)
+        negativeParts.push(breakValue)
+        break
+    }
+  }
+
+  nodes.forEach(processNode)
+
+  return {
+    positive: positiveParts
+      .join('')
+      .replace(/, ,/g, ', ')
+      .replace(/,+$/, '')
+      .trim(),
+    negative: negativeParts
+      .join('')
+      .replace(/, ,/g, ', ')
+      .replace(/,+$/, '')
+      .trim()
+  }
 }
 
 // NodeField component for managing a collection of nodes
@@ -567,6 +591,7 @@ function NodeField({
         <NodeComponent
           key={node.id}
           node={node}
+          index={index}
           onUpdate={(updates) => updateNode(node.id, updates)}
           onRemove={() => removeNode(node.id)}
           onAddNode={(type, insertIndex) => addNode(type, insertIndex)}
@@ -617,6 +642,7 @@ function NodeField({
 // Individual node components
 function NodeComponent({
   node,
+  index,
   onUpdate,
   onRemove,
   onAddNode,
@@ -630,6 +656,7 @@ function NodeComponent({
   generateId
 }: {
   node: PromptNode
+  index: number
   onUpdate: (updates: Partial<PromptNode>) => void
   onRemove: () => void
   onAddNode: (type: NodeType, index?: number) => void
@@ -660,7 +687,7 @@ function NodeComponent({
   }
 
   const addNodeAfter = (type: NodeType) => {
-    const insertIndex = cursorInTopHalf ? 0 : 1
+    const insertIndex = cursorInTopHalf ? index : index + 1
     onAddNode(type, insertIndex)
   }
 
@@ -691,8 +718,19 @@ function NodeComponent({
       onDragOver={onDragOver}
       onDrop={onDrop}
     >
-      <div className="thumb" onMouseEnter={() => showHint("Drag to reorder this node")}>
-        ::::::
+      <div className="node-header">
+        <div className="thumb" onMouseEnter={() => showHint("Drag to reorder this node")}>
+          ::::::
+        </div>
+
+        <button
+          className="button mute under-thumb"
+          onClick={toggleMute}
+          onMouseEnter={() => showHint("Mute/Unmute this node")}
+        >
+          <EyeIcon />
+          <span className="mutelabel">{node.hidden ? 'muted' : ''}</span>
+        </button>
       </div>
 
       {showFloatingButtons && (
@@ -736,8 +774,9 @@ function NodeComponent({
                     const parsed = JSON.parse(json)
                     if (Array.isArray(parsed)) {
                       // Handle multiple nodes
-                      parsed.forEach((newNode, index) => {
-                        onAddNode(newNode.type, cursorInTopHalf ? index : index + 1)
+                      const baseInsertIndex = cursorInTopHalf ? index : index + 1
+                      parsed.forEach((newNode, offset) => {
+                        onAddNode(newNode.type, baseInsertIndex + offset)
                       })
                     }
                   } catch (e) {
@@ -754,14 +793,6 @@ function NodeComponent({
       )}
 
       <div className="controls">
-        <button
-          className="button mute"
-          onClick={toggleMute}
-          onMouseEnter={() => showHint("Mute/Unmute this node")}
-        >
-          <EyeIcon />
-          <span className="mutelabel">{node.hidden ? 'muted' : ''}</span>
-        </button>
         <button
           className="button"
           onClick={onRemove}
@@ -880,15 +911,33 @@ function TextNodeContent({
     adjustHeight()
   }, [node.value])
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.altKey && e.key === 'ArrowUp') {
+      const newWeight = Math.min(1.7, Number((node.weight + 0.05).toFixed(2)))
+      onUpdate({ weight: newWeight })
+      e.preventDefault()
+    } else if (e.altKey && e.key === 'ArrowDown') {
+      const newWeight = Math.max(-1.7, Number((node.weight - 0.05).toFixed(2)))
+      onUpdate({ weight: newWeight })
+      e.preventDefault()
+    }
+  }
+
+  const weightClass = node.weight === 1 ? 'neutral' : node.weight > 1 ? 'positive' : 'negative'
+
   return (
-    <textarea
-      ref={textareaRef}
-      className="basic-text"
-      value={node.value}
-      onChange={handleInput}
-      placeholder="Enter your prompt text here..."
-      style={{ height: '42px' }}
-    />
+    <div className={cn('text-node-container', weightClass)} style={{ '--weight': node.weight } as React.CSSProperties}>
+      <div className="weight-indicator">{node.weight}</div>
+      <textarea
+        ref={textareaRef}
+        className="basic-text"
+        value={node.value}
+        onChange={handleInput}
+        onKeyDown={handleKeyDown}
+        placeholder="Enter your prompt text here..."
+        style={{ height: '42px' }}
+      />
+    </div>
   )
 }
 
