@@ -66,7 +66,7 @@ Full API documentation is available at `/docs` when the server is running.
 ## Install from Source
 
 ```bash
-git clone https://github.com/your-repo/stable-diffusion-forge-api.git
+git clone https://github.com/realwumbl3/stable-diffusion-viteui-forge.git
 cd stable-diffusion-forge-api
 pip install -r requirements_versions.txt
 ```
