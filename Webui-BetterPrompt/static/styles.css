@@ -1,0 +1,625 @@
+gradio-app {
+    isolation: isolate;
+}
+
+.BetterPromptContainer {
+    display: grid;
+    position: relative;
+}
+
+body .BetterPromptAssets {
+    font-family: "Source Sans Pro", ui-sans-serif, "system-ui", sans-serif;
+    color: white;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+
+    & .Button {
+        font-size: 15px;
+        padding: 0 5px;
+        background: #4b5563;
+        height: 100%;
+        border-radius: 5px;
+        user-select: none;
+        cursor: pointer;
+    }
+
+    & .AutoFitInput {
+        position: relative;
+    }
+
+    & .AutoFitInput input,
+    & .AutoFitInput span {
+        white-space: pre;
+        padding: 0 .2em;
+    }
+
+    & .AutoFitInput input {
+        position: absolute;
+        inset: 0;
+    }
+
+    & .AutoFitInput span {
+        opacity: 0;
+        position: relative;
+    }
+
+    & textarea,
+    & input {
+        font-family: inherit;
+        color: white;
+    }
+}
+
+.BetterPromptAssets * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    outline: 0;
+}
+
+.BetterPrompt {
+    /* container: editor / size; */
+    display: grid;
+    gap: 5px;
+    position: relative;
+    background: #1f2937;
+    border: 1px solid #374151;
+    border-radius: 5px;
+    padding: .5em;
+    resize: vertical;
+    overflow: auto;
+    grid-template-areas: "Header"
+        "NodeField"
+        "EditorFooter"
+        "ResolutionPicker";
+    grid-template-rows: max-content 1fr max-content;
+    width: 100%;
+    min-width: min(160px, 100%);
+    min-height: 46px;
+
+    & .Header {
+        grid-area: Header;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid #ffffff3d;
+        padding: .5em;
+
+
+        & .RightSide {
+            display: flex;
+            gap: 5px;
+
+            & .Button.FitHeight {
+                writing-mode: vertical-rl;
+                height: 1rem;
+                font-size: .7em;
+                text-align: center;
+            }
+        }
+    }
+
+    & .BetterPromptHintInfo {
+        & .Hint {
+            display: flex;
+            gap: 5px;
+        }
+
+    }
+
+    & .EditorFooter {
+        grid-area: EditorFooter;
+        display: flex;
+        padding: 0 .5em;
+        gap: 5px;
+        justify-content: space-between;
+
+        >.leftSide {
+            display: grid;
+            gap: 5px;
+            height: max-content;
+            grid-template-columns: max-content auto;
+            grid-template-rows: 1fr;
+
+            >.Column {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto max-content;
+                display: grid;
+
+                &>.Row.Status {
+                    padding-left: 5px;
+
+                    &>.Status {
+                        display: flex;
+                        gap: 5px;
+                        align-items: center;
+                    }
+                }
+
+                &>.Row.Manage {
+                    display: flex;
+                    gap: 5px;
+                }
+            }
+
+            &>.Button {
+                font-size: 15px;
+                padding: 0 5px;
+                background: #4b5563;
+                height: 100%;
+                border-radius: 5px;
+                user-select: none;
+                cursor: pointer;
+            }
+        }
+
+        >.rightSide {
+            display: flex;
+            gap: 5px;
+        }
+
+        & .ClearPrompt {
+            display: grid;
+            grid-auto-flow: column;
+            gap: 5px;
+
+            & .Button.Cancel,
+            & .Button.Confirm {
+                display: none;
+            }
+
+            &.active .Button {
+                display: block;
+            }
+        }
+
+        & .Compose {
+            display: block;
+            padding: 0.2em 0.6em;
+            background: #090909a5;
+            outline: 2px solid #3737374d;
+            color: white;
+            border-radius: 5px;
+            text-align: center;
+            cursor: pointer;
+            font-size: 1.5em;
+
+            &.Modified {
+                animation: pulsingComposeButton 1s infinite;
+            }
+        }
+    }
+
+    & .ExtraFooter {
+
+        display: flex;
+        padding: 0 .5em;
+        gap: 5px;
+        overflow-x: scroll;
+
+        >.Button.Resolution.active {
+            background: orange;
+        }
+
+        >.Separator {
+            border-left: 1px solid #ffffff3d;
+            height: 100%;
+        }
+    }
+
+    /* NODE */
+
+}
+
+@keyframes pulsingComposeButton {
+    0% {
+        background: #090909a5;
+        outline: 2px solid #3737374d;
+    }
+
+    50% {
+        background: #09090959;
+        outline: 2px solid #ffffff4d;
+    }
+
+    100% {
+        background: #090909a5;
+        outline: 2px solid #3737374d;
+    }
+}
+
+.BetterPrompt .NodeField,
+.JsonImportPrompt .NodeField {
+    grid-area: NodeField;
+    border: 1px solid #ffffff3d;
+    padding: 5px 2.5px;
+    border-radius: 5px;
+    display: grid;
+    grid-template: 1fr/1fr;
+    gap: 3px;
+    overflow-y: scroll;
+    position: relative;
+    background: #00000038;
+
+    &.MainNodes {
+        resize: horizontal;
+        overflow: auto;
+    }
+
+    &>.AddNodes {
+        justify-self: start;
+        align-self: center;
+        position: absolute;
+        display: none;
+        gap: 2px;
+        padding: 2px;
+        left: 13px;
+
+        >.Button {
+            font-size: 10px;
+        }
+    }
+
+    &.Empty>.AddNodes {
+        display: flex;
+    }
+
+    &>.NodeFieldList {
+        padding: 10px 5px;
+        border-radius: 5px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        overflow-y: scroll;
+    }
+}
+
+.BetterPrompt .Node,
+.JsonImportPrompt .Node {
+    border: 1px solid #ffffff40;
+    padding: 2px;
+    border-radius: 6px;
+    display: flex;
+    gap: 4px;
+    height: min-content;
+    position: relative;
+    align-items: center;
+
+    & .Thumb {
+        writing-mode: vertical-rl;
+        width: 0.8em;
+        line-height: .7em;
+    }
+
+    &>.Controls {
+        user-select: none;
+        display: grid;
+        gap: 1px;
+        align-items: stretch;
+        flex-wrap: wrap;
+        opacity: 0.6;
+        transition: opacity 0.2s;
+
+        grid-template-columns: repeat(2, max-content);
+        grid-auto-rows: 1fr;
+
+        &:hover {
+            opacity: 1;
+        }
+
+        &>.Sort {
+            grid-area: Row1;
+            display: flex;
+            gap: 1px;
+            align-items: center;
+            height: auto;
+        }
+
+        & .Button {
+            text-align: center;
+            font-size: 9px;
+            padding: 0 3px;
+            background: #4b5563;
+            height: 13px;
+            min-width: 20px;
+            border-radius: 5px;
+
+
+            &.Mute {
+                height: 100%;
+                display: grid;
+                place-items: center;
+                grid-auto-flow: column;
+                grid-row: 1 / span 2;
+
+                &>.mutelabel {
+                    display: none;
+                }
+            }
+        }
+
+        & .EyeIcon {
+            width: .9em;
+            height: .9em;
+        }
+
+    }
+
+    &.Muted {
+        opacity: 0.5;
+
+        &>.Controls .Button.Mute {
+            &>.mutelabel {
+                display: block;
+            }
+        }
+    }
+
+    &>.NodeArea {
+        flex-grow: 1;
+        min-width: 40ch;
+
+        &>.BasicText {
+            background: unset;
+            border-radius: 5px;
+            min-height: 1em;
+            width: 100%;
+            color: white;
+            padding: 5px;
+        }
+
+        &>.Group {
+
+            &>.AddNode {
+                display: flex;
+                gap: 2px;
+                padding: 2px;
+
+                >.Button {
+                    font-size: 9px;
+                }
+            }
+        }
+
+        &>.TagsNodeContainer {
+            display: flex;
+            gap: 5px;
+
+            &>.TagsNode {
+                display: flex;
+                gap: 3px;
+                flex-wrap: wrap;
+
+                &>.Tag {
+                    background: #4b5563;
+                    display: flex;
+                    align-items: center;
+                    gap: 2px;
+                    border-radius: 5px;
+                    --weight-color: #4b5563;
+
+                    &.LORA {
+                        background: #751d49;
+                    }
+
+                    &>.Weight {
+                        font-size: 10px;
+                        font-weight: bolder;
+                        font-family: 'Source Sans Pro';
+                        padding: 0 0.1em;
+                        border-radius: 5px;
+                        background: #4b5563;
+                        color: var(--weight-color);
+                        writing-mode: vertical-lr;
+                        transform: rotate(180deg);
+                    }
+
+                    &.Neutral {
+                        &>.Weight {
+                            display: none;
+                        }
+                    }
+
+                    &.Negative {
+                        --weight-color: #fffb00;
+                        border-left: 2px solid var(--weight-color);
+                    }
+
+                    &.Positive {
+                        --weight-color: #00f2ff;
+                        border-left: 2px solid var(--weight-color);
+                    }
+
+                    &>.AutoFitInput input {
+                        background: transparent;
+                        border: none;
+                        width: 100%;
+                        height: 100%;
+                        border-radius: 5px;
+                    }
+
+                    &>.AutoFitInput span,
+                    &>.AutoFitInput input {
+                        font-size: 14px;
+                    }
+
+                    &>.Remove {
+                        font-size: 13px;
+                        height: max-content;
+                        cursor: pointer;
+                        user-select: none;
+                        color: darkgrey;
+                        padding: 0 0.1em;
+
+                        &:hover {
+                            color: white;
+                        }
+                    }
+
+                }
+
+            }
+        }
+
+        &>.Options {
+            display: flex;
+            gap: 5px;
+
+            & label {
+                display: flex;
+                gap: 5px;
+                align-items: center;
+            }
+
+            & input[type="radio"] {
+                background-color: #232739;
+                border-radius: 100%;
+            }
+        }
+
+    }
+
+    &.CursorInNestedNodeField>.FloatingButtons {
+        display: none;
+    }
+
+    & .FloatingButtons {
+        position: absolute;
+        top: 0;
+        width: 20%;
+        height: 0;
+        font-size: 8px;
+        opacity: 0;
+        display: grid;
+
+        &.Bottom {
+            top: unset;
+            bottom: 0;
+
+            &>div {
+                top: 0;
+            }
+        }
+
+        &>div {
+            position: absolute;
+            display: grid;
+            grid-auto-flow: column;
+            grid-auto-columns: max-content;
+            left: 30px;
+            top: -8px;
+            align-content: space-between;
+            height: 100%;
+
+            &>label {
+                padding: 0px 2px;
+                line-height: 7px;
+                font-size: 10px;
+                white-space: nowrap;
+            }
+
+            & .Button {
+                padding: 0px 7px;
+                line-height: 7px;
+                background-color: transparent;
+                cursor: copy;
+                font-size: 10px;
+                white-space: nowrap;
+                opacity: .8;
+                transition: opacity 0.2s;
+
+                &:hover {
+                    opacity: 1;
+                }
+            }
+        }
+    }
+
+    &:hover>.FloatingButtons {
+        opacity: 1;
+    }
+
+}
+
+.BetterPromptTitle {
+    color: white;
+    font-weight: bold;
+    font-size: 1em;
+    transition: font-size 0.2s;
+}
+
+@container editor (max-height: 3em) {
+    .BetterPromptTitle {
+        font-size: .8em;
+    }
+}
+
+.ResolutionPicker {
+    display: flex;
+    padding: 0 .5em;
+    gap: 2px 5px;
+    overflow-x: scroll;
+    flex-wrap: wrap;
+
+    & .Button {
+        font-size: 15px;
+        padding: 0 5px;
+        background: #4b5563;
+        height: 100%;
+        border-radius: 5px;
+        user-select: none;
+        cursor: pointer;
+    }
+
+    >.Button.Resolution.active {
+        background: orange;
+    }
+
+    >.Separator {
+        border-left: 2px solid #ffffff14;
+        height: auto;
+    }
+
+    >.Newline {
+        flex-basis: 100%;
+        height: 0;
+    }
+}
+
+.JsonImportPrompt {
+    position: absolute;
+    top: 2em;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1f2937;
+    width: clamp(40em, 50vw, 90vw);
+    max-height: calc(100vh - 4em);
+    overflow-y: scroll;
+    border-radius: 5px;
+    display: grid;
+    grid-template-rows: auto auto 1fr;
+    grid-template-columns: 1fr;
+    gap: 5px;
+    padding: 5px;
+
+    &>.Buttons {
+        display: flex;
+        justify-content: flex-end;
+        gap: 5px;
+    }
+
+    &>.Input {
+        all: unset;
+        color: yellow;
+        font-family: monospace;
+        background: #000000e5;
+        padding: 5px;
+        border-radius: 5px;
+    }
+}
+
+.highlighted {
+    /* --highlight-color: orange; */
+    box-shadow: 0 0 0 2px var(--highlight-color);
+}
