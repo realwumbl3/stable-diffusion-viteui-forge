@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Type, Edit, Wrench } from "lucide-react";
+import { Type, Edit, Wrench, ChevronDown, ChevronUp } from "lucide-react";
 import PromptComposer from "./PromptComposer";
 import { useComposerStore } from "../stores/composerStore";
 
@@ -116,7 +116,7 @@ const PromptFooter = ({ prompt, setPrompt, negativePrompt, setNegativePrompt, co
                             onClick={onToggle}
                             className="text-studio-textSecondary hover:text-studio-text transition-colors"
                         >
-                            {collapsed ? "▼" : "▲"}
+                            {collapsed ? <ChevronDown size={12} /> : <ChevronUp size={12} />}
                         </button>
                     </div>
                 </div>

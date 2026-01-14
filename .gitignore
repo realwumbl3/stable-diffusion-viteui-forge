@@ -59,3 +59,4 @@ coverage.xml
 client/node_modules/
 client/dist/
 client/build/
+Webui-BetterPrompt/
