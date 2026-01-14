@@ -71,12 +71,109 @@ function PromptComposer({
 }: PromptComposerProps) {
   const [nodes, setNodes] = useState<PromptNode[]>(initialData)
   const [draggedNode, setDraggedNode] = useState<PromptNode | null>(null)
+  const [draggedNodeField, setDraggedNodeField] = useState<PromptNode[] | null>(null)
   const [dragOverNode, setDragOverNode] = useState<PromptNode | null>(null)
   const [hint, setHint] = useState('')
   const [modified, setModified] = useState(false)
   const [showJsonImport, setShowJsonImport] = useState(false)
   const [jsonImportText, setJsonImportText] = useState('')
   const hintTimeoutRef = useRef<NodeJS.Timeout>()
+
+  // Drag and drop handlers
+  const handleDragStart = useCallback((e: React.DragEvent, node: PromptNode, sourceField: PromptNode[]) => {
+    setDraggedNode(node)
+    setDraggedNodeField(sourceField)
+    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData('text/plain', node.id)
+  }, [])
+
+  const handleDragEnd = useCallback(() => {
+    setDraggedNode(null)
+    setDraggedNodeField(null)
+    setDragOverNode(null)
+  }, [])
+
+  const handleDragOver = useCallback((e: React.DragEvent, node?: PromptNode) => {
+    e.preventDefault()
+    if (draggedNode) {
+      // Allow dropping on empty areas
+      if (!node) {
+        setDragOverNode(null)
+        return
+      }
+
+      // Don't allow dropping on self or if the dragged node contains the target
+      if (draggedNode.id === node.id) {
+        setDragOverNode(null)
+        return
+      }
+
+      // Check if dropping on a group node
+      if (node.type === 'group' && draggedNode.id !== node.id) {
+        setDragOverNode(node)
+      } else if (draggedNode.id !== node.id) {
+        setDragOverNode(node)
+      }
+    }
+  }, [draggedNode])
+
+  const handleDrop = useCallback((e: React.DragEvent, targetNode?: PromptNode) => {
+    e.preventDefault()
+    if (!draggedNode) return
+
+    // If dropping on empty space, move to end
+    if (!targetNode) {
+      const fromIndex = nodes.findIndex(n => n.id === draggedNode.id)
+      if (fromIndex !== -1) {
+        moveNode(fromIndex, nodes.length - 1)
+      }
+      setDraggedNode(null)
+      setDragOverNode(null)
+      return
+    }
+
+    if (draggedNode.id === targetNode.id) {
+      setDraggedNode(null)
+      setDragOverNode(null)
+      return
+    }
+
+    // Check if dropping on a group
+    if (targetNode.type === 'group') {
+      const rect = (e.target as HTMLElement).getBoundingClientRect()
+      const heightHalf = rect.height / 2
+      const atBottomHalf = e.clientY - rect.top > heightHalf
+
+      if (!atBottomHalf) {
+        // Drop in top half - move into group
+        moveNodeToGroup(draggedNode, targetNode, 0)
+      } else {
+        // Drop in bottom half - move next to group
+        const toIndex = nodes.findIndex(n => n.id === targetNode.id)
+        if (toIndex !== -1) {
+          const fromIndex = nodes.findIndex(n => n.id === draggedNode.id)
+          if (fromIndex !== -1) {
+            moveNode(fromIndex, toIndex + 1)
+          }
+        }
+      }
+    } else {
+      // Regular node reordering
+      const fromIndex = nodes.findIndex(n => n.id === draggedNode.id)
+      const toIndex = nodes.findIndex(n => n.id === targetNode.id)
+
+      if (fromIndex !== -1 && toIndex !== -1) {
+        const rect = (e.target as HTMLElement).getBoundingClientRect()
+        const heightHalf = rect.height / 2
+        const atBottomHalf = e.clientY - rect.top > heightHalf
+        const adjustedToIndex = toIndex + (atBottomHalf ? 1 : 0)
+        moveNode(fromIndex, adjustedToIndex)
+      }
+    }
+
+    setDraggedNode(null)
+    setDragOverNode(null)
+  }, [draggedNode, nodes])
 
   const showHint = useCallback((text: string, duration = 2000) => {
     setHint(text)
@@ -112,6 +209,61 @@ function PromptComposer({
     setModified(true)
     onNodesChange?.(newNodes)
   }, [onNodesChange])
+
+  const moveNode = useCallback((fromIndex: number, toIndex: number) => {
+    const newNodes = [...nodes]
+    const [moved] = newNodes.splice(fromIndex, 1)
+    newNodes.splice(toIndex, 0, moved)
+    handleNodesChange(newNodes)
+  }, [nodes, handleNodesChange])
+
+  // Handle moving node to a group
+  const moveNodeToGroup = useCallback((draggedNode: PromptNode, targetGroup: GroupNode, insertIndex: number = 0) => {
+    if (!draggedNodeField) return
+
+    // Remove from current location
+    const removeNodeFromTree = (nodes: PromptNode[]): PromptNode[] => {
+      return nodes
+        .filter(node => node.id !== draggedNode.id)
+        .map(node => {
+          if (node.type === 'group') {
+            return {
+              ...node,
+              value: removeNodeFromTree((node as GroupNode).value)
+            } as GroupNode
+          }
+          return node
+        })
+    }
+
+    const newNodes = removeNodeFromTree(draggedNodeField)
+    handleNodesChange(newNodes)
+
+    // Add to target group
+    const updatedGroup = {
+      ...targetGroup,
+      value: [...targetGroup.value]
+    }
+    updatedGroup.value.splice(insertIndex, 0, draggedNode)
+
+    // Find and update the target group in the tree
+    const updateGroupInTree = (nodes: PromptNode[]): PromptNode[] => {
+      return nodes.map(node => {
+        if (node.id === targetGroup.id) {
+          return updatedGroup
+        } else if (node.type === 'group') {
+          return {
+            ...node,
+            value: updateGroupInTree((node as GroupNode).value)
+          } as GroupNode
+        }
+        return node
+      })
+    }
+
+    const finalNodes = updateGroupInTree(newNodes)
+    handleNodesChange(finalNodes)
+  }, [draggedNodeField, handleNodesChange])
 
   const handleJsonImport = useCallback(() => {
     if (!jsonImportText.trim()) {
@@ -243,6 +395,10 @@ function PromptComposer({
               setDragOverNode={setDragOverNode}
               showHint={showHint}
               generateId={generateId}
+              handleDragStart={handleDragStart}
+              handleDragEnd={handleDragEnd}
+              handleDragOver={handleDragOver}
+              handleDrop={handleDrop}
             />
           </div>
 
@@ -420,6 +576,10 @@ interface NodeFieldProps {
   showHint: (text: string, duration?: number) => void
   generateId: () => string
   parentNode?: PromptNode
+  handleDragStart?: (e: React.DragEvent, node: PromptNode, sourceField: PromptNode[]) => void
+  handleDragEnd?: () => void
+  handleDragOver?: (e: React.DragEvent, node?: PromptNode) => void
+  handleDrop?: (e: React.DragEvent, targetNode?: PromptNode) => void
 }
 
 function NodeField({
@@ -431,7 +591,11 @@ function NodeField({
   setDragOverNode,
   showHint,
   generateId,
-  parentNode
+  parentNode,
+  handleDragStart: customHandleDragStart,
+  handleDragEnd: customHandleDragEnd,
+  handleDragOver: customHandleDragOver,
+  handleDrop: customHandleDrop
 }: NodeFieldProps) {
   const addNode = (type: NodeType, index?: number) => {
     const baseNode = {
@@ -474,118 +638,33 @@ function NodeField({
     ))
   }
 
-  const moveNode = (fromIndex: number, toIndex: number) => {
-    const newNodes = [...nodes]
-    const [moved] = newNodes.splice(fromIndex, 1)
-    newNodes.splice(toIndex, 0, moved)
-    onChange(newNodes)
-  }
 
-  // Handle moving node to a group
-  const moveNodeToGroup = (draggedNode: PromptNode, targetGroup: GroupNode, insertIndex: number = 0) => {
-    // Remove from current field
-    const newNodes = nodes.filter(n => n.id !== draggedNode.id)
-    onChange(newNodes)
+  // Use custom handlers if provided, otherwise use defaults
+  const actualHandleDragStart = customHandleDragStart || ((e: React.DragEvent, node: PromptNode) => {
+    // Default drag start behavior for nested NodeFields
+    console.log('Default drag start - this should not be called in main NodeField')
+  })
 
-    // Add to target group
-    const updatedGroup = {
-      ...targetGroup,
-      value: [...targetGroup.value]
-    }
-    updatedGroup.value.splice(insertIndex, 0, draggedNode)
-    updateNode(targetGroup.id, { value: updatedGroup.value })
-  }
+  const actualHandleDragEnd = customHandleDragEnd || (() => {
+    // Default drag end behavior for nested NodeFields
+    console.log('Default drag end - this should not be called in main NodeField')
+  })
 
-  const handleDragStart = (e: React.DragEvent, node: PromptNode) => {
-    setDraggedNode(node)
-    e.dataTransfer.effectAllowed = 'move'
-    e.dataTransfer.setData('text/plain', node.id)
-  }
-
-  const handleDragEnd = () => {
-    setDraggedNode(null)
-    setDragOverNode(null)
-  }
-
-  const handleDragOver = (e: React.DragEvent, node?: PromptNode) => {
+  const actualHandleDragOver = customHandleDragOver || ((e: React.DragEvent, node?: PromptNode) => {
     e.preventDefault()
-    if (draggedNode) {
-      // Allow dropping on empty areas
-      if (!node) {
-        setDragOverNode(null)
-        return
-      }
+    // Default drag over behavior for nested NodeFields
+  })
 
-      // Check if dropping on a group node
-      if (node.type === 'group' && draggedNode.id !== node.id) {
-        setDragOverNode(node)
-      } else if (draggedNode.id !== node.id) {
-        setDragOverNode(node)
-      }
-    }
-  }
-
-  const handleDrop = (e: React.DragEvent, targetNode?: PromptNode) => {
+  const actualHandleDrop = customHandleDrop || ((e: React.DragEvent, targetNode?: PromptNode) => {
     e.preventDefault()
-    if (!draggedNode) return
-
-    // If dropping on empty space, move to end
-    if (!targetNode) {
-      const fromIndex = nodes.findIndex(n => n.id === draggedNode.id)
-      if (fromIndex !== -1) {
-        moveNode(fromIndex, nodes.length - 1)
-      }
-      setDraggedNode(null)
-      setDragOverNode(null)
-      return
-    }
-
-    if (draggedNode.id === targetNode.id) {
-      setDraggedNode(null)
-      setDragOverNode(null)
-      return
-    }
-
-    const fromIndex = nodes.findIndex(n => n.id === draggedNode.id)
-    const toIndex = nodes.findIndex(n => n.id === targetNode.id)
-
-    // Check if dropping on a group
-    if (targetNode.type === 'group' && targetNode.value.length === 0) {
-      // Empty group - move node into group
-      moveNodeToGroup(draggedNode, targetNode, 0)
-    } else if (targetNode.type === 'group') {
-      // Non-empty group - check if we should move inside or next to
-      const rect = (e.target as HTMLElement).getBoundingClientRect()
-      const isTopHalf = e.clientY < rect.top + rect.height / 2
-
-      if (isTopHalf && targetNode.value.length === 0) {
-        moveNodeToGroup(draggedNode, targetNode, 0)
-      } else {
-        // Move next to the group
-        const adjustedToIndex = toIndex + (isTopHalf ? 0 : 1)
-        if (fromIndex !== -1) {
-          moveNode(fromIndex, adjustedToIndex)
-        }
-      }
-    } else {
-      // Regular node reordering
-      if (fromIndex !== -1 && toIndex !== -1) {
-        const rect = (e.target as HTMLElement).getBoundingClientRect()
-        const isTopHalf = e.clientY < rect.top + rect.height / 2
-        const adjustedToIndex = toIndex + (isTopHalf ? 0 : 1)
-        moveNode(fromIndex, adjustedToIndex)
-      }
-    }
-
-    setDraggedNode(null)
-    setDragOverNode(null)
-  }
+    // Default drop behavior for nested NodeFields
+  })
 
   return (
     <div
       className="node-field"
-      onDragOver={(e) => handleDragOver(e)}
-      onDrop={(e) => handleDrop(e)}
+      onDragOver={(e) => actualHandleDragOver(e)}
+      onDrop={(e) => actualHandleDrop(e)}
     >
       {nodes.map((node, index) => (
         <NodeComponent
@@ -595,14 +674,18 @@ function NodeField({
           onUpdate={(updates) => updateNode(node.id, updates)}
           onRemove={() => removeNode(node.id)}
           onAddNode={(type, insertIndex) => addNode(type, insertIndex)}
-          onDragStart={(e) => handleDragStart(e, node)}
-          onDragEnd={handleDragEnd}
-          onDragOver={(e) => handleDragOver(e, node)}
-          onDrop={(e) => handleDrop(e, node)}
+          onDragStart={(e) => actualHandleDragStart(e, node, nodes)}
+          onDragEnd={actualHandleDragEnd}
+          onDragOver={(e) => actualHandleDragOver(e, node)}
+          onDrop={(e) => actualHandleDrop(e, node)}
           isDragged={draggedNode?.id === node.id}
           isDragOver={dragOverNode?.id === node.id}
           showHint={showHint}
           generateId={generateId}
+          draggedNode={draggedNode}
+          dragOverNode={dragOverNode}
+          setDraggedNode={setDraggedNode}
+          setDragOverNode={setDragOverNode}
         />
       ))}
       {nodes.length === 0 && (
@@ -631,7 +714,7 @@ function NodeField({
           }}
           onDrop={(e) => {
             e.currentTarget.classList.remove('active')
-            handleDrop(e)
+            actualHandleDrop(e)
           }}
         />
       )}
@@ -653,7 +736,11 @@ function NodeComponent({
   isDragged,
   isDragOver,
   showHint,
-  generateId
+  generateId,
+  draggedNode,
+  dragOverNode,
+  setDraggedNode,
+  setDragOverNode
 }: {
   node: PromptNode
   index: number
@@ -668,6 +755,10 @@ function NodeComponent({
   isDragOver: boolean
   showHint: (text: string, duration?: number) => void
   generateId: () => string
+  draggedNode: PromptNode | null
+  dragOverNode: PromptNode | null
+  setDraggedNode: (node: PromptNode | null) => void
+  setDragOverNode: (node: PromptNode | null) => void
 }) {
   const [showFloatingButtons, setShowFloatingButtons] = useState(false)
   const [cursorInTopHalf, setCursorInTopHalf] = useState(true)
@@ -698,7 +789,20 @@ function NodeComponent({
       case 'text':
         return <TextNodeContent node={node as TextNode} onUpdate={onUpdate} />
       case 'group':
-        return <GroupNodeContent node={node as GroupNode} onUpdate={onUpdate} showHint={showHint} generateId={generateId} />
+        return <GroupNodeContent
+          node={node as GroupNode}
+          onUpdate={onUpdate}
+          showHint={showHint}
+          generateId={generateId}
+          draggedNode={isDragged ? draggedNode : null}
+          dragOverNode={isDragOver ? dragOverNode : null}
+          setDraggedNode={setDraggedNode}
+          setDragOverNode={setDragOverNode}
+          handleDragStart={onDragStart}
+          handleDragEnd={onDragEnd}
+          handleDragOver={onDragOver}
+          handleDrop={onDrop}
+        />
       case 'break':
         return <BreakNodeContent node={node as BreakNode} onUpdate={onUpdate} />
       default:
@@ -946,12 +1050,28 @@ function GroupNodeContent({
   node,
   onUpdate,
   showHint,
-  generateId
+  generateId,
+  draggedNode,
+  dragOverNode,
+  setDraggedNode,
+  setDragOverNode,
+  handleDragStart,
+  handleDragEnd,
+  handleDragOver,
+  handleDrop
 }: {
   node: GroupNode
   onUpdate: (updates: Partial<GroupNode>) => void
   showHint: (text: string) => void
   generateId: () => string
+  draggedNode: PromptNode | null
+  dragOverNode: PromptNode | null
+  setDraggedNode: (node: PromptNode | null) => void
+  setDragOverNode: (node: PromptNode | null) => void
+  handleDragStart: (e: React.DragEvent, node: PromptNode, sourceField: PromptNode[]) => void
+  handleDragEnd: () => void
+  handleDragOver: (e: React.DragEvent, node?: PromptNode) => void
+  handleDrop: (e: React.DragEvent, targetNode?: PromptNode) => void
 }) {
   const handleNodesChange = (newNodes: PromptNode[]) => {
     onUpdate({ value: newNodes })
@@ -962,13 +1082,17 @@ function GroupNodeContent({
       <NodeField
         nodes={node.value}
         onChange={handleNodesChange}
-        draggedNode={null}
-        dragOverNode={null}
-        setDraggedNode={() => {}}
-        setDragOverNode={() => {}}
+        draggedNode={draggedNode}
+        dragOverNode={dragOverNode}
+        setDraggedNode={setDraggedNode}
+        setDragOverNode={setDragOverNode}
         showHint={showHint}
         generateId={generateId}
         parentNode={node}
+        handleDragStart={handleDragStart}
+        handleDragEnd={handleDragEnd}
+        handleDragOver={handleDragOver}
+        handleDrop={handleDrop}
       />
     </div>
   )

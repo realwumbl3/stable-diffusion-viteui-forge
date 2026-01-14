@@ -159,7 +159,6 @@
 
 .node.dragged {
   opacity: 0.5;
-  transform: rotate(3deg);
 }
 
 .node.drag-over {
