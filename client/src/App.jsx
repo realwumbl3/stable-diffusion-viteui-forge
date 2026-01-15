@@ -169,6 +169,24 @@ function App() {
     }
   }
 
+  const handleSkip = async () => {
+    try {
+      await api.skip()
+      console.log('Generation skipped')
+    } catch (error) {
+      console.error('Error skipping generation:', error)
+    }
+  }
+
+  const handleInterrupt = async () => {
+    try {
+      await api.interrupt()
+      console.log('Generation interrupted')
+    } catch (error) {
+      console.error('Error interrupting generation:', error)
+    }
+  }
+
   const handleImageSelect = (imageSrc) => {
     setCurrentImage(imageSrc)
   }
@@ -211,6 +229,8 @@ function App() {
           onToolChange={setActiveTool}
           generationMode={generationMode}
           setGenerationMode={setGenerationMode}
+          onSkip={handleSkip}
+          onInterrupt={handleInterrupt}
         />
 
         {/* Welcome Screen */}

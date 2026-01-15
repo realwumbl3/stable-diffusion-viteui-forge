@@ -10,13 +10,17 @@ interface NodeFieldProps {
   parentNode?: PromptNode
 }
 
+interface AddNodeOptions {
+  value?: any
+}
+
 function NodeField({
   nodes,
   onChange,
   generateId
 }: NodeFieldProps) {
   const fieldRef = useRef<HTMLDivElement>(null)
-  const addNode = (type: NodeType, index?: number) => {
+  const addNode = (type: NodeType, index?: number, options?: AddNodeOptions) => {
     const baseNode = {
       id: generateId(),
       type,
@@ -28,16 +32,16 @@ function NodeField({
     let newNode: PromptNode
     switch (type) {
       case 'tags':
-        newNode = { ...baseNode, type: 'tags', value: [{ value: '', weight: 1 }] } as TagsNode
+        newNode = { ...baseNode, type: 'tags', value: options?.value || [{ value: '', weight: 1 }] } as TagsNode
         break
       case 'text':
-        newNode = { ...baseNode, type: 'text', value: '' } as TextNode
+        newNode = { ...baseNode, type: 'text', value: options?.value || '' } as TextNode
         break
       case 'group':
-        newNode = { ...baseNode, type: 'group', value: [] } as GroupNode
+        newNode = { ...baseNode, type: 'group', value: options?.value || [] } as GroupNode
         break
       case 'break':
-        newNode = { ...baseNode, type: 'break', value: 'break' } as BreakNode
+        newNode = { ...baseNode, type: 'break', value: options?.value || 'break' } as BreakNode
         break
     }
 
@@ -77,7 +81,7 @@ function NodeField({
           index={index}
           onUpdate={(updates) => updateNode(node.id, updates)}
           onRemove={() => removeNode(node.id)}
-          onAddNode={(type, insertIndex) => addNode(type, insertIndex)}
+          onAddNode={(type, insertIndex, options) => addNode(type, insertIndex, options)}
           generateId={generateId}
         />
       ))}

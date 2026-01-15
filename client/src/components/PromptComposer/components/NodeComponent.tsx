@@ -13,7 +13,7 @@ interface NodeComponentProps {
   index: number
   onUpdate: (updates: Partial<PromptNode>) => void
   onRemove: () => void
-  onAddNode: (type: NodeType, index?: number) => void
+  onAddNode: (type: NodeType, index?: number, options?: { value?: any }) => void
   generateId: () => string
 }
 
@@ -128,11 +128,9 @@ function NodeComponent({
                   try {
                     const parsed = JSON.parse(json)
                     if (Array.isArray(parsed)) {
-                      // Handle multiple nodes
+                      // Create a group node containing the JSON as its value
                       const baseInsertIndex = cursorInTopHalf ? index : index + 1
-                      parsed.forEach((newNode, offset) => {
-                        onAddNode(newNode.type, baseInsertIndex + offset)
-                      })
+                      onAddNode('group', baseInsertIndex, { value: parsed })
                     }
                   } catch (e) {
                     console.error('Invalid JSON', e)

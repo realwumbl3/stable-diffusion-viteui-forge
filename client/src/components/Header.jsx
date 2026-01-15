@@ -11,11 +11,13 @@ import {
   Image as ImageIcon,
   Palette,
   Layers,
-  Type
+  Type,
+  SkipForward,
+  Square
 } from 'lucide-react'
 import { cn } from '../lib/utils.js'
 
-const Header = ({ loading, progress, onGenerate, canGenerate, activeTool, onToolChange, generationMode, setGenerationMode }) => {
+const Header = ({ loading, progress, onGenerate, canGenerate, activeTool, onToolChange, generationMode, setGenerationMode, onSkip, onInterrupt }) => {
   const tools = [
     { id: 'generate', icon: Wand2, label: 'Generate', shortcut: 'Ctrl+G' },
     { id: 'edit', icon: Palette, label: 'Edit', shortcut: 'Ctrl+E' },
@@ -74,6 +76,28 @@ const Header = ({ loading, progress, onGenerate, canGenerate, activeTool, onTool
               <span className="hidden sm:inline">Image</span>
             </button>
           </div>
+
+          {/* Skip and Interrupt buttons - only show when generating */}
+          {loading && (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={onSkip}
+                className="studio-btn-secondary flex items-center gap-2 px-4 py-2 text-sm hover:bg-studio-accent/20"
+                title="Skip current generation"
+              >
+                <SkipForward size={16} />
+                Skip
+              </button>
+              <button
+                onClick={onInterrupt}
+                className="studio-btn-secondary flex items-center gap-2 px-4 py-2 text-sm hover:bg-studio-accent/20"
+                title="Interrupt all generations"
+              >
+                <Square size={16} />
+                End
+              </button>
+            </div>
+          )}
 
           <button
             onClick={onGenerate}

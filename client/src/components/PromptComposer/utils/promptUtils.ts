@@ -1,7 +1,8 @@
 import type { PromptNode, GroupNode, TagsNode, TextNode, BreakNode } from '../types'
+import { encodeLegacy } from './legacyEncoding'
 
 // Helper function to compose prompts from nodes (returns { positive: string, negative: string })
-export function composePromptsFromNodes(nodes: PromptNode[]): { positive: string, negative: string } {
+export function composePromptsFromNodes(nodes: PromptNode[], includeMetadata: boolean = false): { positive: string, negative: string } {
   const positiveParts: string[] = []
   const negativeParts: string[] = []
 
@@ -78,18 +79,29 @@ export function composePromptsFromNodes(nodes: PromptNode[]): { positive: string
 
   nodes.forEach(processNode)
 
-  return {
-    positive: positiveParts
-      .join('')
-      .replace(/, ,/g, ', ')
-      .replace(/,+$/, '')
-      .trim(),
-    negative: negativeParts
-      .join('')
-      .replace(/, ,/g, ', ')
-      .replace(/,+$/, '')
-      .trim()
+  let positive = positiveParts
+    .join('')
+    .replace(/, ,/g, ', ')
+    .replace(/,+$/, '')
+    .trim()
+
+  let negative = negativeParts
+    .join('')
+    .replace(/, ,/g, ', ')
+    .replace(/,+$/, '')
+    .trim()
+
+  // Embed prompt composer metadata as a fake LoRA tag for file metadata preservation
+  if (includeMetadata && nodes.length > 0) {
+    try {
+      const encodedData = encodeLegacy(nodes)
+      positive += `\n\n\n\n\n<betterpromptexport:${encodedData}>`
+    } catch (e) {
+      console.warn('Failed to encode prompt metadata:', e)
+    }
   }
+
+  return { positive, negative }
 }
 
 // Utility function to generate unique IDs

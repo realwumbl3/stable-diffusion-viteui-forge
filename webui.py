@@ -93,9 +93,9 @@ def api_worker():
     script_callbacks.app_started_callback(None, app)
 
     print(f"API startup time: {startup_timer.summary()}.")
-    print("🚀 API server is now online and ready to accept requests!")
-    print("📖 API documentation: http://localhost:7861/docs")
-    print("🔌 WebSocket progress: ws://localhost:7861/ws")
+    print("API server is now online and ready to accept requests!")
+    print("API documentation: http://localhost:7861/docs")
+    print("WebSocket progress: ws://localhost:7861/ws")
 
     # Launch the API server
     api.launch(

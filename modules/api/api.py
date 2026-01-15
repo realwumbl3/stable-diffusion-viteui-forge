@@ -676,12 +676,39 @@ class Api:
                                         predicted_duration = elapsed / progress
                                         eta = predicted_duration - elapsed
 
+                                    # Include live preview if enabled
+                                    live_preview = None
+                                    id_live_preview = getattr(shared.state, 'id_live_preview', -1)
+
+                                    if opts.live_previews_enable:
+                                        shared.state.set_current_image()
+                                        if shared.state.current_image is not None:
+                                            import io
+                                            import base64
+                                            buffered = io.BytesIO()
+
+                                            if opts.live_previews_image_format == "png":
+                                                # using optimize for large images takes an enormous amount of time
+                                                if max(*shared.state.current_image.size) <= 256:
+                                                    save_kwargs = {"optimize": True}
+                                                else:
+                                                    save_kwargs = {"optimize": False, "compress_level": 1}
+                                            else:
+                                                save_kwargs = {}
+
+                                            shared.state.current_image.save(buffered, format=opts.live_previews_image_format, **save_kwargs)
+                                            base64_image = base64.b64encode(buffered.getvalue()).decode('ascii')
+                                            live_preview = f"data:image/{opts.live_previews_image_format};base64,{base64_image}"
+                                            id_live_preview = shared.state.id_live_preview
+
                                     progress_data = {
                                         "active": True,
                                         "queued": False,
                                         "completed": False,
                                         "progress": progress,
                                         "eta": eta,
+                                        "live_preview": live_preview,
+                                        "id_live_preview": id_live_preview,
                                         "textinfo": shared.state.textinfo or "Generating...",
                                         "sampling_step": shared.state.sampling_step,
                                         "sampling_steps": shared.state.sampling_steps,
@@ -717,6 +744,8 @@ class Api:
                         "completed": True,
                         "progress": 1.0,
                         "eta": None,
+                        "live_preview": None,
+                        "id_live_preview": getattr(shared.state, 'id_live_preview', -1),
                         "textinfo": "Completed",
                         "sampling_step": shared.state.sampling_steps,
                         "sampling_steps": shared.state.sampling_steps,

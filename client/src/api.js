@@ -139,6 +139,20 @@ class StableDiffusionAPI {
   async getProgress() {
     return this.request('/sdapi/v1/progress');
   }
+
+  // Skip current generation
+  async skip() {
+    return this.request('/sdapi/v1/skip', {
+      method: 'POST',
+    });
+  }
+
+  // Interrupt/stop all generations
+  async interrupt() {
+    return this.request('/sdapi/v1/interrupt', {
+      method: 'POST',
+    });
+  }
 }
 
 // Create singleton instance

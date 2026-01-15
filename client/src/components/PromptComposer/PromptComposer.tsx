@@ -3,6 +3,7 @@ import { cn } from "../../lib/utils.js";
 import "./PromptComposer.css";
 import type { PromptComposerProps, PromptNode, GroupNode, TextNode } from "./types";
 import { composePromptsFromNodes, generateId, removeNode, insertNode, findNodeById } from "./utils/promptUtils";
+import { decodeLegacy } from "./utils/legacyEncoding";
 import NodeField from "./components/NodeField";
 import ClearPromptButton from "./components/ClearPromptButton";
 import { usePromptComposerStore } from "./store";
@@ -187,7 +188,7 @@ function PromptComposer({
     }, []);
 
     const composePrompt = useCallback(() => {
-        const { positive, negative } = composePromptsFromNodes(nodes);
+        const { positive, negative } = composePromptsFromNodes(nodes, true);
         onPromptChange?.(positive);
         onNegativePromptChange?.(negative);
         setModified(false);
@@ -217,15 +218,14 @@ function PromptComposer({
     const loadFromPrompt = useCallback((promptText: string) => {
         const match = promptText.match(/<betterpromptexport:([^>]+)>/);
         if (match) {
-            try {
-                const encodedData = match[1];
-                const decodedData = JSON.parse(atob(encodedData));
-                if (Array.isArray(decodedData)) {
-                    setNodes(decodedData);
-                    setModified(true);
-                    return true;
-                }
-            } catch (e) {}
+            const encodedData = match[1];
+            // Try legacy format first (LZString + keyEncodeObject)
+            const legacyData = decodeLegacy(encodedData);
+            if (legacyData && Array.isArray(legacyData)) {
+                setNodes(legacyData);
+                setModified(true);
+                return true;
+            }
         }
         return false;
     }, []);
@@ -259,42 +259,254 @@ function PromptComposer({
         setModified(true);
     }, []);
 
+    // Extract text chunks from PNG files
+    const extractPNGTextChunks = (arrayBuffer: ArrayBuffer): string => {
+        const dataView = new DataView(arrayBuffer);
+        let offset = 8; // Skip PNG signature
+
+        while (offset < arrayBuffer.byteLength) {
+            const length = dataView.getUint32(offset, false);
+            offset += 4;
+
+            const type = String.fromCharCode(
+                dataView.getUint8(offset),
+                dataView.getUint8(offset + 1),
+                dataView.getUint8(offset + 2),
+                dataView.getUint8(offset + 3)
+            );
+            offset += 4;
+
+            if (type === "tEXt" || type === "iTXt" || type === "zTXt") {
+                // Read the keyword (null-terminated)
+                let keyword = "";
+                let i = offset;
+                while (i < offset + length && dataView.getUint8(i) !== 0) {
+                    keyword += String.fromCharCode(dataView.getUint8(i));
+                    i++;
+                }
+
+                // Read the text data
+                const textStart = i + 1;
+                let text = "";
+                for (let j = textStart; j < offset + length; j++) {
+                    text += String.fromCharCode(dataView.getUint8(j));
+                }
+
+                // Look for parameters or prompt data
+                if (keyword === "parameters" || keyword === "prompt" || keyword.includes("prompt")) {
+                    return text;
+                }
+            }
+
+            offset += length + 4; // Skip data and CRC
+        }
+        return "";
+    };
+
+    // Extract EXIF data from JPEG files
+    const extractJPEGMetadata = (arrayBuffer: ArrayBuffer): string => {
+        const dataView = new DataView(arrayBuffer);
+        let offset = 2; // Skip JPEG SOI marker
+
+        while (offset < arrayBuffer.byteLength - 2) {
+            const marker = dataView.getUint16(offset, false);
+            offset += 2;
+
+            if (marker === 0xffe1) {
+                // APP1 marker (EXIF)
+                offset += 2;
+
+                // Check if it's EXIF data
+                if (dataView.getUint32(offset, false) === 0x45786966) {
+                    // "Exif"
+                    offset += 6; // Skip "Exif" and null bytes
+
+                    // Skip TIFF header
+                    let tiffOffset = offset;
+                    const isLittleEndian = dataView.getUint16(tiffOffset, false) === 0x4949;
+                    tiffOffset += 4;
+
+                    // Read IFD0
+                    const ifd0Offset = dataView.getUint32(tiffOffset, isLittleEndian);
+                    tiffOffset = offset + ifd0Offset;
+
+                    const numEntries = dataView.getUint16(tiffOffset, isLittleEndian);
+                    tiffOffset += 2;
+
+                    for (let i = 0; i < numEntries; i++) {
+                        const tag = dataView.getUint16(tiffOffset, isLittleEndian);
+                        const type = dataView.getUint16(tiffOffset + 2, isLittleEndian);
+                        const count = dataView.getUint32(tiffOffset + 4, isLittleEndian);
+                        const valueOffset = dataView.getUint32(tiffOffset + 8, isLittleEndian);
+
+                        if (tag === 37510) {
+                            // UserComment tag
+                            let commentOffset = offset + valueOffset;
+                            let comment = "";
+
+                            // Skip encoding marker (8 bytes for some software)
+                            if (count > 8) {
+                                commentOffset += 8;
+                            }
+
+                            for (let j = 0; j < count - 8 && commentOffset < arrayBuffer.byteLength; j++) {
+                                const byte = dataView.getUint8(commentOffset++);
+                                if (byte !== 0) {
+                                    comment += String.fromCharCode(byte);
+                                }
+                            }
+
+                            if (comment.includes("<betterpromptexport:") || comment.includes("betterpromptexport")) {
+                                return comment;
+                            }
+                        }
+
+                        tiffOffset += 12;
+                    }
+                }
+            } else if (marker >= 0xffe0 && marker <= 0xffef) {
+                // Other APP markers, skip them
+                const length = dataView.getUint16(offset, false);
+                offset += length - 2;
+            } else if (marker === 0xffda) {
+                // SOS marker, end of metadata
+                break;
+            } else {
+                // Unknown marker, try to skip
+                if (offset < arrayBuffer.byteLength - 2) {
+                    const length = dataView.getUint16(offset, false);
+                    if (length >= 2) {
+                        offset += length - 2;
+                    } else {
+                        break;
+                    }
+                }
+            }
+        }
+        return "";
+    };
+
     const loadFromFile = useCallback(() => {
         const input = document.createElement("input");
         input.type = "file";
-        input.accept = ".json,.txt";
+        input.accept = ".json,.txt,.png,.jpg,.jpeg,.webp";
         input.onchange = (e) => {
             const file = (e.target as HTMLInputElement).files?.[0];
             if (file) {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    const content = e.target?.result as string;
-                    try {
-                        // Try to parse as JSON first
-                        const data = JSON.parse(content);
-                        if (Array.isArray(data)) {
-                            setNodes(data);
-                            setModified(true);
+                const fileExtension = file.name.toLowerCase().split(".").pop();
+
+                if (fileExtension === "png") {
+                    // Handle PNG files - extract metadata
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const arrayBuffer = e.target?.result as ArrayBuffer;
+                        const metadata = extractPNGTextChunks(arrayBuffer);
+
+                        if (metadata && loadFromPrompt(metadata)) {
+                            // Successfully loaded from embedded prompt data
+                            return;
                         }
-                    } catch {
-                        // If not JSON, treat as plain text and create a text node
+
+                        // Fallback: try to parse metadata as JSON
+                        try {
+                            const data = JSON.parse(metadata);
+                            if (Array.isArray(data)) {
+                                setNodes(data);
+                                setModified(true);
+                                return;
+                            }
+                        } catch {
+                            // Not JSON, create text node from metadata
+                        }
+
+                        // Last resort: create text node from metadata
                         const textNode: TextNode = {
                             id: generateId(),
                             type: "text",
-                            name: "Imported Text",
+                            name: "Imported Image Text",
                             hidden: false,
                             weight: 1,
-                            value: content,
+                            value: metadata || "No metadata found in image",
                         };
                         setNodes([textNode]);
                         setModified(true);
-                    }
-                };
-                reader.readAsText(file);
+                    };
+                    reader.readAsArrayBuffer(file);
+                } else if (fileExtension === "jpg" || fileExtension === "jpeg") {
+                    // Handle JPEG files - extract EXIF metadata
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const arrayBuffer = e.target?.result as ArrayBuffer;
+                        const metadata = extractJPEGMetadata(arrayBuffer);
+
+                        if (metadata && loadFromPrompt(metadata)) {
+                            // Successfully loaded from embedded prompt data
+                            return;
+                        }
+
+                        // Fallback: try to parse metadata as JSON
+                        try {
+                            const data = JSON.parse(metadata);
+                            if (Array.isArray(data)) {
+                                setNodes(data);
+                                setModified(true);
+                                return;
+                            }
+                        } catch {
+                            // Not JSON, create text node from metadata
+                        }
+
+                        // Last resort: create text node from metadata
+                        const textNode: TextNode = {
+                            id: generateId(),
+                            type: "text",
+                            name: "Imported Image Text",
+                            hidden: false,
+                            weight: 1,
+                            value: metadata || "No metadata found in image",
+                        };
+                        setNodes([textNode]);
+                        setModified(true);
+                    };
+                    reader.readAsArrayBuffer(file);
+                } else {
+                    // Handle text-based files (JSON, TXT)
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const content = e.target?.result as string;
+
+                        // First try to load from embedded prompt data
+                        if (loadFromPrompt(content)) {
+                            return;
+                        }
+
+                        try {
+                            // Try to parse as JSON first
+                            const data = JSON.parse(content);
+                            if (Array.isArray(data)) {
+                                setNodes(data);
+                                setModified(true);
+                            }
+                        } catch {
+                            // If not JSON, treat as plain text and create a text node
+                            const textNode: TextNode = {
+                                id: generateId(),
+                                type: "text",
+                                name: "Imported Text",
+                                hidden: false,
+                                weight: 1,
+                                value: content,
+                            };
+                            setNodes([textNode]);
+                            setModified(true);
+                        }
+                    };
+                    reader.readAsText(file);
+                }
             }
         };
         input.click();
-    }, [generateId]);
+    }, [generateId, loadFromPrompt]);
 
     return (
         <div className={cn("prompt-composer", className)}>

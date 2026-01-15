@@ -118,6 +118,7 @@ export const useWebSocketProgress = (taskId = null) => {
   const [isConnected, setIsConnected] = useState(false)
   const [livePreview, setLivePreview] = useState(null)
   const pingIntervalRef = useRef(null)
+  const completedTasksRef = useRef(new Set())
 
   // Handle connection and ping interval
   useEffect(() => {
@@ -147,6 +148,11 @@ export const useWebSocketProgress = (taskId = null) => {
       // Note: We don't disconnect here because the manager is shared
       // The manager will handle reconnection when taskId changes
     }
+  }, [taskId])
+
+  // Reset completed tasks when taskId changes
+  useEffect(() => {
+    completedTasksRef.current.clear()
   }, [taskId])
 
   // Handle WebSocket messages
@@ -180,8 +186,14 @@ export const useWebSocketProgress = (taskId = null) => {
       // Only process progress updates that have valid progress data
       // Progress updates should have a numeric progress value (0-1)
       if (data.progress !== undefined && typeof data.progress === 'number') {
+        // Check if this task has already been completed - if so, ignore further updates
+        if (completedTasksRef.current.has(data.task_id)) {
+          return
+        }
+
         // Task completed - clear progress and live preview
         if (data.completed) {
+          completedTasksRef.current.add(data.task_id)
           setProgress(null)
           setLivePreview(null)
           return
