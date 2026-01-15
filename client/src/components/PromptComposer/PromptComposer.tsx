@@ -2,7 +2,7 @@ import React, { useState, useRef, useCallback, useEffect, memo } from "react";
 import { cn } from "../../lib/utils.js";
 import "./PromptComposer.css";
 import type { PromptComposerProps, PromptNode, GroupNode, TextNode } from "./types";
-import { composePromptsFromNodes, generateId } from "./utils/promptUtils";
+import { composePromptsFromNodes, generateId, removeNode, insertNode, findNodeById } from "./utils/promptUtils";
 import NodeField from "./components/NodeField";
 import ClearPromptButton from "./components/ClearPromptButton";
 
@@ -14,68 +14,25 @@ function PromptComposer({
     initialData = [],
 }: PromptComposerProps) {
     const [nodes, setNodes] = useState<PromptNode[]>(initialData);
-    // Map from DOM elements to nodes (like liveDomList in vanilla JS)
-    const nodeMapRef = useRef<Map<HTMLElement, { node: PromptNode; field: PromptNode[] }>>(new Map());
-    // Drag state stores DOM elements (like vanilla JS)
+    // Simple drag state like vanilla JS
     const dragStateRef = useRef<{
-        dragTarget: HTMLElement | null;
         lastDragged: HTMLElement | null;
+        dragTarget: HTMLElement | null;
     }>({
-        dragTarget: null,
         lastDragged: null,
+        dragTarget: null,
     });
     const [modified, setModified] = useState(false);
     const [showJsonImport, setShowJsonImport] = useState(false);
     const [jsonImportText, setJsonImportText] = useState("");
     const editorRef = useRef<HTMLDivElement>(null);
 
-    // Helper to get node and field from DOM element
-    const getNodeFromElement = (element: HTMLElement | null): { node: PromptNode; field: PromptNode[] } | null => {
+    // Helper to get node ID from DOM element
+    const getNodeIdFromElement = (element: HTMLElement | null): string | null => {
         if (!element) return null;
-        const nodeElement = element.closest('.node') as HTMLElement;
+        const nodeElement = element.closest(".node") as HTMLElement;
         if (!nodeElement) return null;
-        return nodeMapRef.current.get(nodeElement) || null;
-    };
-
-    // Helper to find a field in the tree by a node ID it contains
-    const findFieldInTree = (ns: PromptNode[], nodeId: string): PromptNode[] | null => {
-        for (const node of ns) {
-            if (node.id === nodeId) return ns;
-            if (node.type === "group") {
-                const found = findFieldInTree((node as GroupNode).value, nodeId);
-                if (found) return found;
-            }
-        }
-        return null;
-    };
-
-    // Helper functions for tree operations
-    const removeNodeFromTree = (nodes: PromptNode[], nodeId: string): PromptNode[] => {
-        return nodes
-            .filter(node => node.id !== nodeId)
-            .map(node => {
-                if (node.type === "group") {
-                    return {
-                        ...node,
-                        value: removeNodeFromTree((node as GroupNode).value, nodeId),
-                    } as GroupNode;
-                }
-                return node;
-            });
-    };
-
-    const updateNodeInTree = (nodes: PromptNode[], nodeId: string, updatedNode: PromptNode): PromptNode[] => {
-        return nodes.map(node => {
-            if (node.id === nodeId) {
-                return updatedNode;
-            } else if (node.type === "group") {
-                return {
-                    ...node,
-                    value: updateNodeInTree((node as GroupNode).value, nodeId, updatedNode),
-                } as GroupNode;
-            }
-            return node;
-        });
+        return nodeElement.dataset.nodeId || null;
     };
 
     const handleNodesChange = useCallback(
@@ -87,139 +44,136 @@ function PromptComposer({
         [onNodesChange]
     );
 
-    // Drag reorder function (must be defined before handleDragEnd)
-    const dragReorder = useCallback((e: React.DragEvent | MouseEvent) => {
-        const { dragTarget, lastDragged } = dragStateRef.current;
-        if (!dragTarget || !lastDragged) return;
+    // Drag reorder function (simplified like vanilla JS)
+    const dragReorder = useCallback(
+        (e: React.DragEvent | MouseEvent) => {
+            const { lastDragged, dragTarget } = dragStateRef.current;
+            if (!lastDragged || !dragTarget) return;
 
-        const draggedData = getNodeFromElement(dragTarget);
-        const targetData = getNodeFromElement(lastDragged);
-        
-        if (!draggedData || !targetData) return;
-        
-        const { node: draggedNode, field: draggedField } = draggedData;
-        const { node: targetNode, field: targetField } = targetData;
+            const draggedNodeId = getNodeIdFromElement(dragTarget);
+            const targetNodeId = getNodeIdFromElement(lastDragged);
 
-        // Handle empty group case
-        if (targetNode.type === "group" && (targetNode as GroupNode).value.length < 1) {
-            const newNodes = removeNodeFromTree(nodes, draggedNode.id);
-            const updatedGroup = {
-                ...targetNode,
-                value: [draggedNode],
-            } as GroupNode;
-            const finalNodes = updateNodeInTree(newNodes, targetNode.id, updatedGroup);
-            handleNodesChange(finalNodes);
-            return;
-        }
+            if (!draggedNodeId || !targetNodeId || draggedNodeId === targetNodeId) return;
 
-        // Calculate drop position
-        const rect = lastDragged.getBoundingClientRect();
-        const heightHalf = lastDragged.offsetHeight / 2;
-        const clientY = 'clientY' in e ? e.clientY : (e as MouseEvent).clientY;
-        const atBottomHalf = clientY - rect.top > heightHalf;
+            // Check if trying to drop into self or descendant
+            if (dragTarget.contains(lastDragged)) return;
 
-        // Remove node from tree first
-        let newNodes = removeNodeFromTree(nodes, draggedNode.id);
-        
-        // Find the target field in the new tree by searching for the target node
-        const targetFieldAfterRemoval = targetField === nodes 
-            ? newNodes 
-            : findFieldInTree(newNodes, targetNode.id);
-        
-        if (!targetFieldAfterRemoval) {
+            const targetNode = findNodeById(nodes, targetNodeId);
+            if (!targetNode) return;
+
+            // Calculate drop position
+            const rect = lastDragged.getBoundingClientRect();
+            const heightHalf = lastDragged.offsetHeight / 2;
+            const clientY = "clientY" in e ? e.clientY : (e as MouseEvent).clientY;
+            const atBottomHalf = clientY - rect.top > heightHalf;
+
+            // Remove the dragged node from the tree
+            const removalResult = removeNode(nodes, draggedNodeId);
+            if (!removalResult) return;
+
+            const { node: draggedNode } = removalResult;
+
+            // Insert at the new location
+            const newNodes = insertNode(removalResult.updatedTree, targetNodeId, atBottomHalf, draggedNode);
             handleNodesChange(newNodes);
-            return;
-        }
-        
-        const targetIndex = targetFieldAfterRemoval.findIndex(n => n.id === targetNode.id);
-        const insertIndex = targetIndex + (atBottomHalf ? 1 : 0);
-        
-        // Insert into the correct field
-        if (targetField === nodes) {
-            // Root field
-            newNodes.splice(insertIndex, 0, draggedNode);
-        } else {
-            // Nested field - find the parent group containing targetNode and update it
-            const updateFieldInTree = (ns: PromptNode[]): PromptNode[] => {
-                return ns.map(node => {
-                    if (node.type === "group") {
-                        const groupValue = (node as GroupNode).value;
-                        // Check if targetNode is in this group's value
-                        if (groupValue.some(n => n.id === targetNode.id)) {
-                            const newValue = [...groupValue];
-                            const idx = newValue.findIndex(n => n.id === targetNode.id);
-                            newValue.splice(idx + (atBottomHalf ? 1 : 0), 0, draggedNode);
-                            return { ...node, value: newValue } as GroupNode;
-                        } else {
-                            return { ...node, value: updateFieldInTree(groupValue) } as GroupNode;
-                        }
-                    }
-                    return node;
-                });
-            };
-            newNodes = updateFieldInTree(newNodes);
-        }
-        
-        handleNodesChange(newNodes);
-    }, [nodes, handleNodesChange]);
-
-    // Event delegation handlers (like vanilla JS)
-    const handleDragStart = useCallback((e: React.DragEvent) => {
-        const target = e.target as HTMLElement;
-        if (!target.matches('.thumb')) return;
-        
-        const nodeElement = target.closest('.node') as HTMLElement;
-        if (!nodeElement) return;
-        
-        dragStateRef.current.dragTarget = nodeElement;
-        e.dataTransfer.effectAllowed = "move";
-        e.dataTransfer.setData("text/plain", "");
-    }, []);
+        },
+        [nodes, handleNodesChange]
+    );
 
     const handleDragEnter = useCallback((e: React.DragEvent) => {
         if (!dragStateRef.current.dragTarget) return;
         e.preventDefault();
-        
-        const nodeElement = (e.target as HTMLElement).closest('.node') as HTMLElement;
+
+        const nodeElement = (e.target as HTMLElement).closest(".node") as HTMLElement;
         if (!nodeElement || dragStateRef.current.lastDragged === nodeElement) return;
-        
+
         // Prevent dropping into self or descendants
         if (dragStateRef.current.dragTarget.contains(nodeElement)) return;
-        
+
         dragStateRef.current.lastDragged = nodeElement;
-        
-        // Visual feedback
-        nodeElement.style.borderColor = 'cyan';
-        if (dragStateRef.current.lastDragged && dragStateRef.current.lastDragged !== nodeElement) {
-            (dragStateRef.current.lastDragged as HTMLElement).style.borderColor = '';
-        }
     }, []);
 
-    const handleDragEnd = useCallback((e: React.DragEvent) => {
+    const handleDragOver = useCallback((e: React.DragEvent) => {
         if (!dragStateRef.current.dragTarget) return;
         e.preventDefault();
-        
-        if (!dragStateRef.current.lastDragged) {
-            dragStateRef.current.dragTarget = null;
+
+        const nodeElement = (e.target as HTMLElement).closest(".node") as HTMLElement;
+
+        // Clear ALL indicators first to ensure only one node shows feedback at a time
+        const allNodes = editorRef.current?.querySelectorAll(".node");
+        allNodes?.forEach((node) => {
+            node.classList.remove("drag-over-top", "drag-over-bottom");
+        });
+
+        if (!nodeElement) {
+            // Mouse is not over any node, clear lastDragged reference
             dragStateRef.current.lastDragged = null;
             return;
         }
-        
-        if (dragStateRef.current.lastDragged !== dragStateRef.current.dragTarget) {
-            dragReorder(e);
-        }
-        
-        // Reset visual feedback
-        if (dragStateRef.current.dragTarget) {
-            (dragStateRef.current.dragTarget as HTMLElement).style.borderColor = '';
-        }
-        if (dragStateRef.current.lastDragged) {
-            (dragStateRef.current.lastDragged as HTMLElement).style.borderColor = '';
-        }
-        
-        dragStateRef.current.dragTarget = null;
-        dragStateRef.current.lastDragged = null;
-    }, [dragReorder]);
+
+        // Update the last dragged reference
+        dragStateRef.current.lastDragged = nodeElement;
+
+        // Add visual feedback based on mouse position
+        const rect = nodeElement.getBoundingClientRect();
+        const heightHalf = rect.height / 2;
+        const isTopHalf = e.clientY - rect.top < heightHalf;
+
+        nodeElement.classList.add(isTopHalf ? "drag-over-top" : "drag-over-bottom");
+    }, []);
+
+    // Event delegation handlers (like vanilla JS)
+    const handleDragStart = useCallback((e: React.DragEvent) => {
+        const target = e.target as HTMLElement;
+        if (!target.matches(".thumb")) return;
+
+        const nodeElement = target.closest(".node") as HTMLElement;
+        if (!nodeElement) return;
+
+        dragStateRef.current.dragTarget = nodeElement;
+        nodeElement.classList.add("dragged");
+        e.dataTransfer.effectAllowed = "move";
+        e.dataTransfer.setData("text/plain", "");
+    }, []);
+
+    const handleDragEnd = useCallback(
+        (e: React.DragEvent) => {
+            if (!dragStateRef.current.dragTarget) return;
+            e.preventDefault();
+
+            if (!dragStateRef.current.lastDragged) {
+                dragStateRef.current.dragTarget = null;
+                dragStateRef.current.lastDragged = null;
+                return;
+            }
+
+            if (dragStateRef.current.lastDragged !== dragStateRef.current.dragTarget) {
+                dragReorder(e);
+            }
+
+            // Reset all visual feedback - clear from tracked elements and do a comprehensive cleanup
+            if (dragStateRef.current.dragTarget) {
+                dragStateRef.current.dragTarget.classList.remove("dragged");
+            }
+            if (dragStateRef.current.lastDragged) {
+                dragStateRef.current.lastDragged.classList.remove(
+                    "drag-over-top",
+                    "drag-over-bottom",
+                    "drag-over-inside"
+                );
+            }
+
+            // Comprehensive cleanup: clear all drag indicators from all nodes
+            const allNodes = editorRef.current?.querySelectorAll(".node");
+            allNodes?.forEach((node) => {
+                node.classList.remove("drag-over-top", "drag-over-bottom", "drag-over-inside", "dragged");
+            });
+
+            dragStateRef.current.dragTarget = null;
+            dragStateRef.current.lastDragged = null;
+        },
+        [dragReorder]
+    );
 
     const exportToJson = useCallback(() => {
         const jsonString = JSON.stringify(nodes, null, 2);
@@ -237,8 +191,6 @@ function PromptComposer({
         onNegativePromptChange?.(negative);
         setModified(false);
     }, [nodes, onPromptChange, onNegativePromptChange]);
-
-
 
     const handleJsonImport = useCallback(() => {
         if (!jsonImportText.trim()) {
@@ -350,19 +302,18 @@ function PromptComposer({
                     {/* Header */}
 
                     {/* Main Editor */}
-                    <div 
+                    <div
                         className="main-editor"
                         ref={editorRef}
                         onDragStart={handleDragStart}
                         onDragEnter={handleDragEnter}
-                        onDragOver={(e) => e.preventDefault()}
+                        onDragOver={handleDragOver}
                         onDragEnd={handleDragEnd}
                     >
                         <NodeField
                             nodes={nodes}
                             onChange={handleNodesChange}
                             generateId={generateId}
-                            nodeMapRef={nodeMapRef}
                         />
                     </div>
 

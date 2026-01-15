@@ -31,6 +31,7 @@
   width: 100%;
   min-width: min(160px, 100%);
   min-height: 300px;
+  max-height: 500px;
 }
 
 .better-prompt .button {
@@ -110,7 +111,7 @@
   border-radius: 2px;
   background: var(--studio-bg);
   overflow-y: auto;
-
+  padding-bottom: 30px;
 }
 
 /* Node Field */
@@ -196,6 +197,12 @@
   height: 3px;
   background: var(--studio-success);
   box-shadow: 0 0 6px rgba(0, 255, 0, 0.5);
+}
+
+.node.drag-over-inside .group {
+  border-color: var(--studio-success);
+  background: rgba(0, 255, 0, 0.1);
+  box-shadow: 0 0 6px rgba(0, 255, 0, 0.2);
 }
 
 .node.muted {

@@ -15,7 +15,6 @@ interface NodeComponentProps {
   onRemove: () => void
   onAddNode: (type: NodeType, index?: number) => void
   generateId: () => string
-  nodeMapRef?: React.MutableRefObject<Map<HTMLElement, { node: PromptNode; field: PromptNode[] }>>
 }
 
 function NodeComponent({
@@ -24,8 +23,7 @@ function NodeComponent({
   onUpdate,
   onRemove,
   onAddNode,
-  generateId,
-  nodeMapRef
+  generateId
 }: NodeComponentProps) {
   const [showFloatingButtons, setShowFloatingButtons] = useState(false)
   const [cursorInTopHalf, setCursorInTopHalf] = useState(true)
@@ -59,7 +57,6 @@ function NodeComponent({
           node={node as GroupNode}
           onUpdate={onUpdate}
           generateId={generateId}
-          nodeMapRef={nodeMapRef}
         />
       case 'break':
         return <BreakNodeContent node={node as BreakNode} onUpdate={onUpdate} />

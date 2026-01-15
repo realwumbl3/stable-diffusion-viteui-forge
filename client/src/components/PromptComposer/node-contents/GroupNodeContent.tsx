@@ -8,14 +8,12 @@ interface GroupNodeContentProps {
   node: GroupNode
   onUpdate: (updates: Partial<GroupNode>) => void
   generateId: () => string
-  nodeMapRef?: React.MutableRefObject<Map<HTMLElement, { node: PromptNode; field: PromptNode[] }>>
 }
 
 function GroupNodeContent({
   node,
   onUpdate,
-  generateId,
-  nodeMapRef
+  generateId
 }: GroupNodeContentProps) {
   const handleNodesChange = (newNodes: PromptNode[]) => {
     onUpdate({ value: newNodes })
@@ -30,7 +28,6 @@ function GroupNodeContent({
         onChange={handleNodesChange}
         generateId={generateId}
         parentNode={node}
-        nodeMapRef={nodeMapRef!}
       />
     </div>
   )
