@@ -126,3 +126,27 @@ parser.add_argument(
     help="filename to store UI settings",
     default=os.path.join(data_path, 'ui-config.json'),
 )
+parser.add_argument(
+    "--freeze-settings",
+    action='store_true',
+    help="freeze all settings and prevent any changes",
+    default=False,
+)
+parser.add_argument(
+    "--freeze-settings-in-sections",
+    type=str,
+    help="freeze settings in specific sections (comma-separated list of section keys)",
+    default=None,
+)
+parser.add_argument(
+    "--freeze-specific-settings",
+    type=str,
+    help="freeze specific settings (comma-separated list of setting keys)",
+    default=None,
+)
+parser.add_argument(
+    "--hide-ui-dir-config",
+    action='store_true',
+    help="hide directory configuration options in UI",
+    default=False,
+)

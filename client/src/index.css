@@ -67,6 +67,19 @@
     @apply bg-studio-surface border border-studio-border rounded-md px-3 py-2 text-studio-text placeholder:text-studio-textMuted focus:outline-none focus:ring-2 focus:ring-studio-accent focus:border-transparent transition-colors;
   }
 
+  /* Number Input Spinner Removal */
+  .studio-input[type="number"] {
+    -moz-appearance: textfield;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+
+  .studio-input[type="number"]::-webkit-outer-spin-button,
+  .studio-input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
   .studio-select {
     @apply bg-studio-surface border border-studio-border rounded-md px-3 py-2 text-studio-text focus:outline-none focus:ring-2 focus:ring-studio-accent focus:border-transparent transition-colors;
   }

@@ -1,4 +1,4 @@
-import type { PromptNode, GroupNode } from '../types'
+import type { PromptNode, GroupNode, TagsNode, TextNode, BreakNode } from '../types'
 
 // Helper function to compose prompts from nodes (returns { positive: string, negative: string })
 export function composePromptsFromNodes(nodes: PromptNode[]): { positive: string, negative: string } {

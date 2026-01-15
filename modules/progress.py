@@ -31,10 +31,14 @@ class WebSocketProgressManager:
     def __init__(self):
         self.active_connections: Set[WebSocket] = set()
         self._lock = asyncio.Lock()
+        self._loop: asyncio.AbstractEventLoop | None = None
 
     async def connect(self, websocket: WebSocket):
         """Accept and register a new WebSocket connection"""
         await websocket.accept()
+        # Capture the loop that owns the asyncio lock
+        if self._loop is None:
+            self._loop = asyncio.get_running_loop()
         async with self._lock:
             self.active_connections.add(websocket)
 
@@ -72,14 +76,26 @@ class WebSocketProgressManager:
     def broadcast_task_progress_sync(self, task_id: str, progress_data: Dict):
         """Synchronous version of broadcast_task_progress for use in non-async contexts"""
         import asyncio
+        import threading
+
+        def run_async():
+            """Run the async broadcast in a new event loop"""
+            try:
+                asyncio.run(self.broadcast_task_progress(task_id, progress_data))
+            except Exception as e:
+                print(f"WebSocket progress broadcast error: {e}")
+
         try:
-            # Try to get the current event loop
-            loop = asyncio.get_running_loop()
-            # If there's a running loop, create a task
-            loop.create_task(self.broadcast_task_progress(task_id, progress_data))
+            # Prefer the loop that owns the asyncio lock
+            loop = self._loop or asyncio.get_running_loop()
+            if loop.is_running():
+                asyncio.run_coroutine_threadsafe(self.broadcast_task_progress(task_id, progress_data), loop)
+            else:
+                asyncio.run_coroutine_threadsafe(self.broadcast_task_progress(task_id, progress_data), loop)
         except RuntimeError:
-            # No running event loop, run in a new one
-            asyncio.run(self.broadcast_task_progress(task_id, progress_data))
+            # No running event loop available, start in a background thread
+            thread = threading.Thread(target=run_async, daemon=True)
+            thread.start()
 
 
 # Global WebSocket manager instance
@@ -255,10 +271,11 @@ def progressapi(req: ProgressRequest):
             "eta": eta,
             "live_preview": live_preview,
             "id_live_preview": id_live_preview,
-            "textinfo": shared.state.textinfo
+            "textinfo": shared.state.textinfo,
+            "timestamp": time.time()
         }
         # Broadcast in background to avoid blocking the API response
-        asyncio.create_task(websocket_manager.broadcast_task_progress(req.id_task, progress_data))
+        websocket_manager.broadcast_task_progress_sync(req.id_task, progress_data)
 
     return response
 

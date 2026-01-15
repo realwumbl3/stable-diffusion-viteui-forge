@@ -1,83 +1,52 @@
-# 🎨 Stable Diffusion WebUI Forge - Modern UI Fork
+# Stable Diffusion WebUI Forge
 
-> **✨ Enhanced with Modern React UI** - A fork featuring a completely rebuilt user interface using React, providing a faster, more responsive, and modern experience for Stable Diffusion generation.
+Stable Diffusion WebUI Forge is a platform on top of [Stable Diffusion WebUI](https://github.com/AUTOMATIC1111/stable-diffusion-webui) (based on [Gradio](https://www.gradio.app/) <a href='https://github.com/gradio-app/gradio'><img src='https://img.shields.io/github/stars/gradio-app/gradio'></a>) to make development easier, optimize resource management, speed up inference, and study experimental features.
 
-## 🚀 Unique Features of This Fork
+The name "Forge" is inspired from "Minecraft Forge". This project is aimed at becoming SD WebUI's Forge.
 
-### Modern React Client
-- **Complete UI Rewrite**: Brand new React-based client application (`client/` directory)
-- **Modern UX**: Sleek, responsive interface built with React and Tailwind CSS
-- **Fast Performance**: Optimized rendering and state management for smooth operation
-- **Extensible Architecture**: Modular component system for easy customization
+Forge is currently based on SD-WebUI 1.10.1 at [this commit](https://github.com/AUTOMATIC1111/stable-diffusion-webui/commit/82a973c04367123ae98bd9abdf80d9eda9b910e2). (Because original SD-WebUI is almost static now, Forge will sync with original WebUI every 90 days, or when important fixes.)
 
-### Enhanced User Experience
-- **Canvas Integration**: Advanced drawing and editing capabilities
-- **Real-time Updates**: Live preview and parameter adjustments
-- **Professional UI**: Clean, modern design inspired by contemporary web applications
-- **Mobile Responsive**: Optimized for various screen sizes and devices
+News are moved to this link: [Click here to see the News section](https://github.com/lllyasviel/stable-diffusion-webui-forge/blob/main/NEWS.md)
 
-### Developer Friendly
-- **Planning Documentation**: Organized development plans in `.newui/` folder
-- **Clean Architecture**: Separated concerns between API backend and UI frontend
-- **Modern Tooling**: Vite build system, ESLint, and modern JavaScript practices
+# Quick List
 
----
+[Gradio 4 UI Must Read (TLDR: You need to use RIGHT MOUSE BUTTON to move canvas!)](https://github.com/lllyasviel/stable-diffusion-webui-forge/discussions/853)
 
-# Stable Diffusion Forge API
+[Flux Tutorial (BitsandBytes Models, NF4, "GPU Weight", "Offload Location", "Offload Method", etc)](https://github.com/lllyasviel/stable-diffusion-webui-forge/discussions/981)
 
-Stable Diffusion Forge API is a high-performance API-only backend for Stable Diffusion, derived from [Stable Diffusion WebUI Forge](https://github.com/lllyasviel/stable-diffusion-webui-forge). This project strips away all frontend components to provide a pure REST API service that can power external web applications and interfaces.
+[Flux Tutorial 2 (Seperated Full Models, GGUF, Technically Correct Comparison between GGUF and NF4, etc)](https://github.com/lllyasviel/stable-diffusion-webui-forge/discussions/1050)
 
-## Key Features
+[Forge Extension List and Extension Replacement List (Temporary)](https://github.com/lllyasviel/stable-diffusion-webui-forge/discussions/1754)
 
-- **API-Only**: No web UI, just clean REST endpoints
-- **High Performance**: Optimized for speed and resource management
-- **Extensible**: Supports extensions and custom processing scripts
-- **External UI Ready**: Perfect for building custom web interfaces
+[How to make LoRAs more precise on low-bit models; How to Skip" Patching LoRAs"; How to only load LoRA one time rather than each generation; How to report LoRAs that do not work](https://github.com/lllyasviel/stable-diffusion-webui-forge/discussions/1038)
 
-Based on SD-WebUI Forge, which is based on SD-WebUI 1.10.1 at [this commit](https://github.com/AUTOMATIC1111/stable-diffusion-webui/commit/82a973c04367123ae98bd9abdf80d9eda9b910e2).
+[Report Flux Performance Problems (TLDR: DO NOT set "GPU Weight" too high! Lower "GPU Weight" solves 99% problems!)](https://github.com/lllyasviel/stable-diffusion-webui-forge/discussions/1181)
 
-# API Endpoints
+[How to solve "Connection errored out" / "Press anykey to continue ..." / etc](https://github.com/lllyasviel/stable-diffusion-webui-forge/discussions/1474)
 
-The API provides the following main endpoints:
+[(Save Flux BitsandBytes UNet/Checkpoint)](https://github.com/lllyasviel/stable-diffusion-webui-forge/discussions/1224#discussioncomment-10384104)
 
-- `POST /sdapi/v1/txt2img` - Text to Image generation
-- `POST /sdapi/v1/img2img` - Image to Image generation
-- `GET /sdapi/v1/models` - List available models
-- `POST /sdapi/v1/options` - Set configuration options
-- `GET /sdapi/v1/options` - Get current options
+[LayerDiffuse Transparent Image Editing](https://github.com/lllyasviel/stable-diffusion-webui-forge/discussions/854)
 
-Full API documentation is available at `/docs` when the server is running.
+[Tell us what is missing in ControlNet Integrated](https://github.com/lllyasviel/stable-diffusion-webui-forge/discussions/932)
 
-## Features
+[(Policy) Soft Advertisement Removal Policy](https://github.com/lllyasviel/stable-diffusion-webui-forge/discussions/1286)
 
-- **High Performance**: Optimized inference with advanced memory management
-- **Flux Support**: Full support for Flux models including BNB NF4 and GGUF quantization
-- **Extension System**: Compatible with Forge extensions for additional functionality
-- **ControlNet**: Integrated ControlNet support
-- **LoRA**: Advanced LoRA handling with performance optimizations
+(Flux BNB NF4 / GGUF Q8_0/Q5_0/Q5_1/Q4_0/Q4_1 are all natively supported with GPU weight slider and Quene/Async Swap toggle and swap location toggle. All Flux BNB NF4 / GGUF Q8_0/Q5_0/Q4_0 have LoRA support.)
 
-# Installation
+# Installing Forge
 
-## Prerequisites
-- Python 3.10+
-- Git
-- CUDA-compatible GPU (recommended)
+**Just use this one-click installation package (with git and python included).**
 
-## Install from Source
+[>>> Click Here to Download One-Click Package (CUDA 12.1 + Pytorch 2.3.1) <<<](https://github.com/lllyasviel/stable-diffusion-webui-forge/releases/download/latest/webui_forge_cu121_torch231.7z)
 
-```bash
-git clone https://github.com/realwumbl3/stable-diffusion-viteui-forge.git
-cd stable-diffusion-forge-api
-pip install -r requirements_versions.txt
-```
+Some other CUDA/Torch Versions:
 
-## Starting the API Server
+[Forge with CUDA 12.1 + Pytorch 2.3.1](https://github.com/lllyasviel/stable-diffusion-webui-forge/releases/download/latest/webui_forge_cu121_torch231.7z) <- **Recommended**
 
-```bash
-python webui.py --port 7861
-```
+[Forge with CUDA 12.4 + Pytorch 2.4](https://github.com/lllyasviel/stable-diffusion-webui-forge/releases/download/latest/webui_forge_cu124_torch24.7z) <- **Fastest**, but MSVC may be broken, xformers may not work
 
-The API will be available at `http://localhost:7861` with documentation at `http://localhost:7861/docs`.
+[Forge with CUDA 12.1 + Pytorch 2.1](https://github.com/lllyasviel/stable-diffusion-webui-forge/releases/download/latest/webui_forge_cu121_torch21.7z) <- the previously used old environments
 
 After you download, you uncompress, use `update.bat` to update, and use `run.bat` to run.
 

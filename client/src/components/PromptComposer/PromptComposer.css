@@ -26,8 +26,8 @@
   background: var(--studio-panel);
   border-radius: 4px;
   padding: 0.25em;
-  grid-template-areas: "Header" "NodeField" "EditorFooter";
-  grid-template-rows: max-content 1fr max-content;
+  grid-auto-flow: row;
+  grid-template-rows: max-content 1fr;
   width: 100%;
   min-width: min(160px, 100%);
   min-height: 300px;
@@ -57,7 +57,6 @@
 
 /* Header */
 .better-prompt .header {
-  grid-area: Header;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -97,21 +96,14 @@
   gap: 2px;
 }
 
-.fit-height {
-  writing-mode: vertical-rl;
-  height: 0.75rem;
-  font-size: 0.6em;
-  text-align: center;
-}
-
 /* Main Editor */
 .main-editor {
-  grid-area: NodeField;
   min-height: 60px;
   border-radius: 2px;
   background: var(--studio-bg);
   overflow-y: auto;
   padding-bottom: 30px;
+  padding-top: 20px;
 }
 
 /* Node Field */
@@ -227,13 +219,14 @@
 }
 
 .floating-buttons {
+  --outset: 18px;
   position: absolute;
   right: 0px;
-  top: 0px;
+  top: calc(var(--outset) * -1);
   background: var(--studio-panel);
   border: 1px solid var(--studio-border);
   border-radius: 2px;
-  padding: 1px;
+  padding: 0 1px;
   z-index: 10;
   box-shadow: 0 1px 6px rgba(0, 0, 0, 0.3);
   width: max-content;
@@ -246,7 +239,7 @@
 
 .floating-buttons.bottom {
   top: auto;
-  bottom: -20px;
+  bottom: calc(var(--outset) * -1);
 }
 
 .floating-buttons label {
@@ -255,7 +248,7 @@
 }
 
 .floating-buttons .button {
-  font-size: 10px;
+  font-size: 8px;
   padding: 1px 2px;
 }
 
@@ -322,6 +315,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 2px;
+  padding-right: 130px;
 }
 
 .tag {
@@ -387,7 +381,7 @@
 }
 
 .tag.lora {
-  border-left: 2px solid var(--studio-warning);
+  background: #751d49;
 }
 
 /* Add Tag Button */
@@ -493,11 +487,11 @@
 
 /* Editor Footer */
 .editor-footer {
-  grid-area: EditorFooter;
   display: flex;
   padding: 0 0.25em;
   gap: 3px;
   justify-content: space-between;
+  height: max-content;
 }
 
 .editor-footer .left-side {
@@ -549,6 +543,7 @@
   cursor: pointer;
   font-size: 1.1em;
   transition: all 0.15s;
+  height: max-content;
 }
 
 .compose:hover {
@@ -573,6 +568,7 @@
 }
 
 /* JSON Import Dialog */
+
 .json-import-overlay {
   position: fixed;
   top: 0;
@@ -629,6 +625,7 @@
 }
 
 /* Responsive adjustments */
+
 @media (max-width: 768px) {
   .better-prompt {
     font-size: 11px;
@@ -647,4 +644,61 @@
     flex-direction: row;
     justify-content: space-between;
   }
+}
+
+/* Composer Container */
+
+.composer-container .better-prompt-container {
+  background: transparent;
+  border: none;
+}
+
+.composer-container .better-prompt {
+  background: var(--studio-surface);
+  border-radius: 6px;
+  box-shadow: none;
+}
+
+.composer-container .header {
+  background: var(--studio-panel);
+}
+
+.composer-container .better-prompt-title {
+  color: var(--studio-text);
+}
+
+.composer-container .button {
+  background: var(--studio-surface);
+  color: var(--studio-text-secondary);
+  border: 1px solid var(--studio-border);
+}
+
+.composer-container .button:hover {
+  background: var(--studio-panel-hover);
+  color: var(--studio-text);
+}
+
+.composer-container .main-editor {
+  background: var(--studio-bg);
+}
+
+.composer-container .node {
+  background: var(--studio-panel);
+}
+
+.composer-container .node:hover {
+  border-color: var(--studio-accent);
+}
+
+.composer-container textarea,
+.composer-container input {
+  background: var(--studio-bg);
+  color: var(--studio-text);
+  border-color: var(--studio-border);
+}
+
+.composer-container textarea:focus,
+.composer-container input:focus {
+  border-color: var(--studio-accent);
+  outline: none;
 }

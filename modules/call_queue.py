@@ -38,13 +38,14 @@ def wrap_gradio_gpu_call(func, extra_outputs=None):
 
             # Broadcast task started
             if id_task:
-                asyncio.create_task(progress.websocket_manager.broadcast_task_progress(id_task, {
+                progress.websocket_manager.broadcast_task_progress_sync(id_task, {
                     "active": True,
                     "queued": False,
                     "completed": False,
                     "progress": 0,
-                    "textinfo": "Starting task..."
-                }))
+                    "textinfo": "Starting task...",
+                    "timestamp": time.time()
+                })
 
             try:
                 res = func(*args, **kwargs)
@@ -52,24 +53,26 @@ def wrap_gradio_gpu_call(func, extra_outputs=None):
 
                 # Broadcast task completed successfully
                 if id_task:
-                    asyncio.create_task(progress.websocket_manager.broadcast_task_progress(id_task, {
+                    progress.websocket_manager.broadcast_task_progress_sync(id_task, {
                         "active": False,
                         "queued": False,
                         "completed": True,
                         "progress": 1,
-                        "textinfo": "Task completed successfully"
-                    }))
+                        "textinfo": "Task completed successfully",
+                        "timestamp": time.time()
+                    })
 
             except Exception as e:
                 # Broadcast task failed
                 if id_task:
-                    asyncio.create_task(progress.websocket_manager.broadcast_task_progress(id_task, {
+                    progress.websocket_manager.broadcast_task_progress_sync(id_task, {
                         "active": False,
                         "queued": False,
                         "completed": True,
+                        "timestamp": time.time(),
                         "progress": 0,
                         "textinfo": f"Task failed: {str(e)}"
-                    }))
+                    })
                 raise
             finally:
                 progress.finish_task(id_task)

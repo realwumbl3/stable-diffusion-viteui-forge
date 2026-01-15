@@ -5,6 +5,7 @@ import type { PromptComposerProps, PromptNode, GroupNode, TextNode } from "./typ
 import { composePromptsFromNodes, generateId, removeNode, insertNode, findNodeById } from "./utils/promptUtils";
 import NodeField from "./components/NodeField";
 import ClearPromptButton from "./components/ClearPromptButton";
+import { usePromptComposerStore } from "./store";
 
 function PromptComposer({
     className,
@@ -13,7 +14,7 @@ function PromptComposer({
     onNodesChange,
     initialData = [],
 }: PromptComposerProps) {
-    const [nodes, setNodes] = useState<PromptNode[]>(initialData);
+    const { nodes, setNodes } = usePromptComposerStore(initialData);
     // Simple drag state like vanilla JS
     const dragStateRef = useRef<{
         lastDragged: HTMLElement | null;
@@ -299,30 +300,10 @@ function PromptComposer({
         <div className={cn("prompt-composer", className)}>
             <div className="better-prompt-container">
                 <div className="better-prompt">
-                    {/* Header */}
-
-                    {/* Main Editor */}
-                    <div
-                        className="main-editor"
-                        ref={editorRef}
-                        onDragStart={handleDragStart}
-                        onDragEnter={handleDragEnter}
-                        onDragOver={handleDragOver}
-                        onDragEnd={handleDragEnd}
-                    >
-                        <NodeField
-                            nodes={nodes}
-                            onChange={handleNodesChange}
-                            generateId={generateId}
-                        />
-                    </div>
-
                     {/* Footer */}
                     <div className="editor-footer">
-                        <div className="left-side">
-                            <button className={cn("compose", { modified })} onClick={composePrompt}>
-                                COMPOSE
-                            </button>
+                        <div className="left-side"></div>
+                        <div className="right-side">
                             <div className="column">
                                 <div className="row manage">
                                     <ClearPromptButton onClear={clearNodes} />
@@ -337,8 +318,21 @@ function PromptComposer({
                                     </button>
                                 </div>
                             </div>
+                            <button className={cn("compose", { modified })} onClick={composePrompt}>
+                                COMPOSE
+                            </button>
                         </div>
-                        <div className="right-side"></div>
+                    </div>
+                    {/* Main Editor */}
+                    <div
+                        className="main-editor"
+                        ref={editorRef}
+                        onDragStart={handleDragStart}
+                        onDragEnter={handleDragEnter}
+                        onDragOver={handleDragOver}
+                        onDragEnd={handleDragEnd}
+                    >
+                        <NodeField nodes={nodes} onChange={handleNodesChange} generateId={generateId} />
                     </div>
                 </div>
             </div>

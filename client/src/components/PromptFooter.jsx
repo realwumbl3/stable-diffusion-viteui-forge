@@ -1,85 +1,15 @@
 import { useState } from "react";
 import { Type, Edit, Wrench, ChevronDown, ChevronUp } from "lucide-react";
 import PromptComposer from "./PromptComposer";
-import { useComposerStore } from "../stores/composerStore";
-
-// Add styles for the composer in the footer
-const composerStyles = `
-
-  .composer-container .better-prompt-container {
-    background: transparent;
-    border: none;
-  }
-
-  .composer-container .better-prompt {
-    background: var(--studio-surface);
-    border-radius: 6px;
-    box-shadow: none;
-  }
-
-  .composer-container .header {
-    background: var(--studio-panel);
-  }
-
-  .composer-container .better-prompt-title {
-    color: var(--studio-text);
-  }
-
-  .composer-container .button {
-    background: var(--studio-surface);
-    color: var(--studio-text-secondary);
-    border: 1px solid var(--studio-border);
-  }
-
-  .composer-container .button:hover {
-    background: var(--studio-panel-hover);
-    color: var(--studio-text);
-  }
-
-  .composer-container .main-editor {
-    background: var(--studio-bg);
-  }
-
-  .composer-container .node {
-    background: var(--studio-panel);
-  }
-
-  .composer-container .node:hover {
-    border-color: var(--studio-accent);
-  }
-
-  .composer-container textarea,
-  .composer-container input {
-    background: var(--studio-bg);
-    color: var(--studio-text);
-    border-color: var(--studio-border);
-  }
-
-  .composer-container textarea:focus,
-  .composer-container input:focus {
-    border-color: var(--studio-accent);
-    outline: none;
-  }
-`;
-
-// Inject styles
-if (typeof document !== "undefined") {
-    const style = document.createElement("style");
-    style.textContent = composerStyles;
-    document.head.appendChild(style);
-}
 
 const PromptFooter = ({ prompt, setPrompt, negativePrompt, setNegativePrompt, collapsed = false, onToggle }) => {
     const [mode, setMode] = useState("simple"); // 'simple' or 'composer'
-
-    // Use composer store
-    const { getCurrentProjectData, updateCurrentProjectData } = useComposerStore();
     return (
         <footer className="studio-panel border-t border-studio-border">
             <div className="p-2">
                 {/* Header with toggle */}
                 <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 cursor-pointer" onClick={onToggle}>
                         <Type size={16} className="text-studio-textSecondary" />
                         <h3 className="text-studio-text font-medium text-sm">Prompt Editor</h3>
                     </div>
@@ -87,7 +17,10 @@ const PromptFooter = ({ prompt, setPrompt, negativePrompt, setNegativePrompt, co
                         {!collapsed && (
                             <>
                                 <button
-                                    onClick={() => setMode("simple")}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setMode("simple");
+                                    }}
                                     className={`flex items-center gap-1 px-2 py-1 text-xs rounded transition-colors ${
                                         mode === "simple"
                                             ? "bg-studio-accent text-white"
@@ -99,7 +32,10 @@ const PromptFooter = ({ prompt, setPrompt, negativePrompt, setNegativePrompt, co
                                     Simple
                                 </button>
                                 <button
-                                    onClick={() => setMode("composer")}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setMode("composer");
+                                    }}
                                     className={`flex items-center gap-1 px-2 py-1 text-xs rounded transition-colors ${
                                         mode === "composer"
                                             ? "bg-studio-accent text-white"
@@ -113,7 +49,10 @@ const PromptFooter = ({ prompt, setPrompt, negativePrompt, setNegativePrompt, co
                             </>
                         )}
                         <button
-                            onClick={onToggle}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onToggle();
+                            }}
                             className="text-studio-textSecondary hover:text-studio-text transition-colors"
                         >
                             {collapsed ? <ChevronDown size={12} /> : <ChevronUp size={12} />}
@@ -150,16 +89,7 @@ const PromptFooter = ({ prompt, setPrompt, negativePrompt, setNegativePrompt, co
                             </>
                         ) : (
                             <div className="composer-container">
-                                <PromptComposer
-                                    onPromptChange={setPrompt}
-                                    onNegativePromptChange={setNegativePrompt}
-                                    initialData={getCurrentProjectData().positive.concat(getCurrentProjectData().negative)}
-                                    onNodesChange={(nodes) => {
-                                        // For now, store all nodes in positive - this can be refined later
-                                        updateCurrentProjectData('positive', nodes)
-                                        updateCurrentProjectData('negative', [])
-                                    }}
-                                />
+                                <PromptComposer onPromptChange={setPrompt} onNegativePromptChange={setNegativePrompt} />
                             </div>
                         )}
                     </div>

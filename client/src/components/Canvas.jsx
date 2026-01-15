@@ -16,6 +16,8 @@ const Canvas = ({
   livePreview,
   loading,
   progress,
+  generationWidth,
+  generationHeight,
   prompt,
   setPrompt,
   negativePrompt,
@@ -27,6 +29,51 @@ const Canvas = ({
   const [footerCollapsed, setFooterCollapsed] = useState(false)
   const canvasRef = useRef(null)
   const imageRef = useRef(null)
+
+  const getDisplayDimensions = () => {
+    if (!imageRef.current) {
+      return { width: 1, height: 1 }
+    }
+
+    if (livePreview && generationWidth && generationHeight) {
+      return { width: generationWidth, height: generationHeight }
+    }
+
+    return {
+      width: imageRef.current.naturalWidth || 1,
+      height: imageRef.current.naturalHeight || 1
+    }
+  }
+
+  const calculateFitToScreenScale = () => {
+    if (!canvasRef.current || !imageRef.current) return 1
+
+    const container = canvasRef.current.getBoundingClientRect()
+    const { width: imageWidth, height: imageHeight } = getDisplayDimensions()
+
+    // Get available space (accounting for padding)
+    const availableWidth = container.width - 32 // 32px padding on each side
+    const availableHeight = container.height - 32 // 32px padding on each side
+
+    // Calculate scale to fit the longest side
+    const scaleX = availableWidth / imageWidth
+    const scaleY = availableHeight / imageHeight
+    const scale = Math.min(scaleX, scaleY)
+
+    return scale
+  }
+
+  // Auto-fit to screen when image changes
+  useEffect(() => {
+    if ((currentImage || livePreview) && fitToScreen) {
+      // Small delay to ensure image is loaded
+      const timer = setTimeout(() => {
+        const scale = calculateFitToScreenScale()
+        setZoom(scale)
+      }, 100)
+      return () => clearTimeout(timer)
+    }
+  }, [currentImage, livePreview, generationWidth, generationHeight, fitToScreen])
 
   const handleZoomIn = () => {
     setZoom(prev => Math.min(prev * 1.2, 5))
@@ -44,8 +91,9 @@ const Canvas = ({
   }
 
   const handleFitToScreen = () => {
+    const scale = calculateFitToScreenScale()
+    setZoom(scale)
     setFitToScreen(true)
-    setZoom(1)
   }
 
   return (
@@ -137,7 +185,7 @@ const Canvas = ({
             <div
               className="relative"
               style={{
-                transform: fitToScreen ? 'scale(1)' : `scale(${zoom})`,
+                transform: `scale(${zoom})`,
                 transformOrigin: 'center',
                 transition: fitToScreen ? 'none' : 'transform 0.2s ease-out'
               }}
@@ -158,14 +206,16 @@ const Canvas = ({
 
               {/* Main Image */}
               <img
+                key={livePreview ? 'live-preview' : 'current-image'}
                 ref={imageRef}
                 src={livePreview || currentImage}
                 alt="Generated"
                 className="max-w-none shadow-studio-lg rounded-lg"
-                style={{
-                  maxWidth: fitToScreen ? '100%' : 'none',
-                  maxHeight: fitToScreen ? '100%' : 'none'
-                }}
+                style={
+                  livePreview && generationWidth && generationHeight
+                    ? { width: `${generationWidth}px`, height: `${generationHeight}px` }
+                    : undefined
+                }
                 draggable={false}
               />
 

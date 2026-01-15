@@ -10,6 +10,12 @@ export class ProgressWebSocketManager {
   }
 
   connect(taskId = null) {
+    // If no taskId, disconnect
+    if (!taskId) {
+      this.disconnect()
+      return
+    }
+
     // If already connected with the same taskId, don't reconnect
     if (this.ws && this.ws.readyState === WebSocket.OPEN && this.currentTaskId === taskId) {
       return
@@ -27,8 +33,7 @@ export class ProgressWebSocketManager {
 
     this.currentTaskId = taskId
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-    const taskParam = taskId ? `/${taskId}` : ''
-    const wsUrl = `${protocol}//${window.location.host}/internal/progress-ws${taskParam}`
+    const wsUrl = `${protocol}//${window.location.host}/internal/progress-ws/${taskId}`
 
     try {
       this.ws = new WebSocket(wsUrl)
@@ -116,13 +121,22 @@ export const useWebSocketProgress = (taskId = null) => {
 
   // Handle connection and ping interval
   useEffect(() => {
-    // Connect with current taskId
-    progressManager.connect(taskId)
+    // Only connect when we have a taskId
+    if (taskId) {
+      progressManager.connect(taskId)
 
-    // Start ping interval to keep connection alive
-    pingIntervalRef.current = setInterval(() => {
-      progressManager.ping()
-    }, 30000) // Every 30 seconds
+      // Start ping interval to keep connection alive
+      pingIntervalRef.current = setInterval(() => {
+        progressManager.ping()
+      }, 30000) // Every 30 seconds
+    } else {
+      // Disconnect if no taskId
+      progressManager.disconnect()
+      if (pingIntervalRef.current) {
+        clearInterval(pingIntervalRef.current)
+        pingIntervalRef.current = null
+      }
+    }
 
     return () => {
       // Cleanup ping interval
@@ -138,6 +152,13 @@ export const useWebSocketProgress = (taskId = null) => {
   // Handle WebSocket messages
   useEffect(() => {
     const unsubscribe = progressManager.subscribe((data) => {
+      // Debug logging with timestamp
+      if (data.timestamp) {
+        const now = Date.now() / 1000
+        const latency = now - data.timestamp
+        console.log(`Progress update: ${data.progress?.toFixed(3) || 'N/A'} (${latency.toFixed(3)}s latency)`, data)
+      }
+
       // Handle connection status
       if (data.type === 'connected') {
         setIsConnected(true)
@@ -169,9 +190,14 @@ export const useWebSocketProgress = (taskId = null) => {
         // Valid progress update
         setProgress(data)
 
-        // Update live preview if available
-        if (data.live_preview) {
-          setLivePreview(data.live_preview)
+        // Update live preview - handle both presence and absence
+        if (data.live_preview !== undefined) {
+          if (data.live_preview) {
+            setLivePreview(data.live_preview)
+          } else {
+            // Clear live preview when it's explicitly set to null/empty
+            setLivePreview(null)
+          }
         }
       }
       // If it's a progress message but doesn't have valid progress data yet,
@@ -184,6 +210,11 @@ export const useWebSocketProgress = (taskId = null) => {
           // Preserve progress if it was valid before
           progress: typeof data.progress === 'number' ? data.progress : (prev?.progress ?? 0)
         }))
+
+        // Also check for live preview in partial updates
+        if (data.live_preview) {
+          setLivePreview(data.live_preview)
+        }
       }
     })
 

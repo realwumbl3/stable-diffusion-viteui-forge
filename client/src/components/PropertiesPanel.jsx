@@ -37,17 +37,75 @@ const PropertiesPanel = ({
   denoisingStrength,
   setDenoisingStrength,
   inputImage,
-  onImageUpload
+  onImageUpload,
+  clipSkip,
+  setClipSkip,
+  saveImages,
+  setSaveImages
 }) => {
-  const [activeSection, setActiveSection] = useState('mode')
+  const [activeSection, setActiveSection] = useState('model')
+  const [selectedAspectRatio, setSelectedAspectRatio] = useState('1:1')
 
   const sections = [
-    { id: 'mode', icon: Wand2, label: 'Mode', description: 'Generation type' },
     { id: 'model', icon: Settings, label: 'Model', description: 'AI model settings' },
-    { id: 'generation', icon: Wand2, label: 'Generation', description: 'Parameters' },
-    { id: 'dimensions', icon: ImageIcon, label: 'Dimensions', description: 'Size & format' },
-    { id: 'advanced', icon: Sliders, label: 'Advanced', description: 'Fine tuning' },
+    { id: 'generation', icon: Sliders, label: 'Generation, parameters', description: 'All generation settings' },
   ]
+
+  // Common aspect ratios
+  const aspectRatios = [
+    { ratio: '1:1', name: 'Square', width: 1, height: 1 },
+    { ratio: '4:3', name: 'Standard', width: 4, height: 3 },
+    { ratio: '3:2', name: 'Classic', width: 3, height: 2 },
+    { ratio: '16:9', name: 'Widescreen', width: 16, height: 9 },
+    { ratio: '21:9', name: 'Ultrawide', width: 21, height: 9 },
+    { ratio: '2:3', name: 'Portrait', width: 2, height: 3 },
+    { ratio: '3:4', name: 'Tall Portrait', width: 3, height: 4 },
+    { ratio: '9:16', name: 'Mobile', width: 9, height: 16 },
+  ]
+
+  // Generate resolutions based on aspect ratio from 512 to 2048
+  const getResolutionsForAspectRatio = (aspectRatio) => {
+    const { width: wRatio, height: hRatio } = aspectRatio
+    const gcd = (a, b) => b === 0 ? a : gcd(b, a % b)
+    const divisor = gcd(wRatio, hRatio)
+    const normalizedWidth = wRatio / divisor
+    const normalizedHeight = hRatio / divisor
+
+    const resolutions = []
+    const baseSizes = [512, 768, 1024, 1280, 1536, 1792, 2048]
+
+    baseSizes.forEach(base => {
+      // For landscape ratios (width > height), use base for width
+      // For portrait ratios (height > width), use base for height
+      let w, h
+      if (normalizedWidth >= normalizedHeight) {
+        w = base
+        h = Math.round((base * normalizedHeight) / normalizedWidth)
+        // Ensure height is divisible by 64 (common SD requirement)
+        h = Math.round(h / 64) * 64
+        if (h < 64) h = 64
+      } else {
+        h = base
+        w = Math.round((base * normalizedWidth) / normalizedHeight)
+        // Ensure width is divisible by 64
+        w = Math.round(w / 64) * 64
+        if (w < 64) w = 64
+      }
+
+      // Only add if within 512-2048 range and not duplicate
+      if (w >= 512 && w <= 2048 && h >= 512 && h <= 2048) {
+        const exists = resolutions.some(r => r.w === w && r.h === h)
+        if (!exists) {
+          resolutions.push({ w, h })
+        }
+      }
+    })
+
+    return resolutions.slice(0, 6) // Limit to 6 resolutions
+  }
+
+  const currentAspectRatio = aspectRatios.find(ar => ar.ratio === selectedAspectRatio)
+  const availableResolutions = currentAspectRatio ? getResolutionsForAspectRatio(currentAspectRatio) : []
 
   return (
     <aside className={cn(
@@ -71,7 +129,7 @@ const PropertiesPanel = ({
               className={cn(
                 "w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200 hover:scale-110",
                 activeSection === section.id
-                  ? "bg-studio-accent text-studio-bg shadow-lg"
+                  ? "bg-studio-accent text-black shadow-lg font-semibold"
                   : "bg-studio-panel text-studio-textSecondary hover:text-studio-text hover:bg-studio-surface"
               )}
               title={section.label}
@@ -116,9 +174,42 @@ const PropertiesPanel = ({
           {/* Properties Content */}
           <div className="studio-sidebar-content">
             <div className="p-4 space-y-6">
-            {/* Mode Section */}
-            {activeSection === 'mode' && (
+            {/* Model Section */}
+            {activeSection === 'model' && (
               <div className="space-y-4">
+                <div>
+                  <label className="studio-label">Model</label>
+                  <select
+                    value={selectedModel}
+                    onChange={(e) => onModelChange(e.target.value)}
+                    className="studio-select w-full"
+                  >
+                    {models.map(model => (
+                      <option key={model.title} value={model.title}>
+                        {model.model_name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="studio-label">Clip Skip</label>
+                  <input
+                    type="number"
+                    value={clipSkip}
+                    onChange={(e) => setClipSkip(parseInt(e.target.value))}
+                    min="1"
+                    max="12"
+                    className="studio-input w-full"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Generation, parameters Section */}
+            {activeSection === 'generation' && (
+              <div className="space-y-6">
+                {/* Generation Mode */}
                 <div>
                   <label className="studio-label">Generation Mode</label>
                   <div className="grid grid-cols-2 gap-2">
@@ -126,7 +217,7 @@ const PropertiesPanel = ({
                       onClick={() => setGenerationMode('txt2img')}
                       className={cn(
                         "studio-btn-secondary py-3 px-4 text-sm",
-                        generationMode === 'txt2img' && "bg-studio-accent text-studio-bg border-studio-accent"
+                        generationMode === 'txt2img' && "bg-studio-accent text-black border-studio-accent shadow-lg font-semibold"
                       )}
                     >
                       <Type size={16} className="mx-auto mb-1" />
@@ -136,7 +227,7 @@ const PropertiesPanel = ({
                       onClick={() => setGenerationMode('img2img')}
                       className={cn(
                         "studio-btn-secondary py-3 px-4 text-sm",
-                        generationMode === 'img2img' && "bg-studio-accent text-studio-bg border-studio-accent"
+                        generationMode === 'img2img' && "bg-studio-accent text-black border-studio-accent shadow-lg font-semibold"
                       )}
                     >
                       <ImageIcon size={16} className="mx-auto mb-1" />
@@ -203,28 +294,8 @@ const PropertiesPanel = ({
                     </div>
                   </>
                 )}
-              </div>
-            )}
 
-
-            {/* Model Section */}
-            {activeSection === 'model' && (
-              <div className="space-y-4">
-                <div>
-                  <label className="studio-label">Model</label>
-                  <select
-                    value={selectedModel}
-                    onChange={(e) => onModelChange(e.target.value)}
-                    className="studio-select w-full"
-                  >
-                    {models.map(model => (
-                      <option key={model.title} value={model.title}>
-                        {model.model_name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
+                {/* Sampler */}
                 <div>
                   <label className="studio-label">Sampler</label>
                   <select
@@ -239,12 +310,8 @@ const PropertiesPanel = ({
                     ))}
                   </select>
                 </div>
-              </div>
-            )}
 
-            {/* Generation Section */}
-            {activeSection === 'generation' && (
-              <div className="space-y-4">
+                {/* Generation Parameters */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="studio-label">Steps</label>
@@ -283,61 +350,105 @@ const PropertiesPanel = ({
                     className="studio-input w-full"
                   />
                 </div>
-              </div>
-            )}
 
-            {/* Dimensions Section */}
-            {activeSection === 'dimensions' && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="studio-label">Width</label>
+                {/* Save to Output Folder */}
+                <div>
+                  <label className="studio-label">Save Options</label>
+                  <div className="flex items-center space-x-2">
                     <input
-                      type="number"
-                      value={width}
-                      onChange={(e) => setWidth(parseInt(e.target.value))}
-                      min="64"
-                      max="2048"
-                      step="64"
-                      className="studio-input w-full"
+                      type="checkbox"
+                      id="save-images-toggle"
+                      checked={saveImages}
+                      onChange={(e) => setSaveImages(e.target.checked)}
+                      className="w-4 h-4 text-studio-accent bg-studio-bg border-studio-border rounded focus:ring-studio-accent focus:ring-2"
                     />
+                    <label htmlFor="save-images-toggle" className="text-sm text-studio-text cursor-pointer">
+                      Save to output folder
+                    </label>
                   </div>
+                  <p className="text-xs text-studio-text-muted mt-1">
+                    When enabled, generated images will be saved to the server's output directory
+                  </p>
+                </div>
 
-                  <div>
-                    <label className="studio-label">Height</label>
-                    <input
-                      type="number"
-                      value={height}
-                      onChange={(e) => setHeight(parseInt(e.target.value))}
-                      min="64"
-                      max="2048"
-                      step="64"
-                      className="studio-input w-full"
-                    />
+                {/* Dimensions */}
+                <div>
+                  <label className="studio-label">Dimensions</label>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="studio-label text-xs">Width</label>
+                      <input
+                        type="number"
+                        value={width}
+                        onChange={(e) => setWidth(parseInt(e.target.value))}
+                        min="512"
+                        max="2048"
+                        step="64"
+                        className="studio-input w-full"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="studio-label text-xs">Height</label>
+                      <input
+                        type="number"
+                        value={height}
+                        onChange={(e) => setHeight(parseInt(e.target.value))}
+                        min="512"
+                        max="2048"
+                        step="64"
+                        className="studio-input w-full"
+                      />
+                    </div>
                   </div>
                 </div>
 
-                {/* Preset Sizes */}
+                {/* Aspect Ratio Picker */}
                 <div>
-                  <label className="studio-label">Quick Presets</label>
+                  <label className="studio-label">Aspect Ratio</label>
                   <div className="grid grid-cols-2 gap-2">
-                    {[
-                      { name: 'Square', w: 512, h: 512 },
-                      { name: 'Portrait', w: 512, h: 768 },
-                      { name: 'Landscape', w: 768, h: 512 },
-                      { name: 'HD', w: 1024, h: 1024 }
-                    ].map((preset) => (
+                    {aspectRatios.map((aspect) => (
                       <button
-                        key={preset.name}
-                        onClick={() => {
-                          setWidth(preset.w)
-                          setHeight(preset.h)
-                        }}
-                        className="studio-btn-secondary text-xs py-2 px-3"
+                        key={aspect.ratio}
+                        onClick={() => setSelectedAspectRatio(aspect.ratio)}
+                        className={cn(
+                          "studio-btn-secondary text-xs py-2 px-3 transition-all duration-200",
+                          selectedAspectRatio === aspect.ratio
+                            ? "bg-studio-accent text-black border-studio-accent shadow-lg font-semibold"
+                            : "hover:bg-studio-panelHover"
+                        )}
                       >
-                        {preset.name}
+                        {aspect.name}
                         <br />
-                        <span className="text-studio-textSecondary">{preset.w}×{preset.h}</span>
+                        <span className="text-studio-textSecondary">{aspect.ratio}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Dynamic Resolutions */}
+                <div>
+                  <label className="studio-label">Resolutions ({selectedAspectRatio})</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {availableResolutions.map((resolution, index) => (
+                      <button
+                        key={`${resolution.w}x${resolution.h}`}
+                        onClick={() => {
+                          setWidth(resolution.w)
+                          setHeight(resolution.h)
+                        }}
+                        className={cn(
+                          "studio-btn-secondary text-xs py-2 px-3 transition-all duration-200",
+                          width === resolution.w && height === resolution.h
+                            ? "bg-studio-accent text-black border-studio-accent shadow-lg font-semibold"
+                            : "hover:bg-studio-panelHover"
+                        )}
+                      >
+                        {resolution.w}×{resolution.h}
+                        <br />
+                        <span className="text-studio-textSecondary">
+                          {((resolution.w * resolution.h) / 1000000).toFixed(1)}MP
+                        </span>
                       </button>
                     ))}
                   </div>
@@ -345,16 +456,6 @@ const PropertiesPanel = ({
               </div>
             )}
 
-            {/* Advanced Section */}
-            {activeSection === 'advanced' && (
-              <div className="space-y-4">
-                <div className="text-center py-8 text-studio-text-muted">
-                  <Sliders size={48} className="mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">Advanced settings</p>
-                  <p className="text-xs">Coming soon</p>
-                </div>
-              </div>
-            )}
             </div>
           </div>
         </div>

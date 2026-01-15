@@ -74,6 +74,11 @@ class StableDiffusionAPI {
     return this.request('/sdapi/v1/sd-models');
   }
 
+  // Get current options
+  async getOptions() {
+    return this.request('/sdapi/v1/options');
+  }
+
   // Set current model
   async setModel(modelTitle) {
     return this.request('/sdapi/v1/options', {

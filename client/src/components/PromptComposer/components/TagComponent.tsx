@@ -62,7 +62,7 @@ const TagComponent = React.forwardRef<HTMLInputElement, TagComponentProps>(({
     }
   }
 
-  const isLora = tag.value.startsWith('<') && tag.value.endsWith('>')
+  const isLora = tag.value.trim().startsWith('<') && tag.value.trim().endsWith('>')
   const weightClass = tag.weight === 1 ? 'neutral' : tag.weight > 1 ? 'positive' : 'negative'
 
   return (

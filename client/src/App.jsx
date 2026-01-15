@@ -3,7 +3,6 @@ import api from './api.js'
 import { cn } from './lib/utils.js'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts.js'
 import { useWebSocketProgress } from './hooks/useWebSocketProgress.js'
-import { ComposerProvider } from './stores/composerStore'
 import Header from './components/Header.jsx'
 import Sidebar from './components/Sidebar.jsx'
 import Canvas from './components/Canvas.jsx'
@@ -26,6 +25,7 @@ function App() {
   const [samplers, setSamplers] = useState([])
   const [selectedModel, setSelectedModel] = useState('')
   const [selectedSampler, setSelectedSampler] = useState('Euler a')
+  const [clipSkip, setClipSkip] = useState(1)
 
   // Generation parameters
   const [generationMode, setGenerationMode] = useState('txt2img')
@@ -43,6 +43,9 @@ function App() {
   const [denoisingStrength, setDenoisingStrength] = useState(0.75)
   const [inputImage, setInputImage] = useState(null)
 
+  // Save settings
+  const [saveImages, setSaveImages] = useState(false)
+
   // UI state
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [propertiesCollapsed, setPropertiesCollapsed] = useState(false)
@@ -55,16 +58,35 @@ function App() {
 
   const loadInitialData = async () => {
     try {
-      const [modelsData, samplersData] = await Promise.all([
+      const [modelsData, samplersData, optionsData] = await Promise.all([
         api.getModels(),
-        api.getSamplers()
+        api.getSamplers(),
+        api.getOptions()
       ])
 
       setModels(modelsData)
       setSamplers(samplersData)
 
-      // Set default model if available
-      if (modelsData.length > 0) {
+      // Set currently loaded model
+      const currentModelFilename = optionsData.sd_model_checkpoint
+      if (currentModelFilename) {
+        // Find the model in the list that matches the current filename
+        const currentModel = modelsData.find(model => model.filename === currentModelFilename)
+        if (currentModel) {
+          setSelectedModel(currentModel.title)
+        } else {
+          // If we can't find the exact match, try to find by basename
+          const basename = currentModelFilename.split(/[/\\]/).pop()
+          const fallbackModel = modelsData.find(model => model.filename.includes(basename))
+          if (fallbackModel) {
+            setSelectedModel(fallbackModel.title)
+          } else if (modelsData.length > 0) {
+            // Last resort: use first model
+            setSelectedModel(modelsData[0].title)
+          }
+        }
+      } else if (modelsData.length > 0) {
+        // Fallback to first model if no current model is set
         setSelectedModel(modelsData[0].title)
       }
     } catch (error) {
@@ -82,9 +104,14 @@ function App() {
     setLoading(true)
     setCurrentTaskId(null) // Clear previous task ID
 
-    // Generate task ID first and establish WebSocket connection
+    // Generate task ID first
     const taskId = `task(${generationMode}-${Date.now()}-${Math.random().toString(36).substr(2, 9)})`
-    setCurrentTaskId(taskId) // Connect WebSocket before API call
+
+    // Establish WebSocket connection first and wait for it to be ready
+    setCurrentTaskId(taskId)
+
+    // Wait a bit for WebSocket connection to establish
+    await new Promise(resolve => setTimeout(resolve, 100))
 
     try {
       const baseParams = {
@@ -97,6 +124,8 @@ function App() {
         sampler_name: selectedSampler,
         batch_size: batchSize,
         n_iter: 1,
+        clip_skip: clipSkip,
+        save_images: saveImages,
         force_task_id: taskId, // Use the same task ID
       }
 
@@ -131,7 +160,10 @@ function App() {
   const handleModelChange = async (modelTitle) => {
     setSelectedModel(modelTitle)
     try {
-      await api.setModel(modelTitle)
+      // Find the model filename from the title
+      const model = models.find(m => m.title === modelTitle)
+      const filename = model ? model.filename : modelTitle
+      await api.setModel(filename)
     } catch (error) {
       console.error('Error setting model:', error)
     }
@@ -168,29 +200,6 @@ function App() {
   // Show welcome screen if no images have been generated and user hasn't dismissed it
   if (showWelcome && images.length === 0) {
     return (
-      <ComposerProvider>
-        <div className="h-screen flex flex-col bg-studio-bg">
-          {/* Header Toolbar */}
-          <Header
-            loading={loading}
-            progress={progress}
-            onGenerate={generateImage}
-            canGenerate={!!prompt.trim()}
-            activeTool={activeTool}
-            onToolChange={setActiveTool}
-            generationMode={generationMode}
-            setGenerationMode={setGenerationMode}
-          />
-
-          {/* Welcome Screen */}
-          <Welcome onGetStarted={handleGetStarted} />
-        </div>
-      </ComposerProvider>
-    )
-  }
-
-  return (
-    <ComposerProvider>
       <div className="h-screen flex flex-col bg-studio-bg">
         {/* Header Toolbar */}
         <Header
@@ -201,63 +210,88 @@ function App() {
           activeTool={activeTool}
           onToolChange={setActiveTool}
           generationMode={generationMode}
-          setGenerationMode={handleGenerationModeChange}
+          setGenerationMode={setGenerationMode}
         />
 
-        {/* Main Content Area */}
-        <div className="flex-1 flex overflow-hidden">
-          {/* Left Sidebar */}
-          <Sidebar
-            collapsed={sidebarCollapsed}
-            onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
-            images={images}
-            currentImage={currentImage}
-            onImageSelect={handleImageSelect}
-          />
-
-          {/* Main Canvas Area */}
-          <Canvas
-            currentImage={currentImage}
-            livePreview={livePreview}
-            loading={loading}
-            progress={progress}
-            prompt={prompt}
-            setPrompt={setPrompt}
-            negativePrompt={negativePrompt}
-            setNegativePrompt={setNegativePrompt}
-          />
-
-          {/* Right Properties Panel */}
-          <PropertiesPanel
-            collapsed={propertiesCollapsed}
-            onToggle={() => setPropertiesCollapsed(!propertiesCollapsed)}
-            // Generation settings
-            generationMode={generationMode}
-            setGenerationMode={setGenerationMode}
-            models={models}
-            selectedModel={selectedModel}
-            onModelChange={handleModelChange}
-            samplers={samplers}
-            selectedSampler={selectedSampler}
-            setSelectedSampler={setSelectedSampler}
-            steps={steps}
-            setSteps={setSteps}
-            cfgScale={cfgScale}
-            setCfgScale={setCfgScale}
-            width={width}
-            setWidth={setWidth}
-            height={height}
-            setHeight={setHeight}
-            batchSize={batchSize}
-            setBatchSize={setBatchSize}
-            denoisingStrength={denoisingStrength}
-            setDenoisingStrength={setDenoisingStrength}
-            inputImage={inputImage}
-            onImageUpload={setInputImage}
-          />
-        </div>
+        {/* Welcome Screen */}
+        <Welcome onGetStarted={handleGetStarted} />
       </div>
-    </ComposerProvider>
+    )
+  }
+
+  return (
+    <div className="h-screen flex flex-col bg-studio-bg">
+      {/* Header Toolbar */}
+      <Header
+        loading={loading}
+        progress={progress}
+        onGenerate={generateImage}
+        canGenerate={!!prompt.trim()}
+        activeTool={activeTool}
+        onToolChange={setActiveTool}
+        generationMode={generationMode}
+        setGenerationMode={handleGenerationModeChange}
+      />
+
+      {/* Main Content Area */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Left Sidebar */}
+        <Sidebar
+          collapsed={sidebarCollapsed}
+          onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+          images={images}
+          currentImage={currentImage}
+          onImageSelect={handleImageSelect}
+        />
+
+        {/* Main Canvas Area */}
+        <Canvas
+          currentImage={currentImage}
+          livePreview={livePreview}
+          loading={loading}
+          progress={progress}
+          generationWidth={width}
+          generationHeight={height}
+          prompt={prompt}
+          setPrompt={setPrompt}
+          negativePrompt={negativePrompt}
+          setNegativePrompt={setNegativePrompt}
+        />
+
+        {/* Right Properties Panel */}
+        <PropertiesPanel
+          collapsed={propertiesCollapsed}
+          onToggle={() => setPropertiesCollapsed(!propertiesCollapsed)}
+          // Generation settings
+          generationMode={generationMode}
+          setGenerationMode={setGenerationMode}
+          models={models}
+          selectedModel={selectedModel}
+          onModelChange={handleModelChange}
+          samplers={samplers}
+          selectedSampler={selectedSampler}
+          setSelectedSampler={setSelectedSampler}
+          steps={steps}
+          setSteps={setSteps}
+          cfgScale={cfgScale}
+          setCfgScale={setCfgScale}
+          width={width}
+          setWidth={setWidth}
+          height={height}
+          setHeight={setHeight}
+          batchSize={batchSize}
+          setBatchSize={setBatchSize}
+          denoisingStrength={denoisingStrength}
+          setDenoisingStrength={setDenoisingStrength}
+          inputImage={inputImage}
+          onImageUpload={setInputImage}
+          clipSkip={clipSkip}
+          setClipSkip={setClipSkip}
+          saveImages={saveImages}
+          setSaveImages={setSaveImages}
+        />
+      </div>
+    </div>
   )
 }
 

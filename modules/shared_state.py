@@ -284,22 +284,25 @@ class State:
                 live_preview = None
                 id_live_preview = self.id_live_preview
 
-                # Include live preview if available and enabled
-                if shared.opts.live_previews_enable and self.current_image is not None:
-                    # Encode the current image as base64
-                    buffered = io.BytesIO()
+                # Include live preview if enabled and available
+                if shared.opts.live_previews_enable:
+                    # Avoid generating a new image here to prevent recursive broadcasts
+                    if self.current_image is not None:
+                        # Encode the current image as base64
+                        buffered = io.BytesIO()
 
-                    if shared.opts.live_previews_image_format == "png":
-                        if max(*self.current_image.size) <= 256:
-                            save_kwargs = {"optimize": True}
+                        if shared.opts.live_previews_image_format == "png":
+                            if max(*self.current_image.size) <= 256:
+                                save_kwargs = {"optimize": True}
+                            else:
+                                save_kwargs = {"optimize": False, "compress_level": 1}
                         else:
-                            save_kwargs = {"optimize": False, "compress_level": 1}
-                    else:
-                        save_kwargs = {}
+                            save_kwargs = {}
 
-                    self.current_image.save(buffered, format=shared.opts.live_previews_image_format, **save_kwargs)
-                    base64_image = base64.b64encode(buffered.getvalue()).decode('ascii')
-                    live_preview = f"data:image/{shared.opts.live_previews_image_format};base64,{base64_image}"
+                        self.current_image.save(buffered, format=shared.opts.live_previews_image_format, **save_kwargs)
+                        base64_image = base64.b64encode(buffered.getvalue()).decode('ascii')
+                        live_preview = f"data:image/{shared.opts.live_previews_image_format};base64,{base64_image}"
+                        id_live_preview = self.id_live_preview
 
                 # Calculate progress
                 progress = 0
@@ -329,12 +332,12 @@ class State:
                     "sampling_step": self.sampling_step,
                     "sampling_steps": self.sampling_steps,
                     "job_no": self.job_no,
-                    "job_count": self.job_count
+                    "job_count": self.job_count,
+                    "timestamp": time.time(),
                 }
 
                 # Broadcast in background to avoid blocking generation
-                import asyncio
-                asyncio.create_task(websocket_manager.broadcast_task_progress(current_task, progress_data))
+                websocket_manager.broadcast_task_progress_sync(current_task, progress_data)
 
         except Exception as e:
             # Don't let WebSocket broadcasting errors interrupt generation
