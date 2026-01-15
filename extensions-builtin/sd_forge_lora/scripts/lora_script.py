@@ -12,13 +12,17 @@ from modules import script_callbacks, ui_extra_networks, extra_networks, shared
 
 
 def before_ui():
+    register_extra_networks()
     ui_extra_networks.register_page(ui_extra_networks_lora.ExtraNetworksPageLora())
 
+
+def register_extra_networks():
     networks.extra_network_lora = extra_networks_lora.ExtraNetworkLora()
     extra_networks.register_extra_network(networks.extra_network_lora)
 
 
 script_callbacks.on_before_ui(before_ui)
+script_callbacks.on_app_started(lambda _, __: register_extra_networks())
 script_callbacks.on_infotext_pasted(networks.infotext_pasted)
 
 

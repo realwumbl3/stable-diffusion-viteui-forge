@@ -34,6 +34,8 @@ const PropertiesPanel = ({
   setHeight,
   batchSize,
   setBatchSize,
+  count,
+  setCount,
   denoisingStrength,
   setDenoisingStrength,
   inputImage,
@@ -209,33 +211,6 @@ const PropertiesPanel = ({
             {/* Generation, parameters Section */}
             {activeSection === 'generation' && (
               <div className="space-y-6">
-                {/* Generation Mode */}
-                <div>
-                  <label className="studio-label">Generation Mode</label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      onClick={() => setGenerationMode('txt2img')}
-                      className={cn(
-                        "studio-btn-secondary py-3 px-4 text-sm",
-                        generationMode === 'txt2img' && "bg-studio-accent text-black border-studio-accent shadow-lg font-semibold"
-                      )}
-                    >
-                      <Type size={16} className="mx-auto mb-1" />
-                      Text to Image
-                    </button>
-                    <button
-                      onClick={() => setGenerationMode('img2img')}
-                      className={cn(
-                        "studio-btn-secondary py-3 px-4 text-sm",
-                        generationMode === 'img2img' && "bg-studio-accent text-black border-studio-accent shadow-lg font-semibold"
-                      )}
-                    >
-                      <ImageIcon size={16} className="mx-auto mb-1" />
-                      Image to Image
-                    </button>
-                  </div>
-                </div>
-
                 {generationMode === 'img2img' && (
                   <>
                     <div>
@@ -339,16 +314,31 @@ const PropertiesPanel = ({
                   </div>
                 </div>
 
-                <div>
-                  <label className="studio-label">Batch Size</label>
-                  <input
-                    type="number"
-                    value={batchSize}
-                    onChange={(e) => setBatchSize(parseInt(e.target.value))}
-                    min="1"
-                    max="8"
-                    className="studio-input w-full"
-                  />
+                {/* Batch Controls */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="studio-label">Batch Size</label>
+                    <input
+                      type="number"
+                      value={batchSize}
+                      onChange={(e) => setBatchSize(parseInt(e.target.value))}
+                      min="1"
+                      max="8"
+                      className="studio-input w-full"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="studio-label">Count</label>
+                    <input
+                      type="number"
+                      value={count}
+                      onChange={(e) => setCount(parseInt(e.target.value))}
+                      min="1"
+                      max="50"
+                      className="studio-input w-full"
+                    />
+                  </div>
                 </div>
 
                 {/* Save to Output Folder */}

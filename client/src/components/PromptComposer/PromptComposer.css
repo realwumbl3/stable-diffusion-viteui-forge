@@ -239,7 +239,7 @@
   pointer-events: auto;
 }
 
-.floating-buttons:hover {
+.node:hover .floating-buttons {
   opacity: 1;
 }
 
@@ -360,6 +360,7 @@
   font-size: 11px;
   min-width: 40px;
   max-width: 200px;
+  user-select: text;
 }
 
 .tag input::placeholder {
@@ -447,6 +448,7 @@
   font-family: inherit;
   font-size: 11px;
   min-height: 28px;
+  user-select: text;
 }
 
 .basic-text:focus {
@@ -621,6 +623,7 @@
   font-family: monospace;
   font-size: 11px;
   resize: vertical;
+  user-select: text;
 }
 
 .json-import-textarea:focus {

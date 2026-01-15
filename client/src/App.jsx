@@ -38,6 +38,7 @@ function App() {
   const [width, setWidth] = useState(512)
   const [height, setHeight] = useState(512)
   const [batchSize, setBatchSize] = useState(1)
+  const [count, setCount] = useState(1)
 
   // img2img parameters
   const [denoisingStrength, setDenoisingStrength] = useState(0.75)
@@ -123,7 +124,7 @@ function App() {
         cfg_scale: cfgScale,
         sampler_name: selectedSampler,
         batch_size: batchSize,
-        n_iter: 1,
+        n_iter: count,
         clip_skip: clipSkip,
         save_images: saveImages,
         force_task_id: taskId, // Use the same task ID
@@ -160,10 +161,7 @@ function App() {
   const handleModelChange = async (modelTitle) => {
     setSelectedModel(modelTitle)
     try {
-      // Find the model filename from the title
-      const model = models.find(m => m.title === modelTitle)
-      const filename = model ? model.filename : modelTitle
-      await api.setModel(filename)
+      await api.setModel(modelTitle)
     } catch (error) {
       console.error('Error setting model:', error)
     }
@@ -171,6 +169,7 @@ function App() {
 
   const handleSkip = async () => {
     try {
+      console.log('Skipping generation')
       await api.skip()
       console.log('Generation skipped')
     } catch (error) {
@@ -251,6 +250,8 @@ function App() {
         onToolChange={setActiveTool}
         generationMode={generationMode}
         setGenerationMode={handleGenerationModeChange}
+        onSkip={handleSkip}
+        onInterrupt={handleInterrupt}
       />
 
       {/* Main Content Area */}
@@ -301,6 +302,8 @@ function App() {
           setHeight={setHeight}
           batchSize={batchSize}
           setBatchSize={setBatchSize}
+          count={count}
+          setCount={setCount}
           denoisingStrength={denoisingStrength}
           setDenoisingStrength={setDenoisingStrength}
           inputImage={inputImage}
