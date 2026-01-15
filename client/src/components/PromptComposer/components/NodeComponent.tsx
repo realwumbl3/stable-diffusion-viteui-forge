@@ -93,7 +93,7 @@ function NodeComponent({
       </div>
 
       {showFloatingButtons && (
-        <div className={cn('floating-buttons', { bottom: !cursorInTopHalf })}>
+        <div className={cn('floating-buttons', { bottom: !cursorInTopHalf, visible: showFloatingButtons })}>
           <div>
             <label>add</label>
             <button

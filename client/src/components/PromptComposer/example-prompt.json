@@ -1,0 +1,175 @@
+[
+  {
+    "id": "msb8h94fr",
+    "type": "tags",
+    "name": "Tags Node",
+    "hidden": false,
+    "weight": 1,
+    "value": [
+      {
+        "value": "score 9",
+        "weight": 1
+      },
+      {
+        "value": "score 8 up",
+        "weight": 1
+      },
+      {
+        "value": "score 7 up",
+        "weight": 1
+      },
+      {
+        "value": "score 6 up",
+        "weight": 1
+      },
+      {
+        "value": "score 5 up",
+        "weight": 1
+      },
+      {
+        "value": "",
+        "weight": 1
+      }
+    ]
+  },
+  {
+    "id": "pz6lomf3i",
+    "type": "group",
+    "name": "Group Node",
+    "hidden": false,
+    "weight": 1,
+    "value": [
+      {
+        "id": "asoh6vhg7",
+        "type": "tags",
+        "name": "Tags Node",
+        "hidden": false,
+        "weight": 1,
+        "value": [
+          {
+            "value": "solo",
+            "weight": 1
+          },
+          {
+            "value": "female",
+            "weight": 1
+          },
+          {
+            "value": "filly",
+            "weight": 1
+          },
+          {
+            "value": "cute",
+            "weight": 1
+          },
+          {
+            "value": "adorable",
+            "weight": 1
+          }
+        ]
+      },
+      {
+        "id": "qiy2qwa8m",
+        "type": "tags",
+        "name": "Tags Node",
+        "hidden": false,
+        "weight": 1,
+        "value": [
+          {
+            "value": "silver spoon",
+            "weight": 1
+          },
+          {
+            "value": "earth pony",
+            "weight": 1
+          },
+          {
+            "value": "",
+            "weight": 1
+          }
+        ]
+      },
+      {
+        "id": "myuxn7vqf",
+        "type": "tags",
+        "name": "Tags Node",
+        "hidden": false,
+        "weight": 1,
+        "value": [
+          {
+            "value": "smiling",
+            "weight": 1
+          },
+          {
+            "value": "glasses",
+            "weight": 1
+          },
+          {
+            "value": "looking at you",
+            "weight": 1
+          }
+        ]
+      },
+      {
+        "id": "3la1jvtrd",
+        "type": "tags",
+        "name": "Tags Node",
+        "hidden": false,
+        "weight": 1,
+        "value": [
+          {
+            "value": "wink",
+            "weight": 1
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "244vpjvyz",
+    "type": "tags",
+    "name": "Tags Node",
+    "hidden": false,
+    "weight": 1,
+    "value": [
+      {
+        "value": "white background",
+        "weight": 1
+      },
+      {
+        "value": "simple background",
+        "weight": 1
+      }
+    ]
+  },
+  {
+    "id": "t7ub62rrc",
+    "type": "tags",
+    "name": "Tags Node",
+    "hidden": false,
+    "weight": 1,
+    "value": [
+      {
+        "value": "full frame",
+        "weight": 1
+      }
+    ]
+  },
+  {
+    "id": "egvh2k1ca",
+    "type": "tags",
+    "name": "Tags Node",
+    "hidden": false,
+    "weight": 1,
+    "value": [
+      {
+        "value": "signature",
+        "weight": -1
+      },
+      {
+        "value": "patreon logo",
+        "weight": -1
+      }
+    ]
+  }
+]
