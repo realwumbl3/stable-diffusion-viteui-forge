@@ -141,7 +141,7 @@ const PropertiesPanel = ({
 
         {/* Expanded Content */}
         <div className={cn(
-          "h-full transition-opacity duration-300 ease-in-out",
+          "h-full flex flex-col transition-opacity duration-300 ease-in-out",
           collapsed ? "opacity-0 pointer-events-none" : "opacity-100"
         )}>
           {/* Properties Header */}
@@ -172,7 +172,7 @@ const PropertiesPanel = ({
           </div>
 
           {/* Properties Content */}
-          <div className="studio-sidebar-content">
+          <div className="studio-sidebar-content !overflow-y-auto">
             <div className="p-4 space-y-6">
             {/* Model Section */}
             {activeSection === 'model' && (
