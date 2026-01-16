@@ -14,6 +14,7 @@ import ImageUploader from './ImageUploader.jsx'
 
 const Canvas = ({
   currentImage,
+  previewImage,
   livePreview,
   loading,
   progress,
@@ -34,6 +35,7 @@ const Canvas = ({
   const [footerCollapsed, setFooterCollapsed] = useState(false)
   const canvasRef = useRef(null)
   const imageRef = useRef(null)
+  const displayImage = previewImage || currentImage
 
   const getDisplayDimensions = () => {
     if (!imageRef.current) {
@@ -70,7 +72,7 @@ const Canvas = ({
 
   // Auto-fit to screen when image changes
   useEffect(() => {
-    if ((currentImage || inputImage || livePreview) && fitToScreen) {
+    if ((displayImage || inputImage || livePreview) && fitToScreen) {
       // Small delay to ensure image is loaded
       const timer = setTimeout(() => {
         const scale = calculateFitToScreenScale()
@@ -78,7 +80,7 @@ const Canvas = ({
       }, 100)
       return () => clearTimeout(timer)
     }
-  }, [currentImage, inputImage, livePreview, generationWidth, generationHeight, fitToScreen])
+  }, [displayImage, inputImage, livePreview, generationWidth, generationHeight, fitToScreen])
 
   const handleZoomIn = () => {
     setZoom(prev => Math.min(prev * 1.2, 5))
@@ -104,7 +106,7 @@ const Canvas = ({
   return (
     <main className="studio-canvas relative flex flex-col">
       {/* Canvas Controls */}
-      {(currentImage || (generationMode === 'img2img' && inputImage)) && (
+      {(displayImage || (generationMode === 'img2img' && inputImage)) && (
         <div className="absolute top-4 left-4 z-10 flex gap-2">
           <div className="studio-panel p-2">
             <div className="flex gap-1">
@@ -171,7 +173,7 @@ const Canvas = ({
           className="w-full h-full flex items-center justify-center p-8 overflow-hidden"
         >
           {/* Loading State - Show when generating and no image yet */}
-          {loading && !currentImage && !(generationMode === 'img2img' && inputImage) ? (
+      {loading && !displayImage && !(generationMode === 'img2img' && inputImage) ? (
             <div className="text-center">
               <div className="w-24 h-24 border-4 border-studio-accent border-t-transparent rounded-full animate-spin mx-auto mb-6" />
               {progress ? (
@@ -195,7 +197,7 @@ const Canvas = ({
                 <p className="text-studio-textSecondary text-lg">Starting generation...</p>
               )}
             </div>
-          ) : (currentImage || (generationMode === 'img2img' && inputImage)) ? (
+      ) : (displayImage || (generationMode === 'img2img' && inputImage)) ? (
             /* Image Display */
             <div
               className="relative"
@@ -205,6 +207,11 @@ const Canvas = ({
                 transition: fitToScreen ? 'none' : 'transform 0.2s ease-out'
               }}
             >
+              {previewImage && (
+                <div className="absolute top-2 left-2 z-10 rounded bg-studio-panel/80 px-2 py-1 text-xs text-studio-accent">
+                  Preview
+                </div>
+              )}
               {/* Grid Overlay */}
               {showGrid && (
                 <div
@@ -220,11 +227,11 @@ const Canvas = ({
               )}
 
               {/* Main Image */}
-              <img
-                key={livePreview ? 'live-preview' : (generationMode === 'img2img' && inputImage && !currentImage ? 'input-image' : 'current-image')}
+            <img
+                key={livePreview ? 'live-preview' : (generationMode === 'img2img' && inputImage && !displayImage ? 'input-image' : 'current-image')}
                 ref={imageRef}
-                src={livePreview || currentImage || (generationMode === 'img2img' ? inputImage : null)}
-                alt={generationMode === 'img2img' && inputImage && !currentImage ? "Input image for img2img" : "Generated"}
+            src={livePreview || displayImage || (generationMode === 'img2img' ? inputImage : null)}
+            alt={generationMode === 'img2img' && inputImage && !displayImage ? "Input image for img2img" : "Generated"}
                 className="max-w-none shadow-studio-lg rounded-lg"
                 style={
                   livePreview && generationWidth && generationHeight
@@ -234,37 +241,6 @@ const Canvas = ({
                 draggable={false}
               />
 
-              {/* Loading Overlay */}
-              {loading && (
-                <div className="absolute inset-0 bg-black/50 rounded-lg flex items-center justify-center">
-                  <div className="text-center">
-                    {progress ? (
-                      <>
-                        <div className="w-8 h-8 border-3 border-studio-accent border-t-transparent rounded-full animate-spin mx-auto mb-2" />
-                        <p className="text-studio-text text-sm mb-2">
-                          {progress.textinfo || 'Generating...'}
-                        </p>
-                        <div className="w-32 h-2 bg-studio-bg/30 rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-studio-accent transition-all duration-300 ease-out"
-                            style={{ width: `${progress.progress * 100}%` }}
-                          />
-                        </div>
-                        <p className="text-studio-textSecondary text-xs mt-1">
-                          {Math.round(progress.progress * 100)}%
-                          {progress.total_batches > 1 && ` • ${progress.current_batch}/${progress.total_batches}`}
-                          {progress.eta && ` • ETA: ${Math.round(progress.eta)}s`}
-                        </p>
-                      </>
-                    ) : (
-                      <>
-                        <div className="w-8 h-8 border-3 border-studio-accent border-t-transparent rounded-full animate-spin mx-auto mb-2" />
-                        <p className="text-studio-text text-sm">Regenerating...</p>
-                      </>
-                    )}
-                  </div>
-                </div>
-              )}
             </div>
           ) : generationMode === 'img2img' ? (
             /* img2img Upload State */
@@ -282,8 +258,10 @@ const Canvas = ({
               <div className="w-24 h-24 border-2 border-dashed border-studio-border rounded-lg flex items-center justify-center mb-4 mx-auto">
                 <div className="w-8 h-8 border-2 border-studio-text-muted border-t-transparent rounded-full animate-spin" />
               </div>
-              <h3 className="text-lg font-medium mb-2">Ready to Create</h3>
-              <p className="text-sm">Set your parameters and generate your first image</p>
+              <>
+                <h3 className="text-lg font-medium mb-2">Ready to Create</h3>
+                <p className="text-sm">Set your parameters and generate your first image</p>
+              </>
             </div>
           )}
         </div>
@@ -303,7 +281,7 @@ const Canvas = ({
       <div className="studio-toolbar justify-between text-xs text-studio-textSecondary">
         <div className="flex items-center gap-4">
           <span>{generationMode === 'img2img' ? 'Img2Img Canvas' : 'Canvas'}</span>
-          {(currentImage || (generationMode === 'img2img' && inputImage)) && (
+          {(displayImage || (generationMode === 'img2img' && inputImage)) && (
             <>
               <span>•</span>
               <span>{zoom !== 1 ? `${Math.round(zoom * 100)}%` : 'Fit to screen'}</span>

@@ -456,7 +456,7 @@ class Api:
         populate = txt2imgreq.copy(update={  # Override __init__ params
             "sampler_name": validate_sampler_name(sampler),
             "do_not_save_samples": not txt2imgreq.save_images,
-            "do_not_save_grid": not txt2imgreq.save_images,
+            "do_not_save_grid": not txt2imgreq.save_grids,
         })
         if populate.sampler_name:
             populate.sampler_index = None  # prevent a warning later on
@@ -468,6 +468,7 @@ class Api:
         args.pop('script_name', None)
         args.pop('script_args', None) # will refeed them to the pipeline directly after initializing them
         args.pop('alwayson_scripts', None)
+        args.pop('save_grids', None) # save_grids is used to set do_not_save_grid, not passed to processing class
         args.pop('infotext', None)
 
         script_args = self.init_script_args(txt2imgreq, self.default_script_arg_txt2img, selectable_scripts, selectable_script_idx, script_runner, input_script_args=infotext_script_args)
@@ -624,7 +625,7 @@ class Api:
         populate = img2imgreq.copy(update={  # Override __init__ params
             "sampler_name": validate_sampler_name(sampler),
             "do_not_save_samples": not img2imgreq.save_images,
-            "do_not_save_grid": not img2imgreq.save_images,
+            "do_not_save_grid": not img2imgreq.save_grids,
             "mask": mask,
         })
         if populate.sampler_name:
@@ -639,6 +640,7 @@ class Api:
         args.pop('script_args', None)  # will refeed them to the pipeline directly after initializing them
         args.pop('alwayson_scripts', None)
         args.pop('infotext', None)
+        args.pop('save_grids', None) # save_grids is used to set do_not_save_grid, not passed to processing class
 
         script_args = self.init_script_args(img2imgreq, self.default_script_arg_img2img, selectable_scripts, selectable_script_idx, script_runner, input_script_args=infotext_script_args)
 

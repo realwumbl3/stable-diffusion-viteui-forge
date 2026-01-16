@@ -6,6 +6,7 @@ import InpaintToolbar from "./InpaintToolbar.jsx";
 
 const InpaintCanvas = ({
     currentImage,
+    previewImage,
     livePreview,
     loading,
     progress,
@@ -27,6 +28,10 @@ const InpaintCanvas = ({
     inpaintFullRes,
     inpaintFullResPadding,
     setInpaintFullResPadding,
+    // Force edit mode for mask editing
+    forceEditMode = false,
+    // Preserve mask when input image changes (for iterative workflows)
+    preserveMaskOnImageChange = false,
 }) => {
     const [zoom, setZoom] = useState(1);
     const [showGrid, setShowGrid] = useState(false);
@@ -34,6 +39,8 @@ const InpaintCanvas = ({
     const [footerCollapsed, setFooterCollapsed] = useState(false);
     const [showMask, setShowMask] = useState(true);
     const [showBorder, setShowBorder] = useState(true);
+    const [lastMaskVisibility, setLastMaskVisibility] = useState(true); // Remember mask setting when in canvas mode
+    const [hasRememberedMaskSetting, setHasRememberedMaskSetting] = useState(false); // Track if we've remembered the setting for current preview session
     const [isDrawing, setIsDrawing] = useState(false);
     const [isPanning, setIsPanning] = useState(false);
     const [brushSize, setBrushSize] = useState(initialBrushSize);
@@ -48,6 +55,7 @@ const InpaintCanvas = ({
     const [isRightClickPanning, setIsRightClickPanning] = useState(false);
     const [rightClickStartPos, setRightClickStartPos] = useState({ x: 0, y: 0 });
     const [rightClickStartPan, setRightClickStartPan] = useState({ x: 0, y: 0 });
+    const displayImage = previewImage || currentImage;
 
     // Undo/Redo system
     const [maskHistory, setMaskHistory] = useState([]);
@@ -102,7 +110,7 @@ const InpaintCanvas = ({
 
     // Auto-fit to screen when image changes
     useEffect(() => {
-        if ((currentImage || inputImage || livePreview) && fitToScreen) {
+        if ((displayImage || inputImage || livePreview) && fitToScreen) {
             // Small delay to ensure image is loaded
             const timer = setTimeout(() => {
                 const scale = calculateFitToScreenScale();
@@ -112,7 +120,7 @@ const InpaintCanvas = ({
             return () => clearTimeout(timer);
         }
     }, [
-        currentImage,
+        displayImage,
         inputImage,
         livePreview,
         generationWidth,
@@ -123,12 +131,30 @@ const InpaintCanvas = ({
     ]);
 
     useEffect(() => {
-        if (currentImage) {
+        if (forceEditMode) {
+            setViewMode("edit");
+        } else if (displayImage) {
             setViewMode("result");
         } else if (inputImage) {
             setViewMode("edit");
         }
-    }, [currentImage, inputImage]);
+    }, [displayImage, inputImage, forceEditMode]);
+
+    useEffect(() => {
+        if (previewImage) {
+            // When first entering preview mode, remember the canvas mask setting
+            if (!hasRememberedMaskSetting) {
+                setLastMaskVisibility(showMask);
+                setHasRememberedMaskSetting(true);
+            }
+            // Always hide mask in preview mode
+            setShowMask(false);
+        } else {
+            // When returning to canvas mode, restore the remembered mask setting
+            setShowMask(lastMaskVisibility);
+            setHasRememberedMaskSetting(false);
+        }
+    }, [previewImage]); // Remove showMask from dependencies to avoid cycles
 
     // Initialize canvases when input image loads (not when result changes)
     useEffect(() => {
@@ -141,14 +167,18 @@ const InpaintCanvas = ({
             if (maskCanvasRef.current) {
                 maskCanvasRef.current.width = naturalWidth;
                 maskCanvasRef.current.height = naturalHeight;
-                // Clear canvas
-                const ctx = maskCanvasRef.current.getContext("2d");
-                ctx.clearRect(0, 0, naturalWidth, naturalHeight);
 
-                // Initialize history with empty state
-                const emptyImageData = ctx.getImageData(0, 0, naturalWidth, naturalHeight);
-                setMaskHistory([emptyImageData]);
-                setHistoryIndex(0);
+                if (!preserveMaskOnImageChange) {
+                    // Clear canvas only if not preserving mask
+                    const ctx = maskCanvasRef.current.getContext("2d");
+                    ctx.clearRect(0, 0, naturalWidth, naturalHeight);
+
+                    // Initialize history with empty state
+                    const emptyImageData = ctx.getImageData(0, 0, naturalWidth, naturalHeight);
+                    setMaskHistory([emptyImageData]);
+                    setHistoryIndex(0);
+                }
+                // If preserving mask, keep existing canvas content and history
             }
             if (overlayCanvasRef.current) {
                 overlayCanvasRef.current.width = naturalWidth;
@@ -834,15 +864,24 @@ const InpaintCanvas = ({
         updateBorderVisualization();
     }, [updateBorderVisualization]);
 
-    const previewSrc = viewMode === "edit" ? currentImage : inpaintMask || inputImage;
-    const previewLabel = viewMode === "edit" ? "View result" : "Back to mask";
 
-    const mainImageSrc = viewMode === "edit" ? livePreview || inputImage || currentImage : currentImage || inputImage;
+    const mainImageSrc = viewMode === "edit" ? livePreview || inputImage || displayImage : displayImage || inputImage;
+
+    // Custom mask setter that preserves setting when in canvas mode
+    const setMaskVisibility = (newVisibility) => {
+        setShowMask(newVisibility);
+        // Only update remembered setting when not in preview mode
+        if (!previewImage) {
+            setLastMaskVisibility(newVisibility);
+            // Reset the flag so next preview session will remember this new setting
+            setHasRememberedMaskSetting(false);
+        }
+    };
 
     return (
         <main className="studio-canvas relative flex flex-col min-h-0">
             {/* Left Toolbar - Mask Controls */}
-            {(currentImage || inputImage) && !isDrawing && (
+            {(displayImage || inputImage) && !isDrawing && (
                 <div className="absolute top-4 left-4 z-10">
                     {/* Inpainting Toolbar */}
                     <InpaintToolbar
@@ -854,7 +893,7 @@ const InpaintCanvas = ({
                         setBrushHardness={setBrushHardness}
                         zoom={zoom}
                         showMask={showMask}
-                        setShowMask={setShowMask}
+                        setShowMask={setMaskVisibility}
                         showBorder={showBorder}
                         setShowBorder={setShowBorder}
                         inpaintFullRes={inpaintFullRes}
@@ -866,15 +905,12 @@ const InpaintCanvas = ({
                         onRedo={redoMask}
                         canUndo={canUndo}
                         canRedo={canRedo}
-                        previewSrc={previewSrc}
-                        previewLabel={previewLabel}
-                        onTogglePreview={togglePreviewMode}
                     />
                 </div>
             )}
 
             {/* Right Toolbar - Image Controls */}
-            {(currentImage || inputImage) && !isDrawing && (
+            {(displayImage || inputImage) && !isDrawing && (
                 <div className="absolute top-4 right-4 z-10">
                     <div className="studio-panel p-2">
                         <div className="flex gap-1">
@@ -939,7 +975,7 @@ const InpaintCanvas = ({
                     onDrop={handleDrop}
                 >
                     {/* Loading State - Show when generating */}
-                    {loading && !currentImage && !inputImage ? (
+                    {loading && !displayImage && !inputImage ? (
                         <div className="text-center">
                             <div className="w-24 h-24 border-4 border-studio-accent border-t-transparent rounded-full animate-spin mx-auto mb-6" />
                             {progress ? (
@@ -964,7 +1000,7 @@ const InpaintCanvas = ({
                                 <p className="text-studio-textSecondary text-lg">Starting generation...</p>
                             )}
                         </div>
-                    ) : currentImage || inputImage ? (
+                    ) : displayImage || inputImage ? (
                         /* Image Display with Mask Overlay */
                         <div
                             ref={panTargetRef}
@@ -1051,38 +1087,6 @@ const InpaintCanvas = ({
                                 }}
                             />
 
-                            {/* Loading Overlay */}
-                            {loading && (
-                                <div className="absolute inset-0 bg-black/50 rounded-lg flex items-center justify-center">
-                                    <div className="text-center">
-                                        {progress ? (
-                                            <>
-                                                <div className="w-8 h-8 border-3 border-studio-accent border-t-transparent rounded-full animate-spin mx-auto mb-2" />
-                                                <p className="text-studio-text text-sm mb-2">
-                                                    {progress.textinfo || "Generating..."}
-                                                </p>
-                                                <div className="w-32 h-2 bg-studio-bg/30 rounded-full overflow-hidden">
-                                                    <div
-                                                        className="h-full bg-studio-accent transition-all duration-300 ease-out"
-                                                        style={{ width: `${progress.progress * 100}%` }}
-                                                    />
-                                                </div>
-                                                <p className="text-studio-textSecondary text-xs mt-1">
-                                                    {Math.round(progress.progress * 100)}%
-                                                    {progress.total_batches > 1 &&
-                                                        ` • ${progress.current_batch}/${progress.total_batches}`}
-                                                    {progress.eta && ` • ETA: ${Math.round(progress.eta)}s`}
-                                                </p>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <div className="w-8 h-8 border-3 border-studio-accent border-t-transparent rounded-full animate-spin mx-auto mb-2" />
-                                                <p className="text-studio-text text-sm">Regenerating...</p>
-                                            </>
-                                        )}
-                                    </div>
-                                </div>
-                            )}
                         </div>
                     ) : (
                         /* Empty State */
@@ -1103,13 +1107,15 @@ const InpaintCanvas = ({
                                 </p>
                                 <p className="text-xs mt-1">or drag & drop image here</p>
                             </div>
-                            <h3 className="text-lg font-medium mb-2">Ready to Inpaint</h3>
-                            <p className="text-sm">Upload an image and start drawing your mask</p>
+                            <>
+                                <h3 className="text-lg font-medium mb-2">Ready to Inpaint</h3>
+                                <p className="text-sm">Upload an image and start drawing your mask</p>
+                            </>
                         </div>
                     )}
 
                     {/* Bottom Right Brush Settings */}
-                    {(currentImage || inputImage) && !isDrawing && (
+                    {(displayImage || inputImage) && !isDrawing && (
                         <div className="absolute bottom-4 right-4 z-10">
                             <div className="studio-panel p-2">
                                 <div className="flex flex-col gap-2">
@@ -1207,7 +1213,7 @@ const InpaintCanvas = ({
             <div className="studio-toolbar justify-between text-xs text-studio-textSecondary">
                 <div className="flex items-center gap-4">
                     <span>Inpaint Canvas</span>
-                    {(currentImage || inputImage) && (
+                    {(displayImage || inputImage) && (
                         <>
                             <span>•</span>
                             <span>{zoom !== 1 ? `${Math.round(zoom * 100)}%` : "Fit to screen"}</span>

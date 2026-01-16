@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import api from './api.js'
-import { cn } from './lib/utils.js'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts.js'
 import { useWebSocketProgress } from './hooks/useWebSocketProgress.js'
 import Header from './components/Header.jsx'
@@ -13,7 +12,6 @@ import Welcome from './components/Welcome.jsx'
 function App() {
   const [prompt, setPrompt] = useState('')
   const [negativePrompt, setNegativePrompt] = useState('')
-  const [images, setImages] = useState([])
   const [loading, setLoading] = useState(false)
   const [currentImage, setCurrentImage] = useState(null)
   const [currentTaskId, setCurrentTaskId] = useState(null)
@@ -33,6 +31,14 @@ function App() {
 
   const handleGenerationModeChange = (mode) => {
     setGenerationMode(mode)
+    // When switching to inpaint mode, force edit mode for mask editing
+    if (mode === 'inpaint') {
+      setForceInpaintEditMode(true)
+      // Reset after a short delay to allow the effect to take place
+      setTimeout(() => setForceInpaintEditMode(false), 100)
+    } else {
+      setForceInpaintEditMode(false)
+    }
   }
 
   // Inpainting parameters
@@ -53,14 +59,24 @@ function App() {
   const [denoisingStrength, setDenoisingStrength] = useState(0.75)
   const [inputImage, setInputImage] = useState(null)
 
+  const [timeline, setTimeline] = useState({
+    generationQueue: [],
+    currentPreview: null,
+    committedHistory: [],
+    discarded: []
+  })
+
   // Save settings
-  const [saveImages, setSaveImages] = useState(false)
+  const [saveImages, setSaveImages] = useState(true)
+  const [saveGrids, setSaveGrids] = useState(false)
 
   // UI state
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [propertiesCollapsed, setPropertiesCollapsed] = useState(false)
   const [activeTool, setActiveTool] = useState('generate')
   const [showWelcome, setShowWelcome] = useState(true)
+  const [forceInpaintEditMode, setForceInpaintEditMode] = useState(false)
+  const [preserveInpaintMask, setPreserveInpaintMask] = useState(false)
 
   useEffect(() => {
     loadInitialData()
@@ -78,18 +94,24 @@ function App() {
       setSamplers(samplersData)
 
       // Set currently loaded model
-      const currentModelFilename = optionsData.sd_model_checkpoint
-      if (currentModelFilename) {
-        // Find the model in the list that matches the current filename
-        const currentModel = modelsData.find(model => model.filename === currentModelFilename)
+      const currentModelTitle = optionsData.sd_model_checkpoint
+      if (currentModelTitle) {
+        // Find the model in the list that matches the current title (which includes hash)
+        const currentModel = modelsData.find(model => model.title === currentModelTitle)
         if (currentModel) {
           setSelectedModel(currentModel.title)
         } else {
-          // If we can't find the exact match, try to find by basename
-          const basename = currentModelFilename.split(/[/\\]/).pop()
-          const fallbackModel = modelsData.find(model => model.filename.includes(basename))
-          if (fallbackModel) {
-            setSelectedModel(fallbackModel.title)
+          // If we can't find the exact match, try to find by hash or model name
+          const hashMatch = currentModelTitle.match(/\[([a-f0-9]+)\]$/)
+          if (hashMatch) {
+            const hash = hashMatch[1]
+            const fallbackModel = modelsData.find(model => model.hash === hash || model.title.includes(hash))
+            if (fallbackModel) {
+              setSelectedModel(fallbackModel.title)
+            } else if (modelsData.length > 0) {
+              // Last resort: use first model
+              setSelectedModel(modelsData[0].title)
+            }
           } else if (modelsData.length > 0) {
             // Last resort: use first model
             setSelectedModel(modelsData[0].title)
@@ -99,9 +121,29 @@ function App() {
         // Fallback to first model if no current model is set
         setSelectedModel(modelsData[0].title)
       }
+
+      // Set currently loaded clip skip
+      const currentClipSkip = optionsData.CLIP_stop_at_last_layers
+      console.log('currentClipSkip', currentClipSkip)
+      if (currentClipSkip !== undefined && currentClipSkip !== null) {
+        setClipSkip(parseInt(currentClipSkip))
+      }
     } catch (error) {
       console.error('Error loading initial data:', error)
     }
+  }
+
+  const createTimelineItem = (image, overrides = {}) => ({
+    id: `timeline-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+    image,
+    createdAt: Date.now(),
+    ...overrides
+  })
+
+  const appendCommittedImage = (history, image, source) => {
+    if (!image) return history
+    if (history[0]?.image === image) return history
+    return [createTimelineItem(image, { source }), ...history]
   }
 
   const generateImage = async () => {
@@ -140,6 +182,7 @@ function App() {
         n_iter: count,
         clip_skip: clipSkip,
         save_images: saveImages,
+        save_grids: saveGrids,
         force_task_id: taskId, // Use the same task ID
       }
 
@@ -175,8 +218,27 @@ function App() {
 
       if (data.images && data.images.length > 0) {
         const newImages = data.images.map(img => `data:image/png;base64,${img}`)
-        setImages(prev => [...prev, ...newImages])
-        setCurrentImage(newImages[0])
+        const timelineItems = newImages.map(image => (
+          createTimelineItem(image, {
+            source: 'generation',
+            type: generationMode,
+            prompt,
+            negativePrompt,
+            parameters: {
+              steps,
+              cfgScale,
+              width,
+              height,
+              sampler: selectedSampler,
+              denoisingStrength
+            }
+          })
+        ))
+        setTimeline(prev => ({
+          ...prev,
+          generationQueue: [...timelineItems, ...prev.generationQueue],
+          currentPreview: prev.currentPreview ?? timelineItems[0]
+        }))
       }
     } catch (error) {
       console.error('Error generating image:', error)
@@ -193,6 +255,15 @@ function App() {
       await api.setModel(modelTitle)
     } catch (error) {
       console.error('Error setting model:', error)
+    }
+  }
+
+  const handleClipSkipChange = async (newClipSkip) => {
+    setClipSkip(newClipSkip)
+    try {
+      await api.setOptions({ CLIP_stop_at_last_layers: newClipSkip })
+    } catch (error) {
+      console.error('Error setting clip skip:', error)
     }
   }
 
@@ -215,19 +286,112 @@ function App() {
     }
   }
 
-  const handleImageSelect = (imageSrc) => {
-    if (generationMode === 'inpaint') {
-      // In inpainting mode, if there's no input image yet, set the clicked image as input
-      // Otherwise, just set it as current image for viewing (without clearing canvas)
-      if (!inputImage) {
-        setInputImage(imageSrc)
-      } else {
-        setCurrentImage(imageSrc)
+  const handleCanvasImageUpload = (imageSrc) => {
+    setInputImage(imageSrc)
+    setTimeline(prev => {
+      let committedHistory = prev.committedHistory
+      if (currentImage && currentImage !== imageSrc) {
+        committedHistory = appendCommittedImage(committedHistory, currentImage, 'canvas')
       }
-    } else {
-      // In other modes, just set as current image
-      setCurrentImage(imageSrc)
+      committedHistory = appendCommittedImage(committedHistory, imageSrc, 'upload')
+      return {
+        ...prev,
+        committedHistory
+      }
+    })
+    setCurrentImage(imageSrc)
+  }
+
+  const handlePreviewSelect = (item) => {
+    setTimeline(prev => ({
+      ...prev,
+      currentPreview: item
+    }))
+  }
+
+  const handleRejectPreview = () => {
+    setTimeline(prev => {
+      const preview = prev.currentPreview
+      if (!preview) return prev
+      if (preview.source === 'generation') {
+        const remainingQueue = prev.generationQueue.filter(item => item.id !== preview.id)
+        return {
+          ...prev,
+          generationQueue: remainingQueue,
+          discarded: [preview, ...prev.discarded],
+          currentPreview: null
+        }
+      }
+      return {
+        ...prev,
+        currentPreview: null
+      }
+    })
+  }
+
+  const handleCommitPreview = () => {
+    const preview = timeline.currentPreview
+    if (!preview) return
+
+    setTimeline(prev => {
+      let committedHistory = prev.committedHistory
+      if (currentImage && currentImage !== preview.image) {
+        committedHistory = appendCommittedImage(committedHistory, currentImage, 'canvas')
+      }
+
+      if (preview.source === 'generation') {
+        const remainingQueue = prev.generationQueue.filter(item => item.id !== preview.id)
+        // Add the committed generation to the top of committed history
+        const newCommittedItem = {
+          id: preview.id,
+          image: preview.image,
+          timestamp: Date.now(),
+          type: preview.type || 'generation',
+          source: 'committed'
+        }
+        return {
+          ...prev,
+          generationQueue: [],
+          discarded: [...remainingQueue, ...prev.discarded],
+          committedHistory: [newCommittedItem, ...committedHistory],
+          currentPreview: null
+        }
+      }
+
+      return {
+        ...prev,
+        committedHistory,
+        currentPreview: null
+      }
+    })
+
+    setCurrentImage(preview.image)
+    if (generationMode === 'inpaint') {
+      setPreserveInpaintMask(true)
+      setInputImage(preview.image)
+      // Reset the flag after a short delay
+      setTimeout(() => setPreserveInpaintMask(false), 100)
+    } else if (generationMode !== 'txt2img') {
+      setInputImage(preview.image)
     }
+  }
+
+  const handleDiscardGeneration = (item) => {
+    setTimeline(prev => ({
+      ...prev,
+      generationQueue: prev.generationQueue.filter(entry => entry.id !== item.id),
+      discarded: [item, ...prev.discarded],
+      currentPreview: prev.currentPreview?.id === item.id ? null : prev.currentPreview
+    }))
+  }
+
+  const handleRestoreGeneration = (item) => {
+    setTimeline(prev => ({
+      ...prev,
+      discarded: prev.discarded.filter(entry => entry.id !== item.id),
+      generationQueue: [item, ...prev.generationQueue],
+      currentPreview: item // Automatically select the restored item for preview
+    }))
   }
 
   const handleGetStarted = (templatePrompt = '') => {
@@ -256,7 +420,15 @@ function App() {
   })
 
   // Show welcome screen if no images have been generated and user hasn't dismissed it
-  if (showWelcome && images.length === 0) {
+  const hasTimelineContent = Boolean(
+    currentImage ||
+    timeline.currentPreview ||
+    timeline.generationQueue.length ||
+    timeline.committedHistory.length ||
+    timeline.discarded.length
+  )
+
+  if (showWelcome && !hasTimelineContent) {
     return (
       <div className="h-screen flex flex-col bg-studio-bg">
         {/* Header Toolbar */}
@@ -301,15 +473,21 @@ function App() {
         <Sidebar
           collapsed={sidebarCollapsed}
           onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
-          images={images}
+          timeline={timeline}
           currentImage={currentImage}
-          onImageSelect={handleImageSelect}
+          onPreviewSelect={handlePreviewSelect}
+          onCommitPreview={handleCommitPreview}
+          onRejectPreview={handleRejectPreview}
+          onDiscardGeneration={handleDiscardGeneration}
+          onRestoreGeneration={handleRestoreGeneration}
+          onGenerationModeChange={handleGenerationModeChange}
         />
 
         {/* Main Canvas Area */}
         {generationMode === 'inpaint' ? (
           <InpaintCanvas
             currentImage={currentImage}
+            previewImage={timeline.currentPreview?.image}
             inputImage={inputImage}
             livePreview={livePreview}
             loading={loading}
@@ -322,14 +500,17 @@ function App() {
             setNegativePrompt={setNegativePrompt}
             inpaintMask={inpaintMask}
             setInpaintMask={setInpaintMask}
-            onImageUpload={setInputImage}
+            onImageUpload={handleCanvasImageUpload}
             inpaintFullRes={inpaintFullRes}
             inpaintFullResPadding={inpaintFullResPadding}
             setInpaintFullResPadding={setInpaintFullResPadding}
+            forceEditMode={forceInpaintEditMode}
+            preserveMaskOnImageChange={preserveInpaintMask}
           />
         ) : (
           <Canvas
             currentImage={currentImage}
+            previewImage={timeline.currentPreview?.image}
             livePreview={livePreview}
             loading={loading}
             progress={progress}
@@ -341,7 +522,7 @@ function App() {
             setNegativePrompt={setNegativePrompt}
             generationMode={generationMode}
             inputImage={generationMode === 'img2img' ? inputImage : null}
-            onImageUpload={generationMode === 'img2img' ? setInputImage : null}
+            onImageUpload={generationMode === 'img2img' ? handleCanvasImageUpload : null}
           />
         )}
 
@@ -373,11 +554,13 @@ function App() {
           denoisingStrength={denoisingStrength}
           setDenoisingStrength={setDenoisingStrength}
           inputImage={inputImage}
-          onImageUpload={setInputImage}
+          onImageUpload={handleCanvasImageUpload}
           clipSkip={clipSkip}
-          setClipSkip={setClipSkip}
+          onClipSkipChange={handleClipSkipChange}
           saveImages={saveImages}
           setSaveImages={setSaveImages}
+          saveGrids={saveGrids}
+          setSaveGrids={setSaveGrids}
           // Inpainting parameters
           inpaintMask={inpaintMask}
           setInpaintMask={setInpaintMask}

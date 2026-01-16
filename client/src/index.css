@@ -41,7 +41,7 @@
 
   /* Studio Panel Components */
   .studio-panel {
-    @apply bg-studio-panel border border-studio-border rounded-lg shadow-studio;
+    @apply bg-studio-panel  shadow-studio;
   }
 
   .studio-panel-header {

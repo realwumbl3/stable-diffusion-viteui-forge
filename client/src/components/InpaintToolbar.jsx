@@ -17,11 +17,6 @@ import { cn } from '../lib/utils.js'
 const InpaintToolbar = ({
   drawingMode,
   setDrawingMode,
-  brushSize,
-  setBrushSize,
-  brushHardness,
-  setBrushHardness,
-  zoom = 1,
   showMask,
   setShowMask,
   showBorder,
@@ -33,9 +28,6 @@ const InpaintToolbar = ({
   onRedo,
   onClear,
   onFill,
-  previewSrc,
-  previewLabel,
-  onTogglePreview,
   canUndo = false,
   canRedo = false
 }) => {
@@ -202,25 +194,6 @@ const InpaintToolbar = ({
           </div>
         )}
 
-        {/* Result/Mask Preview Toggle */}
-        {previewSrc && (
-          <div className="flex flex-col gap-1">
-            <button
-              onClick={onTogglePreview}
-              className="flex flex-col items-center gap-1 p-2 rounded-md text-xs font-medium transition-all duration-200 text-studio-textSecondary hover:text-studio-text hover:bg-studio-surface"
-              title="Toggle result and mask editor"
-            >
-              <div className="w-40 bg-studio-surface rounded border border-studio-border overflow-hidden">
-                <img
-                  src={previewSrc}
-                  alt={previewLabel || 'Preview'}
-                  className="w-full h-auto object-contain"
-                />
-              </div>
-              <span className="text-center leading-tight">{previewLabel}</span>
-            </button>
-          </div>
-        )}
       </div>
     </div>
   )

@@ -42,9 +42,11 @@ const PropertiesPanel = ({
   inputImage,
   onImageUpload,
   clipSkip,
-  setClipSkip,
+  onClipSkipChange,
   saveImages,
   setSaveImages,
+  saveGrids,
+  setSaveGrids,
   // Inpainting parameters
   inpaintMask,
   setInpaintMask,
@@ -154,7 +156,7 @@ const PropertiesPanel = ({
                   <input
                     type="number"
                     value={clipSkip}
-                    onChange={(e) => setClipSkip(parseInt(e.target.value))}
+                    onChange={(e) => onClipSkipChange(parseInt(e.target.value))}
                     min="1"
                     max="12"
                     className="studio-input w-full"
@@ -299,20 +301,34 @@ const PropertiesPanel = ({
                 {/* Save to Output Folder */}
                 <div>
                   <label className="studio-label">Save Options</label>
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      id="save-images-toggle"
-                      checked={saveImages}
-                      onChange={(e) => setSaveImages(e.target.checked)}
-                      className="w-4 h-4 text-studio-accent bg-studio-bg border-studio-border rounded focus:ring-studio-accent focus:ring-2"
-                    />
-                    <label htmlFor="save-images-toggle" className="text-sm text-studio-text cursor-pointer">
-                      Save to output folder
-                    </label>
+                  <div className="space-y-3">
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        id="save-images-toggle"
+                        checked={saveImages}
+                        onChange={(e) => setSaveImages(e.target.checked)}
+                        className="w-4 h-4 text-studio-accent bg-studio-bg border-studio-border rounded focus:ring-studio-accent focus:ring-2"
+                      />
+                      <label htmlFor="save-images-toggle" className="text-sm text-studio-text cursor-pointer">
+                        Save images to output folder
+                      </label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        id="save-grids-toggle"
+                        checked={saveGrids}
+                        onChange={(e) => setSaveGrids(e.target.checked)}
+                        className="w-4 h-4 text-studio-accent bg-studio-bg border-studio-border rounded focus:ring-studio-accent focus:ring-2"
+                      />
+                      <label htmlFor="save-grids-toggle" className="text-sm text-studio-text cursor-pointer">
+                        Save image grids to output folder
+                      </label>
+                    </div>
                   </div>
                   <p className="text-xs text-studio-text-muted mt-1">
-                    When enabled, generated images will be saved to the server's output directory
+                    When enabled, generated images and grids will be saved to the server's output directory
                   </p>
                 </div>
 
