@@ -1,11 +1,8 @@
 import {
-  Play,
-  Pause,
   Settings,
   Save,
   FolderOpen,
   Download,
-  Upload,
   Zap,
   Wand2,
   Image as ImageIcon,
@@ -13,7 +10,8 @@ import {
   Layers,
   Type,
   SkipForward,
-  Square
+  Square,
+  Edit
 } from 'lucide-react'
 import { cn } from '../lib/utils.js'
 
@@ -74,6 +72,19 @@ const Header = ({ loading, progress, onGenerate, canGenerate, activeTool, onTool
             >
               <ImageIcon size={16} />
               <span className="hidden sm:inline">Image</span>
+            </button>
+            <button
+              onClick={() => setGenerationMode('inpaint')}
+              className={cn(
+                "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all duration-200",
+                generationMode === 'inpaint'
+                  ? "bg-studio-accent text-studio-bg shadow-sm"
+                  : "text-studio-textSecondary hover:text-studio-text hover:bg-studio-surface"
+              )}
+              title="Inpaint (Alt+N)"
+            >
+              <Edit size={16} />
+              <span className="hidden sm:inline">Inpaint</span>
             </button>
           </div>
 

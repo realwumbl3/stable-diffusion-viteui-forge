@@ -6,6 +6,7 @@ import { useWebSocketProgress } from './hooks/useWebSocketProgress.js'
 import Header from './components/Header.jsx'
 import Sidebar from './components/Sidebar.jsx'
 import Canvas from './components/Canvas.jsx'
+import InpaintCanvas from './components/InpaintCanvas.jsx'
 import PropertiesPanel from './components/PropertiesPanel.jsx'
 import Welcome from './components/Welcome.jsx'
 
@@ -33,6 +34,14 @@ function App() {
   const handleGenerationModeChange = (mode) => {
     setGenerationMode(mode)
   }
+
+  // Inpainting parameters
+  const [inpaintMask, setInpaintMask] = useState(null)
+  const [maskBlur, setMaskBlur] = useState(4)
+  const [inpaintingFill, setInpaintingFill] = useState(0)
+  const [inpaintFullRes, setInpaintFullRes] = useState(true)
+  const [inpaintFullResPadding, setInpaintFullResPadding] = useState(0)
+  const [inpaintingMaskInvert, setInpaintingMaskInvert] = useState(false)
   const [steps, setSteps] = useState(20)
   const [cfgScale, setCfgScale] = useState(7)
   const [width, setWidth] = useState(512)
@@ -97,8 +106,12 @@ function App() {
 
   const generateImage = async () => {
     if (!prompt.trim()) return
-    if (generationMode === 'img2img' && !inputImage) {
-      alert('Please upload an input image for img2img mode.')
+    if ((generationMode === 'img2img' || generationMode === 'inpaint') && !inputImage) {
+      alert('Please upload an input image for img2img/inpaint mode.')
+      return
+    }
+    if (generationMode === 'inpaint' && !inpaintMask) {
+      alert('Please draw or upload a mask for inpainting mode.')
       return
     }
 
@@ -140,6 +153,22 @@ function App() {
           denoising_strength: denoisingStrength,
         }
         data = await api.img2img(img2imgParams)
+      } else if (generationMode === 'inpaint') {
+        // Extract base64 data from data URLs
+        const base64Data = inputImage.split(',')[1]
+        const maskBase64Data = inpaintMask.split(',')[1]
+        const inpaintParams = {
+          ...baseParams,
+          init_images: [base64Data],
+          mask: maskBase64Data,
+          mask_blur: maskBlur,
+          inpainting_fill: inpaintingFill,
+          inpaint_full_res: inpaintFullRes,
+          inpaint_full_res_padding: inpaintFullResPadding,
+          inpainting_mask_invert: inpaintingMaskInvert ? 1 : 0,
+          denoising_strength: denoisingStrength,
+        }
+        data = await api.img2img(inpaintParams)
       } else {
         data = await api.txt2imgSimple(baseParams)
       }
@@ -187,7 +216,18 @@ function App() {
   }
 
   const handleImageSelect = (imageSrc) => {
-    setCurrentImage(imageSrc)
+    if (generationMode === 'inpaint') {
+      // In inpainting mode, if there's no input image yet, set the clicked image as input
+      // Otherwise, just set it as current image for viewing (without clearing canvas)
+      if (!inputImage) {
+        setInputImage(imageSrc)
+      } else {
+        setCurrentImage(imageSrc)
+      }
+    } else {
+      // In other modes, just set as current image
+      setCurrentImage(imageSrc)
+    }
   }
 
   const handleGetStarted = (templatePrompt = '') => {
@@ -206,6 +246,7 @@ function App() {
     },
     'alt+t': () => handleGenerationModeChange('txt2img'),
     'alt+i': () => handleGenerationModeChange('img2img'),
+    'alt+n': () => handleGenerationModeChange('inpaint'),
     'ctrl+b': () => setSidebarCollapsed(!sidebarCollapsed),
     'ctrl+p': () => setPropertiesCollapsed(!propertiesCollapsed),
     'ctrl+1': () => setActiveTool('generate'),
@@ -266,18 +307,43 @@ function App() {
         />
 
         {/* Main Canvas Area */}
-        <Canvas
-          currentImage={currentImage}
-          livePreview={livePreview}
-          loading={loading}
-          progress={progress}
-          generationWidth={width}
-          generationHeight={height}
-          prompt={prompt}
-          setPrompt={setPrompt}
-          negativePrompt={negativePrompt}
-          setNegativePrompt={setNegativePrompt}
-        />
+        {generationMode === 'inpaint' ? (
+          <InpaintCanvas
+            currentImage={currentImage}
+            inputImage={inputImage}
+            livePreview={livePreview}
+            loading={loading}
+            progress={progress}
+            generationWidth={width}
+            generationHeight={height}
+            prompt={prompt}
+            setPrompt={setPrompt}
+            negativePrompt={negativePrompt}
+            setNegativePrompt={setNegativePrompt}
+            inpaintMask={inpaintMask}
+            setInpaintMask={setInpaintMask}
+            onImageUpload={setInputImage}
+            inpaintFullRes={inpaintFullRes}
+            inpaintFullResPadding={inpaintFullResPadding}
+            setInpaintFullResPadding={setInpaintFullResPadding}
+          />
+        ) : (
+          <Canvas
+            currentImage={currentImage}
+            livePreview={livePreview}
+            loading={loading}
+            progress={progress}
+            generationWidth={width}
+            generationHeight={height}
+            prompt={prompt}
+            setPrompt={setPrompt}
+            negativePrompt={negativePrompt}
+            setNegativePrompt={setNegativePrompt}
+            generationMode={generationMode}
+            inputImage={generationMode === 'img2img' ? inputImage : null}
+            onImageUpload={generationMode === 'img2img' ? setInputImage : null}
+          />
+        )}
 
         {/* Right Properties Panel */}
         <PropertiesPanel
@@ -312,6 +378,17 @@ function App() {
           setClipSkip={setClipSkip}
           saveImages={saveImages}
           setSaveImages={setSaveImages}
+          // Inpainting parameters
+          inpaintMask={inpaintMask}
+          setInpaintMask={setInpaintMask}
+          maskBlur={maskBlur}
+          setMaskBlur={setMaskBlur}
+          inpaintingFill={inpaintingFill}
+          setInpaintingFill={setInpaintingFill}
+          inpaintFullRes={inpaintFullRes}
+          setInpaintFullRes={setInpaintFullRes}
+          inpaintingMaskInvert={inpaintingMaskInvert}
+          setInpaintingMaskInvert={setInpaintingMaskInvert}
         />
       </div>
     </div>

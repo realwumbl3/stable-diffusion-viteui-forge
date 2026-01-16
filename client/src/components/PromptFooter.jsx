@@ -55,7 +55,7 @@ const PromptFooter = ({ prompt, setPrompt, negativePrompt, setNegativePrompt, co
                             }}
                             className="text-studio-textSecondary hover:text-studio-text transition-colors"
                         >
-                            {collapsed ? <ChevronDown size={12} /> : <ChevronUp size={12} />}
+                            {collapsed ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                         </button>
                     </div>
                 </div>

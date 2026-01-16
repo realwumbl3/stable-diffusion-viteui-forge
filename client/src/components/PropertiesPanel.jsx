@@ -11,6 +11,7 @@ import {
   Wand2
 } from 'lucide-react'
 import { cn } from '../lib/utils.js'
+import ResolutionPicker from './ResolutionPicker.jsx'
 
 const PropertiesPanel = ({
   collapsed,
@@ -43,71 +44,25 @@ const PropertiesPanel = ({
   clipSkip,
   setClipSkip,
   saveImages,
-  setSaveImages
+  setSaveImages,
+  // Inpainting parameters
+  inpaintMask,
+  setInpaintMask,
+  maskBlur,
+  setMaskBlur,
+  inpaintingFill,
+  setInpaintingFill,
+  inpaintFullRes,
+  setInpaintFullRes,
+  inpaintingMaskInvert,
+  setInpaintingMaskInvert
 }) => {
   const [activeSection, setActiveSection] = useState('model')
-  const [selectedAspectRatio, setSelectedAspectRatio] = useState('1:1')
 
   const sections = [
     { id: 'model', icon: Settings, label: 'Model', description: 'AI model settings' },
     { id: 'generation', icon: Sliders, label: 'Generation, parameters', description: 'All generation settings' },
   ]
-
-  // Common aspect ratios
-  const aspectRatios = [
-    { ratio: '1:1', name: 'Square', width: 1, height: 1 },
-    { ratio: '4:3', name: 'Standard', width: 4, height: 3 },
-    { ratio: '3:2', name: 'Classic', width: 3, height: 2 },
-    { ratio: '16:9', name: 'Widescreen', width: 16, height: 9 },
-    { ratio: '21:9', name: 'Ultrawide', width: 21, height: 9 },
-    { ratio: '2:3', name: 'Portrait', width: 2, height: 3 },
-    { ratio: '3:4', name: 'Tall Portrait', width: 3, height: 4 },
-    { ratio: '9:16', name: 'Mobile', width: 9, height: 16 },
-  ]
-
-  // Generate resolutions based on aspect ratio from 512 to 2048
-  const getResolutionsForAspectRatio = (aspectRatio) => {
-    const { width: wRatio, height: hRatio } = aspectRatio
-    const gcd = (a, b) => b === 0 ? a : gcd(b, a % b)
-    const divisor = gcd(wRatio, hRatio)
-    const normalizedWidth = wRatio / divisor
-    const normalizedHeight = hRatio / divisor
-
-    const resolutions = []
-    const baseSizes = [512, 768, 1024, 1280, 1536, 1792, 2048]
-
-    baseSizes.forEach(base => {
-      // For landscape ratios (width > height), use base for width
-      // For portrait ratios (height > width), use base for height
-      let w, h
-      if (normalizedWidth >= normalizedHeight) {
-        w = base
-        h = Math.round((base * normalizedHeight) / normalizedWidth)
-        // Ensure height is divisible by 64 (common SD requirement)
-        h = Math.round(h / 64) * 64
-        if (h < 64) h = 64
-      } else {
-        h = base
-        w = Math.round((base * normalizedWidth) / normalizedHeight)
-        // Ensure width is divisible by 64
-        w = Math.round(w / 64) * 64
-        if (w < 64) w = 64
-      }
-
-      // Only add if within 512-2048 range and not duplicate
-      if (w >= 512 && w <= 2048 && h >= 512 && h <= 2048) {
-        const exists = resolutions.some(r => r.w === w && r.h === h)
-        if (!exists) {
-          resolutions.push({ w, h })
-        }
-      }
-    })
-
-    return resolutions.slice(0, 6) // Limit to 6 resolutions
-  }
-
-  const currentAspectRatio = aspectRatios.find(ar => ar.ratio === selectedAspectRatio)
-  const availableResolutions = currentAspectRatio ? getResolutionsForAspectRatio(currentAspectRatio) : []
 
   return (
     <aside className={cn(
@@ -361,88 +316,148 @@ const PropertiesPanel = ({
                   </p>
                 </div>
 
-                {/* Dimensions */}
-                <div>
-                  <label className="studio-label">Dimensions</label>
-                  <div className="grid grid-cols-2 gap-4">
+                {/* Resolution Picker */}
+                <ResolutionPicker
+                  width={width}
+                  setWidth={setWidth}
+                  height={height}
+                  setHeight={setHeight}
+                  inputImage={inputImage}
+                />
+
+                {/* Inpainting Controls */}
+                {generationMode === 'inpaint' && (
+                  <>
                     <div>
-                      <label className="studio-label text-xs">Width</label>
+                      <label className="studio-label">Mask Blur</label>
                       <input
-                        type="number"
-                        value={width}
-                        onChange={(e) => setWidth(parseInt(e.target.value))}
-                        min="512"
-                        max="2048"
-                        step="64"
-                        className="studio-input w-full"
+                        type="range"
+                        min="0"
+                        max="64"
+                        step="1"
+                        value={maskBlur}
+                        onChange={(e) => setMaskBlur(parseInt(e.target.value))}
+                        className="studio-slider w-full"
                       />
+                      <div className="flex justify-between text-xs text-studio-textSecondary mt-1">
+                        <span>0</span>
+                        <span className="font-medium">{maskBlur}px</span>
+                        <span>64</span>
+                      </div>
+                      <p className="text-xs text-studio-text-muted mt-1">
+                        Blurs the edges of the mask for smoother transitions
+                      </p>
                     </div>
 
                     <div>
-                      <label className="studio-label text-xs">Height</label>
-                      <input
-                        type="number"
-                        value={height}
-                        onChange={(e) => setHeight(parseInt(e.target.value))}
-                        min="512"
-                        max="2048"
-                        step="64"
-                        className="studio-input w-full"
-                      />
+                      <label className="studio-label">Masked Content</label>
+                      <select
+                        value={inpaintingFill}
+                        onChange={(e) => setInpaintingFill(parseInt(e.target.value))}
+                        className="studio-select w-full"
+                      >
+                        <option value={0}>Fill - Generate new content</option>
+                        <option value={1}>Original - Keep original image</option>
+                        <option value={2}>Latent Noise - Use latent noise</option>
+                        <option value={3}>Latent Nothing - Use empty latent</option>
+                      </select>
+                      <p className="text-xs text-studio-text-muted mt-1">
+                        What to do with the masked area
+                      </p>
                     </div>
-                  </div>
-                </div>
 
-                {/* Aspect Ratio Picker */}
-                <div>
-                  <label className="studio-label">Aspect Ratio</label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {aspectRatios.map((aspect) => (
-                      <button
-                        key={aspect.ratio}
-                        onClick={() => setSelectedAspectRatio(aspect.ratio)}
-                        className={cn(
-                          "studio-btn-secondary text-xs py-2 px-3 transition-all duration-200",
-                          selectedAspectRatio === aspect.ratio
-                            ? "bg-studio-accent text-black border-studio-accent shadow-lg font-semibold"
-                            : "hover:bg-studio-panelHover"
-                        )}
-                      >
-                        {aspect.name}
-                        <br />
-                        <span className="text-studio-textSecondary">{aspect.ratio}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                    <div>
+                      <label className="studio-label">Denoise Strength</label>
+                      <input
+                        type="range"
+                        min="0"
+                        max="1"
+                        step="0.01"
+                        value={denoisingStrength}
+                        onChange={(e) => setDenoisingStrength(parseFloat(e.target.value))}
+                        className="studio-slider w-full"
+                      />
+                      <div className="flex justify-between text-xs text-studio-textSecondary mt-1">
+                        <span>0.0</span>
+                        <span className="font-medium">{denoisingStrength.toFixed(2)}</span>
+                        <span>1.0</span>
+                      </div>
+                      <p className="text-xs text-studio-text-muted mt-1">
+                        Controls how much the masked area is changed (higher = more creative)
+                      </p>
+                    </div>
 
-                {/* Dynamic Resolutions */}
-                <div>
-                  <label className="studio-label">Resolutions ({selectedAspectRatio})</label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {availableResolutions.map((resolution, index) => (
-                      <button
-                        key={`${resolution.w}x${resolution.h}`}
-                        onClick={() => {
-                          setWidth(resolution.w)
-                          setHeight(resolution.h)
-                        }}
-                        className={cn(
-                          "studio-btn-secondary text-xs py-2 px-3 transition-all duration-200",
-                          width === resolution.w && height === resolution.h
-                            ? "bg-studio-accent text-black border-studio-accent shadow-lg font-semibold"
-                            : "hover:bg-studio-panelHover"
+                    <div>
+                      <label className="studio-label">Inpaint at Full Resolution</label>
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id="inpaint-full-res-toggle"
+                          checked={inpaintFullRes}
+                          onChange={(e) => setInpaintFullRes(e.target.checked)}
+                          className="w-4 h-4 text-studio-accent bg-studio-bg border-studio-border rounded focus:ring-studio-accent focus:ring-2"
+                        />
+                        <label htmlFor="inpaint-full-res-toggle" className="text-sm text-studio-text cursor-pointer">
+                          Process masked area at full resolution
+                        </label>
+                      </div>
+                    </div>
+
+
+                    <div>
+                      <label className="studio-label">Invert Mask</label>
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id="invert-mask-toggle"
+                          checked={inpaintingMaskInvert}
+                          onChange={(e) => setInpaintingMaskInvert(e.target.checked)}
+                          className="w-4 h-4 text-studio-accent bg-studio-bg border-studio-border rounded focus:ring-studio-accent focus:ring-2"
+                        />
+                        <label htmlFor="invert-mask-toggle" className="text-sm text-studio-text cursor-pointer">
+                          Invert the mask (paint what to keep instead)
+                        </label>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="studio-label">Mask Upload</label>
+                      <div className="space-y-2">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            const file = e.target.files[0]
+                            if (file) {
+                              const reader = new FileReader()
+                              reader.onload = (e) => setInpaintMask(e.target.result)
+                              reader.readAsDataURL(file)
+                            }
+                          }}
+                          className="w-full text-sm text-studio-text file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-studio-accent file:text-studio-bg hover:file:bg-studio-accent/80"
+                        />
+                        {inpaintMask && (
+                          <div className="relative">
+                            <img
+                              src={inpaintMask}
+                              alt="Mask"
+                              className="w-full h-20 object-cover rounded-lg border border-studio-border"
+                            />
+                            <button
+                              onClick={() => setInpaintMask(null)}
+                              className="absolute top-2 right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600"
+                            >
+                              ×
+                            </button>
+                          </div>
                         )}
-                      >
-                        {resolution.w}×{resolution.h}
-                        <br />
-                        <span className="text-studio-textSecondary">
-                          {((resolution.w * resolution.h) / 1000000).toFixed(1)}MP
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                      </div>
+                      <p className="text-xs text-studio-text-muted mt-1">
+                        Upload a pre-made mask image (optional)
+                      </p>
+                    </div>
+                  </>
+                )}
               </div>
             )}
 

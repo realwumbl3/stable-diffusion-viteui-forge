@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import { cn } from '../lib/utils.js'
 import PromptFooter from './PromptFooter.jsx'
+import ImageUploader from './ImageUploader.jsx'
 
 const Canvas = ({
   currentImage,
@@ -21,7 +22,11 @@ const Canvas = ({
   prompt,
   setPrompt,
   negativePrompt,
-  setNegativePrompt
+  setNegativePrompt,
+  // img2img props
+  generationMode,
+  inputImage,
+  onImageUpload
 }) => {
   const [zoom, setZoom] = useState(1)
   const [showGrid, setShowGrid] = useState(false)
@@ -65,7 +70,7 @@ const Canvas = ({
 
   // Auto-fit to screen when image changes
   useEffect(() => {
-    if ((currentImage || livePreview) && fitToScreen) {
+    if ((currentImage || inputImage || livePreview) && fitToScreen) {
       // Small delay to ensure image is loaded
       const timer = setTimeout(() => {
         const scale = calculateFitToScreenScale()
@@ -73,7 +78,7 @@ const Canvas = ({
       }, 100)
       return () => clearTimeout(timer)
     }
-  }, [currentImage, livePreview, generationWidth, generationHeight, fitToScreen])
+  }, [currentImage, inputImage, livePreview, generationWidth, generationHeight, fitToScreen])
 
   const handleZoomIn = () => {
     setZoom(prev => Math.min(prev * 1.2, 5))
@@ -99,7 +104,7 @@ const Canvas = ({
   return (
     <main className="studio-canvas relative flex flex-col">
       {/* Canvas Controls */}
-      {currentImage && (
+      {(currentImage || (generationMode === 'img2img' && inputImage)) && (
         <div className="absolute top-4 left-4 z-10 flex gap-2">
           <div className="studio-panel p-2">
             <div className="flex gap-1">
@@ -145,6 +150,15 @@ const Canvas = ({
               >
                 <Grid3X3 size={16} />
               </button>
+              {(generationMode === 'img2img' && inputImage) && (
+                <>
+                  <div className="w-px h-6 bg-studio-border mx-1" />
+                  <ImageUploader
+                    inputImage={inputImage}
+                    onImageUpload={onImageUpload}
+                  />
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -157,7 +171,7 @@ const Canvas = ({
           className="w-full h-full flex items-center justify-center p-8 overflow-hidden"
         >
           {/* Loading State - Show when generating and no image yet */}
-          {loading && !currentImage ? (
+          {loading && !currentImage && !(generationMode === 'img2img' && inputImage) ? (
             <div className="text-center">
               <div className="w-24 h-24 border-4 border-studio-accent border-t-transparent rounded-full animate-spin mx-auto mb-6" />
               {progress ? (
@@ -181,7 +195,7 @@ const Canvas = ({
                 <p className="text-studio-textSecondary text-lg">Starting generation...</p>
               )}
             </div>
-          ) : currentImage ? (
+          ) : (currentImage || (generationMode === 'img2img' && inputImage)) ? (
             /* Image Display */
             <div
               className="relative"
@@ -207,10 +221,10 @@ const Canvas = ({
 
               {/* Main Image */}
               <img
-                key={livePreview ? 'live-preview' : 'current-image'}
+                key={livePreview ? 'live-preview' : (generationMode === 'img2img' && inputImage && !currentImage ? 'input-image' : 'current-image')}
                 ref={imageRef}
-                src={livePreview || currentImage}
-                alt="Generated"
+                src={livePreview || currentImage || (generationMode === 'img2img' ? inputImage : null)}
+                alt={generationMode === 'img2img' && inputImage && !currentImage ? "Input image for img2img" : "Generated"}
                 className="max-w-none shadow-studio-lg rounded-lg"
                 style={
                   livePreview && generationWidth && generationHeight
@@ -252,6 +266,16 @@ const Canvas = ({
                 </div>
               )}
             </div>
+          ) : generationMode === 'img2img' ? (
+            /* img2img Upload State */
+            <ImageUploader
+              inputImage={inputImage}
+              onImageUpload={onImageUpload}
+              loading={loading}
+              progress={progress}
+              generationWidth={generationWidth}
+              generationHeight={generationHeight}
+            />
           ) : (
             /* Empty State */
             <div className="text-center text-studio-text-muted">
@@ -278,8 +302,8 @@ const Canvas = ({
       {/* Status Bar */}
       <div className="studio-toolbar justify-between text-xs text-studio-textSecondary">
         <div className="flex items-center gap-4">
-          <span>Canvas</span>
-          {currentImage && (
+          <span>{generationMode === 'img2img' ? 'Img2Img Canvas' : 'Canvas'}</span>
+          {(currentImage || (generationMode === 'img2img' && inputImage)) && (
             <>
               <span>•</span>
               <span>{zoom !== 1 ? `${Math.round(zoom * 100)}%` : 'Fit to screen'}</span>
