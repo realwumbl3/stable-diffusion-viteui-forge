@@ -35,10 +35,8 @@
 }
 
 .better-prompt .button {
-  font-size: 9px;
   padding: 0px 2px;
   background: var(--studio-surface);
-  height: 16px;
   border-radius: 2px;
   user-select: none;
   cursor: pointer;
@@ -98,12 +96,13 @@
 
 /* Main Editor */
 .main-editor {
+  --padding: 17px;
   min-height: 60px;
   border-radius: 2px;
   background: var(--studio-bg);
   overflow-y: auto;
-  padding-bottom: 30px;
-  padding-top: 20px;
+  padding-bottom: var(--padding);
+  padding-top: var(--padding);
 }
 
 /* Node Field */
@@ -154,6 +153,11 @@
   background: var(--studio-panel);
   position: relative;
   transition: all 0.15s;
+}
+
+.node button {
+  font-size: 9px !important;
+  height: 16px;
 }
 
 .node:hover {
@@ -505,6 +509,7 @@
   height: max-content;
 }
 
+
 .editor-footer .left-side {
   display: grid;
   gap: 3px;
@@ -522,6 +527,10 @@
 .editor-footer .row.manage {
   display: flex;
   gap: 3px;
+}
+
+.editor-footer button {
+  font-size: 12px;
 }
 
 .clear-prompt {
@@ -543,7 +552,7 @@
   display: none;
 }
 
-.compose {
+button.compose {
   display: block;
   padding: 0.15em 0.4em;
   background: var(--studio-surface);
@@ -552,16 +561,16 @@
   border-radius: 3px;
   text-align: center;
   cursor: pointer;
-  font-size: 1.1em;
+  font-size: 1.4em;
   transition: all 0.15s;
   height: max-content;
 }
 
-.compose:hover {
+button.compose:hover {
   background: var(--studio-panel-hover);
 }
 
-.compose.modified {
+button.compose.modified {
   animation: pulsingComposeButton 0.8s infinite;
   border-color: var(--studio-warning);
 }
@@ -680,9 +689,11 @@
 }
 
 .composer-container .button {
+  font-size: 14px;
   background: var(--studio-surface);
   color: var(--studio-text-secondary);
   border: 1px solid var(--studio-border);
+  padding: 5px;
 }
 
 .composer-container .button:hover {
