@@ -153,6 +153,8 @@ class ProgressResponse(BaseModel):
     live_preview: str | None = Field(default=None, title="Live preview image", description="Current live preview; a data: uri")
     id_live_preview: int | None = Field(default=None, title="Live preview image ID", description="Send this together with next request to prevent receiving same image")
     textinfo: str | None = Field(default=None, title="Info text", description="Info text used by WebUI.")
+    current_batch: int | None = Field(default=None, title="Current batch number", description="Current batch being processed (1-based)")
+    total_batches: int | None = Field(default=None, title="Total batches", description="Total number of batches to process")
 
 
 async def websocket_progress_endpoint(websocket: WebSocket, task_id: str | None = None):
@@ -259,7 +261,22 @@ def progressapi(req: ProgressRequest):
                 live_preview = f"data:image/{opts.live_previews_image_format};base64,{base64_image}"
                 id_live_preview = shared.state.id_live_preview
 
-    response = ProgressResponse(active=active, queued=queued, completed=completed, progress=progress, eta=eta, live_preview=live_preview, id_live_preview=id_live_preview, textinfo=shared.state.textinfo)
+    # Calculate batch information
+    current_batch = job_no + 1 if job_count > 0 else None
+    total_batches = job_count if job_count > 0 else None
+
+    response = ProgressResponse(
+        active=active,
+        queued=queued,
+        completed=completed,
+        progress=progress,
+        eta=eta,
+        live_preview=live_preview,
+        id_live_preview=id_live_preview,
+        textinfo=shared.state.textinfo,
+        current_batch=current_batch,
+        total_batches=total_batches
+    )
 
     # Broadcast progress update via WebSocket if there's an active task
     if req.id_task:
@@ -272,7 +289,11 @@ def progressapi(req: ProgressRequest):
             "live_preview": live_preview,
             "id_live_preview": id_live_preview,
             "textinfo": shared.state.textinfo,
-            "timestamp": time.time()
+            "timestamp": time.time(),
+            "current_batch": current_batch,
+            "total_batches": total_batches,
+            "sampling_step": shared.state.sampling_step,
+            "sampling_steps": shared.state.sampling_steps
         }
         # Broadcast in background to avoid blocking the API response
         websocket_manager.broadcast_task_progress_sync(req.id_task, progress_data)

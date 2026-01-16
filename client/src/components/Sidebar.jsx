@@ -29,7 +29,7 @@ const Sidebar = ({ collapsed, onToggle, images, currentImage, onImageSelect }) =
       collapsed ? "w-12" : "w-90"
     )}>
       {/* Always-full-width Content Container */}
-      <div className="w-80 h-full">
+      <div className="w-90 h-full">
         {/* Collapsed Icon List */}
         <div className={cn(
           "absolute inset-0 flex flex-col items-center gap-4 py-6 px-2 transition-opacity duration-300 ease-in-out",
@@ -57,11 +57,11 @@ const Sidebar = ({ collapsed, onToggle, images, currentImage, onImageSelect }) =
 
         {/* Expanded Content */}
         <div className={cn(
-          "h-full transition-opacity duration-300 ease-in-out",
+          "h-full flex flex-col transition-opacity duration-300 ease-in-out",
           collapsed ? "opacity-0 pointer-events-none" : "opacity-100"
         )}>
           {/* Sidebar Header */}
-          <div className="studio-sidebar-header">
+          <div className="studio-sidebar-header flex-shrink-0">
             <div className="flex items-center justify-between">
               <h3 className="text-studio-text font-semibold text-sm">Library</h3>
               <div className="flex gap-1">
@@ -107,9 +107,9 @@ const Sidebar = ({ collapsed, onToggle, images, currentImage, onImageSelect }) =
           </div>
 
           {/* Sidebar Content */}
-          <div className="studio-sidebar-content">
+          <div className="studio-sidebar-content flex flex-col min-h-0">
             {/* Search Bar */}
-            <div className="p-4 border-b border-studio-border">
+            <div className="p-4 border-b border-studio-border flex-shrink-0">
               <div className="relative">
                 <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-studio-text-muted" />
                 <input
@@ -121,16 +121,16 @@ const Sidebar = ({ collapsed, onToggle, images, currentImage, onImageSelect }) =
             </div>
 
             {/* Content Area */}
-            <div className="p-4">
+            <div className="flex-1 overflow-y-auto p-4">
               {activeTab === 'images' && (
                 <div className={cn(
                   viewMode === 'grid'
                     ? "grid grid-cols-2 gap-2"
                     : "space-y-2"
                 )}>
-                  {images.map((imageSrc, index) => (
+                  {[...images].reverse().map((imageSrc, index) => (
                     <button
-                      key={index}
+                      key={images.length - 1 - index}
                       onClick={() => onImageSelect(imageSrc)}
                       className={cn(
                         "group relative rounded-lg overflow-hidden border-2 transition-all duration-200",
@@ -141,7 +141,7 @@ const Sidebar = ({ collapsed, onToggle, images, currentImage, onImageSelect }) =
                     >
                       <img
                         src={imageSrc}
-                        alt={`Generated ${index + 1}`}
+                        alt={`Generated ${images.length - index}`}
                         className="w-full h-20 object-cover group-hover:scale-105 transition-transform duration-200"
                       />
                       {currentImage === imageSrc && (

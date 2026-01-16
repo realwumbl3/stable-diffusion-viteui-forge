@@ -173,6 +173,7 @@ const Canvas = ({
                   </div>
                   <p className="text-studio-textSecondary text-sm">
                     {Math.round(progress.progress * 100)}%
+                    {progress.total_batches > 1 && ` • Batch ${progress.current_batch}/${progress.total_batches}`}
                     {progress.eta && ` • ETA: ${Math.round(progress.eta)}s`}
                   </p>
                 </>
@@ -237,6 +238,7 @@ const Canvas = ({
                         </div>
                         <p className="text-studio-textSecondary text-xs mt-1">
                           {Math.round(progress.progress * 100)}%
+                          {progress.total_batches > 1 && ` • ${progress.current_batch}/${progress.total_batches}`}
                           {progress.eta && ` • ETA: ${Math.round(progress.eta)}s`}
                         </p>
                       </>
@@ -287,6 +289,12 @@ const Canvas = ({
             <>
               <span>•</span>
               <span>Step {progress.sampling_step || 0}/{progress.sampling_steps || 0}</span>
+              {progress.total_batches > 1 && (
+                <>
+                  <span>•</span>
+                  <span>Batch {progress.current_batch}/{progress.total_batches}</span>
+                </>
+              )}
               <span>•</span>
               <span>{Math.round(progress.progress * 100)}%</span>
               {progress.eta && (

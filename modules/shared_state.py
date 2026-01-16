@@ -249,6 +249,10 @@ class State:
                 predicted_duration = elapsed_since_start / progress if progress > 0 else None
                 eta = predicted_duration - elapsed_since_start if predicted_duration is not None else None
 
+                # Calculate batch information
+                current_batch = self.job_no + 1 if self.job_count > 0 else 0
+                total_batches = self.job_count
+
                 progress_data = {
                     "active": True,
                     "queued": False,
@@ -261,7 +265,9 @@ class State:
                     "sampling_step": self.sampling_step,
                     "sampling_steps": self.sampling_steps,
                     "job_no": self.job_no,
-                    "job_count": self.job_count
+                    "job_count": self.job_count,
+                    "current_batch": current_batch,
+                    "total_batches": total_batches
                 }
 
                 # Broadcast directly (already in async context)
@@ -320,6 +326,10 @@ class State:
                 predicted_duration = elapsed_since_start / progress if progress > 0 else None
                 eta = predicted_duration - elapsed_since_start if predicted_duration is not None else None
 
+                # Calculate batch information
+                current_batch = self.job_no + 1 if self.job_count > 0 else 0
+                total_batches = self.job_count
+
                 progress_data = {
                     "active": True,
                     "queued": False,
@@ -333,6 +343,8 @@ class State:
                     "sampling_steps": self.sampling_steps,
                     "job_no": self.job_no,
                     "job_count": self.job_count,
+                    "current_batch": current_batch,
+                    "total_batches": total_batches,
                     "timestamp": time.time(),
                 }
 

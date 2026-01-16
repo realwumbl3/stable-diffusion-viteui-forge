@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import api from '../api.js'
 
 export class ProgressWebSocketManager {
   constructor() {
@@ -118,6 +119,7 @@ export const useWebSocketProgress = (taskId = null) => {
   const [isConnected, setIsConnected] = useState(false)
   const [livePreview, setLivePreview] = useState(null)
   const pingIntervalRef = useRef(null)
+  const pollIntervalRef = useRef(null)
   const completedTasksRef = useRef(new Set())
 
   // Handle connection and ping interval
@@ -130,6 +132,41 @@ export const useWebSocketProgress = (taskId = null) => {
       pingIntervalRef.current = setInterval(() => {
         progressManager.ping()
       }, 30000) // Every 30 seconds
+
+      // Start polling interval as fallback
+      pollIntervalRef.current = setInterval(async () => {
+        try {
+          const progressData = await api.request('/internal/progress', {
+            method: 'POST',
+            body: JSON.stringify({
+              id_task: taskId,
+              live_preview: true
+            })
+          })
+          if (progressData && typeof progressData.progress === 'number') {
+            // Process the same way as WebSocket messages
+            if (completedTasksRef.current.has(taskId)) {
+              return
+            }
+            if (progressData.completed) {
+              completedTasksRef.current.add(taskId)
+              setProgress(null)
+              setLivePreview(null)
+              return
+            }
+            setProgress(progressData)
+            if (progressData.live_preview !== undefined) {
+              if (progressData.live_preview) {
+                setLivePreview(progressData.live_preview)
+              } else {
+                setLivePreview(null)
+              }
+            }
+          }
+        } catch (error) {
+          // Ignore polling errors
+        }
+      }, 2000) // Poll every 2 seconds
     } else {
       // Disconnect if no taskId
       progressManager.disconnect()
@@ -137,13 +174,21 @@ export const useWebSocketProgress = (taskId = null) => {
         clearInterval(pingIntervalRef.current)
         pingIntervalRef.current = null
       }
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current)
+        pollIntervalRef.current = null
+      }
     }
 
     return () => {
-      // Cleanup ping interval
+      // Cleanup intervals
       if (pingIntervalRef.current) {
         clearInterval(pingIntervalRef.current)
         pingIntervalRef.current = null
+      }
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current)
+        pollIntervalRef.current = null
       }
       // Note: We don't disconnect here because the manager is shared
       // The manager will handle reconnection when taskId changes
@@ -153,6 +198,14 @@ export const useWebSocketProgress = (taskId = null) => {
   // Reset completed tasks when taskId changes
   useEffect(() => {
     completedTasksRef.current.clear()
+  }, [taskId])
+
+  // Clear progress and live preview when task ends
+  useEffect(() => {
+    if (!taskId) {
+      setProgress(null)
+      setLivePreview(null)
+    }
   }, [taskId])
 
   // Handle WebSocket messages
@@ -168,6 +221,7 @@ export const useWebSocketProgress = (taskId = null) => {
       // Handle connection status
       if (data.type === 'connected') {
         setIsConnected(true)
+        setLivePreview(null) // Clear any old preview when connecting to new task
         return
       }
 
@@ -180,6 +234,11 @@ export const useWebSocketProgress = (taskId = null) => {
 
       // Ignore ping/pong messages - they don't contain progress data
       if (data.type === 'ping' || data.type === 'pong') {
+        return
+      }
+
+      // Only process messages for the current task
+      if (data.task_id && data.task_id !== taskId) {
         return
       }
 

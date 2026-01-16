@@ -112,6 +112,11 @@ const Header = ({ loading, progress, onGenerate, canGenerate, activeTool, onTool
                 <div className="flex items-center gap-2">
                   <div className="w-4 h-4 border-2 border-studio-bg border-t-transparent rounded-full animate-spin" />
                   <span>{Math.round(progress.progress * 100)}%</span>
+                  {progress.total_batches > 1 && (
+                    <span className="text-xs text-studio-textSecondary">
+                      (Batch {progress.current_batch}/{progress.total_batches})
+                    </span>
+                  )}
                 </div>
                 {/* Progress bar overlay */}
                 <div className="absolute bottom-0 left-0 right-0 h-1 bg-studio-bg/20 rounded-b-md overflow-hidden">
