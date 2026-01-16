@@ -2,7 +2,7 @@ import { X } from "lucide-react";
 import { cn } from "../lib/utils.js";
 import { useState, useRef, useEffect } from "react";
 
-const TimelineItem = ({ item, isActive, onSelect, onDiscard, showDiscard = false, badge = null }) => {
+const TimelineItem = ({ item, isActive, onSelect, onDiscard, showDiscard = false, badge = null, onCommit, onReject, showCommitReject = false }) => {
     const [aspectRatio, setAspectRatio] = useState(1);
     const imgRef = useRef(null);
 
@@ -51,6 +51,32 @@ const TimelineItem = ({ item, isActive, onSelect, onDiscard, showDiscard = false
                 >
                     <X size={12} />
                 </button>
+            )}
+            {showCommitReject && isActive && (
+                <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-studio-panel/90 to-transparent">
+                    <div className="flex gap-1">
+                        <button
+                            onClick={(event) => {
+                                event.stopPropagation();
+                                onCommit?.();
+                            }}
+                            className="flex-1 px-2 py-1 bg-studio-accent text-white text-xs rounded hover:bg-studio-accent/80 transition-colors"
+                            type="button"
+                        >
+                            Commit
+                        </button>
+                        <button
+                            onClick={(event) => {
+                                event.stopPropagation();
+                                onReject?.();
+                            }}
+                            className="flex-1 px-2 py-1 bg-studio-panel text-studio-textSecondary text-xs rounded hover:bg-studio-surface transition-colors"
+                            type="button"
+                        >
+                            Reject
+                        </button>
+                    </div>
+                </div>
             )}
         </div>
     );

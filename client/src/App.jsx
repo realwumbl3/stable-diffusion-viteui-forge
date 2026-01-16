@@ -319,7 +319,7 @@ function App() {
           ...prev,
           generationQueue: remainingQueue,
           discarded: [preview, ...prev.discarded],
-          currentPreview: null
+          currentPreview: remainingQueue.length > 0 ? remainingQueue[0] : null
         }
       }
       return {

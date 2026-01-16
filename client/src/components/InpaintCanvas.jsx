@@ -1134,7 +1134,7 @@ const InpaintCanvas = ({
                                             title="Scroll to change brush size"
                                         >
                                             <div
-                                                className="bg-red-500 rounded-full transition-all duration-100"
+                                                className="bg-red-500 rounded-full"
                                                 style={{
                                                     width: `${brushSize * zoom}px`,
                                                     height: `${brushSize * zoom}px`,

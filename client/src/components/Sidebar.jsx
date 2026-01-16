@@ -1,8 +1,10 @@
 import {
   ChevronLeft,
+  ChevronRight,
   Image as ImageIcon,
   Trash2
 } from 'lucide-react'
+import { useState } from 'react'
 import { cn } from '../lib/utils.js'
 import TimelineItem from './TimelineItem.jsx'
 
@@ -18,10 +20,29 @@ const Sidebar = ({
   onRestoreGeneration,
   onGenerationModeChange
 }) => {
+  const [committedPage, setCommittedPage] = useState(0)
+  const [discardedPage, setDiscardedPage] = useState(0)
+
   const previewImage = timeline.currentPreview?.image
   const hasQueueItems = timeline.generationQueue.length > 0
   const hasCommitted = timeline.committedHistory.length > 0
   const hasDiscarded = timeline.discarded.length > 0
+
+  const itemsPerPage = 5
+
+  // Show latest items first with pagination
+  const committedPages = Math.ceil(timeline.committedHistory.length / itemsPerPage)
+  const discardedPages = Math.ceil(timeline.discarded.length / itemsPerPage)
+
+  const displayedCommitted = timeline.committedHistory.slice(
+    committedPage * itemsPerPage,
+    (committedPage + 1) * itemsPerPage
+  )
+
+  const displayedDiscarded = timeline.discarded.slice(
+    discardedPage * itemsPerPage,
+    (discardedPage + 1) * itemsPerPage
+  )
 
   return (
     <aside className={cn(
@@ -75,6 +96,9 @@ const Sidebar = ({
                         onSelect={() => onPreviewSelect(item)}
                         onDiscard={() => onDiscardGeneration(item)}
                         showDiscard
+                        onCommit={onCommitPreview}
+                        onReject={onRejectPreview}
+                        showCommitReject
                       />
                     ))}
                   </div>
@@ -83,25 +107,6 @@ const Sidebar = ({
                 )}
               </div>
 
-              {/* Commit/Reject Actions */}
-              {previewImage && (
-                <div className="space-y-2">
-                  <div className="flex gap-2">
-                    <button
-                      onClick={onCommitPreview}
-                      className="studio-btn flex-1"
-                    >
-                      Commit
-                    </button>
-                    <button
-                      onClick={onRejectPreview}
-                      className="studio-btn-ghost flex-1 text-studio-textSecondary hover:text-studio-text"
-                    >
-                      Reject
-                    </button>
-                  </div>
-                </div>
-              )}
 
               {/* Canvas */}
               <div className="space-y-2">
@@ -141,12 +146,37 @@ const Sidebar = ({
               {/* Committed Timeline */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-xs text-studio-textSecondary uppercase tracking-wider">
-                  <span>Committed</span>
+                  <div className="flex items-center gap-2">
+                    <span>Committed</span>
+                    {committedPages > 1 && (
+                      <>
+                        <button
+                          onClick={() => setCommittedPage(Math.max(0, committedPage - 1))}
+                          disabled={committedPage === 0}
+                          className="p-0.5 hover:bg-studio-surface rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Previous page"
+                        >
+                          <ChevronLeft size={12} />
+                        </button>
+                        <span className="text-xs">
+                          {committedPage + 1}/{committedPages}
+                        </span>
+                        <button
+                          onClick={() => setCommittedPage(Math.min(committedPages - 1, committedPage + 1))}
+                          disabled={committedPage >= committedPages - 1}
+                          className="p-0.5 hover:bg-studio-surface rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Next page"
+                        >
+                          <ChevronRight size={12} />
+                        </button>
+                      </>
+                    )}
+                  </div>
                   {hasCommitted && <span>{timeline.committedHistory.length}</span>}
                 </div>
                 {hasCommitted ? (
                   <div className="grid grid-cols-1 gap-2">
-                    {timeline.committedHistory.map(item => (
+                    {displayedCommitted.map(item => (
                       <TimelineItem
                         key={item.id}
                         item={item}
@@ -163,12 +193,37 @@ const Sidebar = ({
               {/* Discarded */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-xs text-studio-textSecondary uppercase tracking-wider">
-                  <span>Discarded</span>
+                  <div className="flex items-center gap-2">
+                    <span>Discarded</span>
+                    {discardedPages > 1 && (
+                      <>
+                        <button
+                          onClick={() => setDiscardedPage(Math.max(0, discardedPage - 1))}
+                          disabled={discardedPage === 0}
+                          className="p-0.5 hover:bg-studio-surface rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Previous page"
+                        >
+                          <ChevronLeft size={12} />
+                        </button>
+                        <span className="text-xs">
+                          {discardedPage + 1}/{discardedPages}
+                        </span>
+                        <button
+                          onClick={() => setDiscardedPage(Math.min(discardedPages - 1, discardedPage + 1))}
+                          disabled={discardedPage >= discardedPages - 1}
+                          className="p-0.5 hover:bg-studio-surface rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Next page"
+                        >
+                          <ChevronRight size={12} />
+                        </button>
+                      </>
+                    )}
+                  </div>
                   {hasDiscarded && <span>{timeline.discarded.length}</span>}
                 </div>
                 {hasDiscarded ? (
                   <div className="grid grid-cols-1 gap-2">
-                    {timeline.discarded.map(item => (
+                    {displayedDiscarded.map(item => (
                       <TimelineItem
                         key={item.id}
                         item={item}
