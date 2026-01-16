@@ -305,14 +305,11 @@ const InpaintCanvas = ({
     // Add non-passive wheel event listener for zoom functionality
     useEffect(() => {
         const canvasElement = canvasRef.current;
-        const canvasContainer = canvasRef.current?.firstChild;
 
         if (!canvasElement) return;
 
         const handleWheelEvent = (e) => {
-            const path = e.path || (e.composedPath && e.composedPath()) || [];
-            const isInsideCanvas = path.some((item) => item === canvasContainer);
-            if (!isInsideCanvas) return;
+            if (!isInsideCanvas(e)) return;
 
             if (!e.defaultPrevented) {
                 e.preventDefault();
@@ -329,10 +326,6 @@ const InpaintCanvas = ({
             setZoom((prev) => {
                 const newZoom = Math.max(0.1, Math.min(5, prev * delta));
                 setFitToScreen(false);
-
-                // Adjust pan offset so zoom focuses on cursor position
-                // The point under the cursor should remain at the same screen position
-                const zoomRatio = newZoom / prev;
 
                 // Calculate the position in the untransformed coordinate system
                 // First, undo the current pan offset, then scale by current zoom
@@ -469,6 +462,14 @@ const InpaintCanvas = ({
         [handleFileSelect]
     );
 
+    const isInsideCanvas = (e) => {
+        const canvasContainer = canvasRef.current;
+        if (!canvasContainer) return false;
+
+        // More reliable method: check if the event target is within the canvas container
+        return canvasContainer.firstChild.contains(e.target);
+    };
+
     // Drawing functions
     const getCanvasCoordinates = (e) => {
         if (!imageRef.current) return { x: 0, y: 0 };
@@ -481,8 +482,6 @@ const InpaintCanvas = ({
 
         const x = (e.clientX - rect.left) * scaleX;
         const y = (e.clientY - rect.top) * scaleY;
-
-        console.log("Coords:", x, y, "Scale:", scaleX, scaleY);
 
         return { x, y };
     };
@@ -516,8 +515,6 @@ const InpaintCanvas = ({
     };
 
     const drawBrush = (x, y) => {
-        console.log("Drawing at:", x, y, "Mode:", drawingMode, "Size:", brushSize);
-
         if (lastDrawPos) {
             // Draw a line from last position to current position
             drawBrushLine(lastDrawPos.x, lastDrawPos.y, x, y);
@@ -601,21 +598,14 @@ const InpaintCanvas = ({
     }, []);
 
     const handleMouseDown = (e) => {
-        if (!inputImage) return;
-
+        if (!inputImage || !isInsideCanvas(e)) return;
         // Right-click is handled by capture phase listener, skip here
-
         // Only trigger drawing if clicking directly on the image or canvas elements
-        const target = e.target;
-        const isValidTarget = target.tagName === "IMG" || target.tagName === "CANVAS";
-        if (!isValidTarget) return;
-
+        if (!isInsideCanvas(e)) return;
         if (e.shiftKey) {
             startPan(e);
             return;
         }
-
-        console.log("Mouse down on valid target");
         setIsDrawing(true);
         setMouseButtonDown(true);
         setDrawingStartedOnCanvas(true);
@@ -627,13 +617,9 @@ const InpaintCanvas = ({
     const handleMouseMove = (e) => {
         // Right-click panning is handled by capture phase listener, skip here
 
-        if (!isDrawing) return;
+        if (!isDrawing || !isInsideCanvas(e)) return;
 
         // Only continue drawing if moving over valid targets
-        const target = e.target;
-        const isValidTarget = target.tagName === "IMG" || target.tagName === "CANVAS";
-        if (!isValidTarget) return;
-
         const { x, y } = getCanvasCoordinates(e);
         drawBrush(x, y);
     };
@@ -641,13 +627,8 @@ const InpaintCanvas = ({
     const handleMouseEnter = (e) => {
         // Resume drawing only if mouse button is held down, we're not currently drawing,
         // drawing was started on canvas, and we're entering over a valid target
-        if (mouseButtonDown && !isDrawing && drawingStartedOnCanvas && inputImage) {
+        if (mouseButtonDown && !isDrawing && drawingStartedOnCanvas && inputImage && isInsideCanvas(e)) {
             // Only resume if entering over a valid target
-            const target = e.target;
-            const isValidTarget = target.tagName === "IMG" || target.tagName === "CANVAS";
-            if (!isValidTarget) return;
-
-            console.log("Resuming drawing on mouse enter");
             setIsDrawing(true);
             const { x, y } = getCanvasCoordinates(e);
             setLastDrawPos(null); // Reset last position for new stroke
