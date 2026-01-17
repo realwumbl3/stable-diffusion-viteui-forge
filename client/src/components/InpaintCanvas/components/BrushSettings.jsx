@@ -16,7 +16,6 @@ const BrushSettings = ({
                         <div
                             className="flex items-center justify-center w-full aspect-square bg-studio-surface rounded-lg border border-studio-border cursor-pointer"
                             onWheel={(e) => {
-                                e.preventDefault();
                                 if (e.deltaY > 0) {
                                     setBrushSize(Math.max(4, brushSize - 4));
                                 } else {

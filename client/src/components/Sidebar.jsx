@@ -2,9 +2,10 @@ import {
   ChevronLeft,
   ChevronRight,
   Image as ImageIcon,
-  Trash2
+  Trash2,
+  Maximize2
 } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { cn } from '../lib/utils'
 import TimelineItem from './TimelineItem.jsx'
 
@@ -18,10 +19,32 @@ const Sidebar = ({
   onRejectPreview,
   onDiscardGeneration,
   onRestoreGeneration,
-  onGenerationModeChange
+  onGenerationModeChange,
+  onUpscale
 }) => {
   const [committedPage, setCommittedPage] = useState(0)
   const [discardedPage, setDiscardedPage] = useState(0)
+  const [canvasDimensions, setCanvasDimensions] = useState({ width: 0, height: 0 })
+  const canvasImgRef = useRef(null)
+
+  useEffect(() => {
+    const img = canvasImgRef.current
+    if (img && currentImage) {
+      const handleLoad = () => {
+        const width = img.naturalWidth
+        const height = img.naturalHeight
+        setCanvasDimensions({ width, height })
+      }
+      if (img.complete) {
+        handleLoad()
+      } else {
+        img.addEventListener('load', handleLoad)
+        return () => img.removeEventListener('load', handleLoad)
+      }
+    } else if (!currentImage) {
+      setCanvasDimensions({ width: 0, height: 0 })
+    }
+  }, [currentImage])
 
   const previewImage = timeline.currentPreview?.image
   const hasQueueItems = timeline.generationQueue.length > 0
@@ -87,7 +110,7 @@ const Sidebar = ({
                   {hasQueueItems && <span>{timeline.generationQueue.length}</span>}
                 </div>
                 {hasQueueItems ? (
-                  <div className="space-y-2">
+                  <div className="grid grid-cols-1 gap-2">
                     {timeline.generationQueue.map(item => (
                       <TimelineItem
                         key={item.id}
@@ -114,7 +137,7 @@ const Sidebar = ({
                   <span>Canvas</span>
                 </div>
                 <div className="studio-panel p-2 rounded-lg space-y-2">
-                  <div className="relative rounded-md overflow-hidden border border-studio-border cursor-pointer"
+                  <div className="relative rounded-md overflow-hidden border border-studio-border cursor-pointer group"
                        onClick={() => {
                          // Switch to inpainting mode when clicking canvas in sidebar
                          if (onGenerationModeChange) {
@@ -127,6 +150,7 @@ const Sidebar = ({
                        }}>
                     {currentImage ? (
                       <img
+                        ref={canvasImgRef}
                         src={currentImage}
                         alt="Canvas"
                         className="w-full object-contain"
@@ -138,6 +162,41 @@ const Sidebar = ({
                     )}
                     {previewImage && (
                       <div className="absolute inset-0 bg-studio-accent/10 border border-studio-accent/40" />
+                    )}
+
+                    {/* Canvas Header Container */}
+                    {currentImage && (
+                      <div className="absolute top-0 left-0 right-0 p-2 bg-gradient-to-b from-studio-panel/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex items-center justify-between">
+                          {/* Left side - Resolution */}
+                          <div className="flex items-center">
+                            {canvasDimensions.width > 0 && (
+                              <div className="rounded bg-studio-panel/80 text-studio-textSecondary px-1.5 py-0.5 text-xs">
+                                {canvasDimensions.width}×{canvasDimensions.height}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Right side - Buttons */}
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                onUpscale?.({
+                                  id: 'canvas-current',
+                                  image: currentImage,
+                                  type: 'canvas'
+                                })
+                              }}
+                              className="rounded bg-studio-panel/80 text-studio-textSecondary p-1 hover:bg-studio-surface transition-colors"
+                              title="Upscale Canvas"
+                              type="button"
+                            >
+                              <Maximize2 size={12} />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -182,6 +241,8 @@ const Sidebar = ({
                         item={item}
                         isActive={timeline.currentPreview?.id === item.id}
                         onSelect={() => onPreviewSelect(item)}
+                        onUpscale={onUpscale}
+                        showUpscale
                       />
                     ))}
                   </div>

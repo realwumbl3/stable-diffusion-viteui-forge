@@ -49,6 +49,23 @@ export interface UpscalerInfo {
   scale: number;
 }
 
+export interface ExtrasSingleImageParams {
+  image: string;
+  upscaler_1: string;
+  upscaling_resize: number;
+  resize_mode: number;
+  show_extras_results?: boolean;
+  gfpgan_visibility?: number;
+  codeformer_visibility?: number;
+  codeformer_weight?: number;
+  upscaling_resize_w?: number;
+  upscaling_resize_h?: number;
+  upscaling_crop?: boolean;
+  upscaler_2?: string;
+  extras_upscaler_2_visibility?: number;
+  upscale_first?: boolean;
+}
+
 export interface ProgressInfo {
   progress: number;
   eta_relative: number;
@@ -71,6 +88,11 @@ export interface GenerationResponse {
   parameters: Record<string, any>;
   info: string;
   taskId?: string;
+}
+
+export interface ExtrasResponse {
+  image: string;
+  html_info: string;
 }
 
 const API_BASE_URL = '/api';
@@ -178,6 +200,22 @@ class StableDiffusionAPI {
   // Get upscalers
   async getUpscalers(): Promise<UpscalerInfo[]> {
     return this.request<UpscalerInfo[]>('/sdapi/v1/upscalers');
+  }
+
+  // Extra single image (upscaling, face restoration, etc.)
+  async extraSingleImage(params: ExtrasSingleImageParams): Promise<ExtrasResponse> {
+    // Add a task ID to track progress
+    const taskId = `task(extra-single-image-${Date.now()}-${Math.random().toString(36).substr(2, 9)})`
+    const paramsWithTaskId = { ...params, force_task_id: taskId }
+
+    const result = await this.request<ExtrasResponse>('/sdapi/v1/extra-single-image', {
+      method: 'POST',
+      body: JSON.stringify(paramsWithTaskId),
+    });
+
+    // Add task ID to result for progress tracking
+    result.taskId = taskId
+    return result
   }
 
   // Interrogate (analyze image)

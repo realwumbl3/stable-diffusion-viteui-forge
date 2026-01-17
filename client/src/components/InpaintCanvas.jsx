@@ -36,8 +36,6 @@ const InpaintCanvas = ({
     setInpaintFullResPadding,
     // Force edit mode for mask editing
     forceEditMode = false,
-    // Preserve mask when changing input image
-    preserveMaskOnImageChange = false,
 }) => {
     const displayImage = previewImage || currentImage;
 
@@ -85,7 +83,6 @@ const InpaintCanvas = ({
         fillTarget,
         fillTolerance,
         fillOverfill,
-        preserveMaskOnImageChange,
     });
 
     const fileHandling = useFileHandling({ onImageUpload });
@@ -230,8 +227,6 @@ const InpaintCanvas = ({
         const file = e.target.files[0];
         if (file) {
             fileHandling.handleFileSelect(file);
-            // Clear any existing mask when uploading a new image
-            setInpaintMask(null);
         }
     };
 

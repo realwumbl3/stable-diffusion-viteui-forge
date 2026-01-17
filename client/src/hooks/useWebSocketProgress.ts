@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import api from '../api'
+import api from '../Api.ts'
 
 export interface ProgressData {
   progress?: number

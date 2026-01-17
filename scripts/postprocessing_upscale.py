@@ -30,12 +30,17 @@ class ScriptPostprocessingUpscale(scripts_postprocessing.ScriptPostprocessing):
     def ui(self):
         selected_tab = gr.Number(value=0, visible=False)
 
+        # Ensure we have at least basic upscalers available
+        upscalers = shared.sd_upscalers if shared.sd_upscalers else [{"name": "Lanczos"}]
+        upscaler_names = [x.name for x in upscalers] if hasattr(upscalers[0], 'name') else [x["name"] for x in upscalers]
+        default_upscaler = upscalers[0].name if hasattr(upscalers[0], 'name') else upscalers[0]["name"]
+
         with InputAccordion(True, label="Upscale", elem_id="extras_upscale") as upscale_enabled:
             with FormRow():
-                extras_upscaler_1 = gr.Dropdown(label='Upscaler 1', elem_id="extras_upscaler_1", choices=[x.name for x in shared.sd_upscalers], value=shared.sd_upscalers[0].name)
+                extras_upscaler_1 = gr.Dropdown(label='Upscaler 1', elem_id="extras_upscaler_1", choices=upscaler_names, value=default_upscaler)
 
             with FormRow():
-                extras_upscaler_2 = gr.Dropdown(label='Upscaler 2', elem_id="extras_upscaler_2", choices=[x.name for x in shared.sd_upscalers], value=shared.sd_upscalers[0].name)
+                extras_upscaler_2 = gr.Dropdown(label='Upscaler 2', elem_id="extras_upscaler_2", choices=upscaler_names, value=default_upscaler)
                 extras_upscaler_2_visibility = gr.Slider(minimum=0.0, maximum=1.0, step=0.001, label="Upscaler 2 visibility", value=0.0, elem_id="extras_upscaler_2_visibility")
 
             with FormRow():
@@ -137,7 +142,11 @@ class ScriptPostprocessingUpscale(scripts_postprocessing.ScriptPostprocessing):
             upscaler_1_name = None
 
         upscaler1 = next(iter([x for x in shared.sd_upscalers if x.name == upscaler_1_name]), None)
-        assert upscaler1 or (upscaler_1_name is None), f'could not find upscaler named {upscaler_1_name}'
+        if not upscaler1 and upscaler_1_name and upscaler_1_name != "None":
+            # Fallback for mock/API mode - create a basic upscaler
+            from modules.upscaler import UpscalerLanczos
+            upscaler1 = UpscalerLanczos().scalers[0] if upscaler_1_name == "Lanczos" else None
+        assert upscaler1 or (upscaler_1_name is None or upscaler_1_name == "None"), f'could not find upscaler named {upscaler_1_name}'
 
         if not upscaler1:
             return
@@ -147,7 +156,11 @@ class ScriptPostprocessingUpscale(scripts_postprocessing.ScriptPostprocessing):
             upscaler_2_name = None
 
         upscaler2 = next(iter([x for x in shared.sd_upscalers if x.name == upscaler_2_name and x.name != "None"]), None)
-        assert upscaler2 or (upscaler_2_name is None), f'could not find upscaler named {upscaler_2_name}'
+        if not upscaler2 and upscaler_2_name and upscaler_2_name != "None":
+            # Fallback for mock/API mode
+            from modules.upscaler import UpscalerLanczos
+            upscaler2 = UpscalerLanczos().scalers[0] if upscaler_2_name == "Lanczos" else None
+        assert upscaler2 or (upscaler_2_name is None or upscaler_2_name == "None"), f'could not find upscaler named {upscaler_2_name}'
 
         upscaled_image = self.upscale(pp.image, pp.info, upscaler1, upscale_mode, upscale_by, max_side_length, upscale_to_width, upscale_to_height, upscale_crop)
         pp.info["Postprocess upscaler"] = upscaler1.name
@@ -171,8 +184,13 @@ class ScriptPostprocessingUpscaleSimple(ScriptPostprocessingUpscale):
     order = 900
 
     def ui(self):
+        # Use same fallback logic as parent class
+        upscalers = shared.sd_upscalers if shared.sd_upscalers else [{"name": "Lanczos"}]
+        upscaler_names = [x.name for x in upscalers] if hasattr(upscalers[0], 'name') else [x["name"] for x in upscalers]
+        default_upscaler = upscalers[0].name if hasattr(upscalers[0], 'name') else upscalers[0]["name"]
+
         with FormRow():
-            upscaler_name = gr.Dropdown(label='Upscaler', choices=[x.name for x in shared.sd_upscalers], value=shared.sd_upscalers[0].name)
+            upscaler_name = gr.Dropdown(label='Upscaler', choices=upscaler_names, value=default_upscaler)
             upscale_by = gr.Slider(minimum=0.05, maximum=8.0, step=0.05, label="Upscale by", value=2)
 
         return {
@@ -189,7 +207,11 @@ class ScriptPostprocessingUpscaleSimple(ScriptPostprocessingUpscale):
             return
 
         upscaler1 = next(iter([x for x in shared.sd_upscalers if x.name == upscaler_name]), None)
-        assert upscaler1, f'could not find upscaler named {upscaler_name}'
+        if not upscaler1 and upscaler_name and upscaler_name != "None":
+            # Fallback for mock/API mode
+            from modules.upscaler import UpscalerLanczos
+            upscaler1 = UpscalerLanczos().scalers[0] if upscaler_name == "Lanczos" else None
+        assert upscaler1 or upscaler_name == "None", f'could not find upscaler named {upscaler_name}'
 
         pp.image = self.upscale(pp.image, pp.info, upscaler1, 0, upscale_by, 0, 0, 0, False)
         pp.info["Postprocess upscaler"] = upscaler1.name

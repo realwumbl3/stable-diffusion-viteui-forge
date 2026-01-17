@@ -1,16 +1,7 @@
 import dataclasses
 import os
-# Mock gradio for API-only mode
-class MockGradio:
-    @staticmethod
-    def Gallery(*args, **kwargs):
-        return None
-
-    @staticmethod
-    def update(*args, **kwargs):
-        return None
-
-gr = MockGradio()
+import sys
+from modules_forge.gradio_mock import gradio_mock as gr
 
 from modules import errors, shared
 
@@ -113,6 +104,9 @@ def wrap_call(func, filename, funcname, *args, default=None, **kwargs):
         res = func(*args, **kwargs)
         return res
     except Exception as e:
+        print(f"ERROR in {filename}/{funcname}: {e}", file=sys.stderr)
+        import traceback
+        traceback.print_exc(file=sys.stderr)
         errors.display(e, f"calling {filename}/{funcname}")
 
     return default
@@ -141,16 +135,20 @@ class ScriptPostprocessingRunner:
 
         script.controls = wrap_call(script.ui, script.filename, "ui")
 
-        for control in script.controls.values():
-            control.custom_script_source = os.path.basename(script.filename)
+        if script.controls is not None:
+            for control in script.controls.values():
+                control.custom_script_source = os.path.basename(script.filename)
 
-        inputs += list(script.controls.values())
-        script.args_to = len(inputs)
+            inputs += list(script.controls.values())
+            script.args_to = len(inputs)
+        else:
+            # If UI creation failed, set empty controls so the script doesn't break later
+            script.controls = {}
 
     def scripts_in_preferred_order(self):
         if self.scripts is None:
-            import modules.scripts
-            self.initialize_scripts(modules.scripts.postprocessing_scripts_data)
+            from modules.scripts import postprocessing_scripts_data
+            self.initialize_scripts(postprocessing_scripts_data)
 
         scripts_order = shared.opts.postprocessing_operation_order
         scripts_filter_out = set(shared.opts.postprocessing_disable_in_extras)

@@ -11,50 +11,115 @@ class MockInterface:
     def __init__(self, *args, **kwargs):
         pass
 
+class MockGradioComponent:
+    def __init__(self, *args, **kwargs):
+        pass
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        pass
+
+    def __setattr__(self, name, value):
+        self.__dict__[name] = value
+
+    def click(self, *args, **kwargs):
+        # Mock event handler
+        return None
+
+    def select(self, *args, **kwargs):
+        # Mock event handler
+        return None
+
+    def change(self, *args, **kwargs):
+        # Mock event handler
+        return None
+
 class MockGradioModule:
     __version__ = "4.40.0"
 
     @staticmethod
     def update(*args, **kwargs):
-        return None
+        return MockGradioComponent()
 
     @staticmethod
     def Number(*args, **kwargs):
-        return None
+        return MockGradioComponent()
 
     @staticmethod
     def Button(*args, **kwargs):
-        return None
+        return MockGradioComponent()
 
     @staticmethod
     def Textbox(*args, **kwargs):
-        return None
+        return MockGradioComponent()
 
     Interface = MockInterface
 
     @staticmethod
     def Slider(*args, **kwargs):
-        return None
+        return MockGradioComponent()
 
     @staticmethod
     def Image(*args, **kwargs):
-        return None
+        return MockGradioComponent()
 
     @staticmethod
     def Dropdown(*args, **kwargs):
-        return None
+        return MockGradioComponent()
 
     @staticmethod
     def Checkbox(*args, **kwargs):
-        return None
+        return MockGradioComponent()
 
     @staticmethod
     def Radio(*args, **kwargs):
-        return None
+        return MockGradioComponent()
 
     @staticmethod
     def Blocks(*args, **kwargs):
-        return None
+        return MockGradioComponent()
+
+    @staticmethod
+    def Tabs(*args, **kwargs):
+        return MockGradioComponent()
+
+    @staticmethod
+    def Tab(*args, **kwargs):
+        return MockGradioComponent()
+
+    @staticmethod
+    def TabItem(*args, **kwargs):
+        return MockGradioComponent()
+
+    @staticmethod
+    def Row(*args, **kwargs):
+        return MockGradioComponent()
+
+    @staticmethod
+    def Column(*args, **kwargs):
+        return MockGradioComponent()
+
+    @staticmethod
+    def Group(*args, **kwargs):
+        return MockGradioComponent()
+
+    @staticmethod
+    def Accordion(*args, **kwargs):
+        return MockGradioComponent()
+
+    @staticmethod
+    def InputAccordion(*args, **kwargs):
+        return MockGradioComponent()
+
+    @staticmethod
+    def FormRow(*args, **kwargs):
+        return MockGradioComponent()
+
+    @staticmethod
+    def ToolButton(*args, **kwargs):
+        return MockGradioComponent()
 
 # Mock gradio_rangeslider
 class MockRangeSlider:

@@ -70,11 +70,11 @@ timeout /t 5 /nobreak >nul
 echo Starting Vite development server...
 cd client
 if exist node_modules (
-    start "Vite Dev Server" npm run dev
+    start "Vite Dev Server" npm run run
 ) else (
     echo Installing client dependencies...
     npm install
-    start "Vite Dev Server" npm run dev
+    start "Vite Dev Server" npm run run
 )
 cd ..
 
@@ -88,7 +88,7 @@ goto :endofscript
 :accelerate_launch
 echo Accelerating
 echo Starting Stable Diffusion WebUI server with acceleration...
-start "Stable Diffusion WebUI" %ACCELERATE% launch --num_cpu_threads_per_process=6 launch.py --disable-gpu-warning %*
+start "Stable Diffusion WebUI" %ACCELERATE% launch --num_cpu_threads_per_process=6 launch.py --disable-gpu-warning --cuda-malloc %*
 
 echo Waiting for server to initialize...
 timeout /t 5 /nobreak >nul
@@ -96,11 +96,11 @@ timeout /t 5 /nobreak >nul
 echo Starting Vite development server...
 cd client
 if exist node_modules (
-    start "Vite Dev Server" npm run dev
+    start "Vite Dev Server" npm run run
 ) else (
     echo Installing client dependencies...
     npm install
-    start "Vite Dev Server" npm run dev
+    start "Vite Dev Server" npm run run
 )
 cd ..
 

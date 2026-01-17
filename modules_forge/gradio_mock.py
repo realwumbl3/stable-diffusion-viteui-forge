@@ -6,6 +6,15 @@ class MockGradioComponent:
     def update(self, *args, **kwargs):
         return self
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        pass
+
+    def __setattr__(self, name, value):
+        self.__dict__[name] = value
+
 class Radio(MockGradioComponent):
     pass
 
@@ -43,6 +52,9 @@ class Group(MockGradioComponent):
     pass
 
 class Tab(MockGradioComponent):
+    pass
+
+class TabItem(MockGradioComponent):
     pass
 
 class Tabs(MockGradioComponent):
@@ -85,6 +97,7 @@ gradio_mock.Row = Row
 gradio_mock.Column = Column
 gradio_mock.Group = Group
 gradio_mock.Tab = Tab
+gradio_mock.TabItem = TabItem
 gradio_mock.Tabs = Tabs
 gradio_mock.Accordion = Accordion
 gradio_mock.Blocks = Blocks

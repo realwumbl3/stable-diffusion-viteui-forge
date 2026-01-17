@@ -1,16 +1,20 @@
-import { X } from "lucide-react";
+import { X, Maximize2 } from "lucide-react";
 import { cn } from "../lib/utils";
 import { useState, useRef, useEffect } from "react";
 
-const TimelineItem = ({ item, isActive, onSelect, onDiscard, showDiscard = false, badge = null, onCommit, onReject, showCommitReject = false }) => {
+const TimelineItem = ({ item, isActive, onSelect, onDiscard, showDiscard = false, badge = null, onCommit, onReject, showCommitReject = false, onUpscale, showUpscale = false }) => {
     const [aspectRatio, setAspectRatio] = useState(1);
+    const [imageDimensions, setImageDimensions] = useState({ width: 0, height: 0 });
     const imgRef = useRef(null);
 
     useEffect(() => {
         const img = imgRef.current;
         if (img) {
             const handleLoad = () => {
-                setAspectRatio(img.naturalWidth / img.naturalHeight);
+                const width = img.naturalWidth;
+                const height = img.naturalHeight;
+                setAspectRatio(width / height);
+                setImageDimensions({ width, height });
             };
             if (img.complete) {
                 handleLoad();
@@ -34,24 +38,56 @@ const TimelineItem = ({ item, isActive, onSelect, onDiscard, showDiscard = false
             <button onClick={onSelect} className="w-full h-full text-left" type="button">
                 <img ref={imgRef} src={item.image} alt="Timeline item" className="w-full h-full object-contain" />
             </button>
-            {badge && (
-                <div className="absolute top-1 right-1 rounded bg-studio-panel/80 text-studio-textSecondary p-1">
-                    {badge}
+
+            {/* Header Container */}
+            <div className="absolute top-0 left-0 right-0 p-2 bg-gradient-to-b from-studio-panel/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex items-center justify-between">
+                    {/* Left side - Resolution */}
+                    <div className="flex items-center">
+                        {imageDimensions.width > 0 && (
+                            <div className="rounded bg-studio-panel/80 text-studio-textSecondary px-1.5 py-0.5 text-xs">
+                                {imageDimensions.width}×{imageDimensions.height}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Right side - Buttons/Badges */}
+                    <div className="flex items-center gap-1">
+                        {showUpscale && (
+                            <button
+                                onClick={(event) => {
+                                    event.stopPropagation();
+                                    onUpscale?.(item);
+                                }}
+                                className="rounded bg-studio-panel/80 text-studio-textSecondary p-1 hover:bg-studio-surface transition-colors"
+                                title="Upscale"
+                                type="button"
+                            >
+                                <Maximize2 size={12} />
+                            </button>
+                        )}
+                        {showDiscard && (
+                            <button
+                                onClick={(event) => {
+                                    event.stopPropagation();
+                                    onDiscard?.();
+                                }}
+                                className="rounded bg-studio-panel/80 text-studio-textSecondary p-1 hover:bg-studio-surface transition-colors"
+                                title="Discard"
+                                type="button"
+                            >
+                                <X size={12} />
+                            </button>
+                        )}
+                        {badge && (
+                            <div className="rounded bg-studio-panel/80 text-studio-textSecondary p-1">
+                                {badge}
+                            </div>
+                        )}
+                    </div>
                 </div>
-            )}
-            {showDiscard && (
-                <button
-                    onClick={(event) => {
-                        event.stopPropagation();
-                        onDiscard?.();
-                    }}
-                    className="absolute top-1 right-1 rounded bg-studio-panel/80 text-studio-textSecondary p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                    title="Discard"
-                    type="button"
-                >
-                    <X size={12} />
-                </button>
-            )}
+            </div>
+
             {showCommitReject && isActive && (
                 <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-studio-panel/90 to-transparent">
                     <div className="flex gap-1">

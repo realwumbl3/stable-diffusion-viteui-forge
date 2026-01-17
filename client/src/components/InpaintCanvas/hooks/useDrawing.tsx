@@ -14,7 +14,6 @@ export function useDrawing({
     fillTarget,
     fillTolerance,
     fillOverfill,
-    preserveMaskOnImageChange,
 }) {
     // Undo/Redo system
     const [maskHistory, setMaskHistory] = useState<ImageData[]>([]);
@@ -22,37 +21,65 @@ export function useDrawing({
 
     // Initialize canvases when input image loads (not when result changes)
     useEffect(() => {
-        if (inputImage && imageRef.current) {
-            const img = imageRef.current;
+        if (!inputImage || !imageRef.current) return;
+
+        const img = imageRef.current;
+
+        const initializeCanvases = () => {
             const naturalWidth = img.naturalWidth;
             const naturalHeight = img.naturalHeight;
 
             // Ensure we have valid dimensions
             if (naturalWidth > 0 && naturalHeight > 0) {
+                // Preserve existing mask pixels before resizing (resize clears canvas)
+                let previousMaskCanvas: HTMLCanvasElement | null = null;
+                if (maskCanvasRef.current && maskCanvasRef.current.width > 0 && maskCanvasRef.current.height > 0) {
+                    previousMaskCanvas = document.createElement("canvas");
+                    previousMaskCanvas.width = maskCanvasRef.current.width;
+                    previousMaskCanvas.height = maskCanvasRef.current.height;
+                    const prevCtx = previousMaskCanvas.getContext("2d");
+                    if (prevCtx) {
+                        prevCtx.drawImage(maskCanvasRef.current, 0, 0);
+                    }
+                }
+
                 // Set canvas dimensions to match natural image dimensions
                 if (maskCanvasRef.current) {
                     maskCanvasRef.current.width = naturalWidth;
                     maskCanvasRef.current.height = naturalHeight;
 
-                    // Clear canvas only if not preserving mask
                     const ctx = maskCanvasRef.current.getContext("2d");
-                    if (!preserveMaskOnImageChange) {
-                        ctx.clearRect(0, 0, naturalWidth, naturalHeight);
-
-                        // Initialize history with empty state
+                    if (previousMaskCanvas && ctx) {
+                        ctx.drawImage(previousMaskCanvas, 0, 0, naturalWidth, naturalHeight);
+                        const imageData = ctx.getImageData(0, 0, naturalWidth, naturalHeight);
+                        setMaskHistory([imageData]);
+                        setHistoryIndex(0);
+                    } else if (ctx) {
+                        // Initialize history with empty state (first-time setup)
                         const emptyImageData = ctx.getImageData(0, 0, naturalWidth, naturalHeight);
                         setMaskHistory([emptyImageData]);
                         setHistoryIndex(0);
                     }
-                    // If preserving mask, keep existing canvas content and history
+
+                    // Mask is always preserved on image changes unless user clears it explicitly
                 }
                 if (borderCanvasRef.current) {
                     borderCanvasRef.current.width = naturalWidth;
                     borderCanvasRef.current.height = naturalHeight;
                 }
             }
+        };
+
+        if (img.complete && img.naturalWidth > 0 && img.naturalHeight > 0) {
+            initializeCanvases();
+            return;
         }
-    }, [inputImage, preserveMaskOnImageChange]);
+
+        img.addEventListener("load", initializeCanvases);
+        return () => {
+            img.removeEventListener("load", initializeCanvases);
+        };
+    }, [inputImage]);
 
     // Drawing functions
     const getCanvasCoordinates = useCallback((e) => {
@@ -61,6 +88,7 @@ export function useDrawing({
         const rect = imageRef.current.getBoundingClientRect();
 
         // Calculate coordinates relative to the actual image dimensions
+        // The image rect gives us the displayed position and size after transformation
         const scaleX = imageRef.current.naturalWidth / rect.width;
         const scaleY = imageRef.current.naturalHeight / rect.height;
 
@@ -99,6 +127,7 @@ export function useDrawing({
     }, [drawingMode, brushHardness, brushSize]);
 
     const drawBrush = useCallback((x, y, lastDrawPos) => {
+        if (!maskCanvasRef.current) return;
         if (lastDrawPos) {
             // Draw a line from last position to current position
             drawBrushLine(lastDrawPos.x, lastDrawPos.y, x, y);
