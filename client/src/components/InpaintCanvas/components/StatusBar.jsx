@@ -1,3 +1,28 @@
+import { useState, useEffect } from 'react'
+
+// Hook to track memory usage
+const useMemoryUsage = () => {
+  const [memoryUsage, setMemoryUsage] = useState(null)
+
+  useEffect(() => {
+    const updateMemoryUsage = () => {
+      if (performance.memory) {
+        const used = performance.memory.usedJSHeapSize
+        const usedMB = Math.round(used / 1024 / 1024)
+        setMemoryUsage(usedMB)
+      }
+    }
+
+    // Update immediately and then every 5 seconds
+    updateMemoryUsage()
+    const interval = setInterval(updateMemoryUsage, 5000)
+
+    return () => clearInterval(interval)
+  }, [])
+
+  return memoryUsage
+}
+
 const StatusBar = ({
     displayImage,
     inputImage,
@@ -8,6 +33,7 @@ const StatusBar = ({
     progress,
     loading,
 }) => {
+    const memoryUsage = useMemoryUsage()
     return (
         <div className="studio-toolbar justify-between text-xs text-studio-textSecondary">
             <div className="flex items-center gap-4">
@@ -54,6 +80,9 @@ const StatusBar = ({
                 )}
             </div>
             <div className="flex items-center gap-4">
+                {memoryUsage && (
+                    <span>mem: {memoryUsage}mb</span>
+                )}
                 <span>Stable Diffusion WebUI</span>
                 {progress && loading && <span className="text-studio-accent">{progress.textinfo}</span>}
             </div>

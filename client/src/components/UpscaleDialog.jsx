@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { X, Loader2, Maximize2 } from 'lucide-react'
 import { cn } from '../lib/utils'
 
@@ -13,13 +13,63 @@ const UpscaleDialog = ({
   error = null
 }) => {
   const [currentUpscaler, setCurrentUpscaler] = useState(selectedUpscaler)
+  const [imageDimensions, setImageDimensions] = useState({ width: 0, height: 0 })
+  const imgRef = useRef(null)
+
+  // Load saved upscaler from localStorage on mount and when selectedUpscaler changes
+  useEffect(() => {
+    if (selectedUpscaler) {
+      setCurrentUpscaler(selectedUpscaler)
+    }
+  }, [selectedUpscaler])
+
+  // Load last used upscaler from localStorage
+  useEffect(() => {
+    const savedUpscaler = localStorage.getItem('lastUpscaler')
+    if (savedUpscaler && availableUpscalers.find(u => u.name === savedUpscaler)) {
+      setCurrentUpscaler(savedUpscaler)
+    }
+  }, [availableUpscalers])
+
+  // Get image dimensions when image loads
+  useEffect(() => {
+    const img = imgRef.current
+    if (img && sourceImage?.image) {
+      const handleLoad = () => {
+        setImageDimensions({
+          width: img.naturalWidth,
+          height: img.naturalHeight
+        })
+      }
+
+      if (img.complete) {
+        handleLoad()
+      } else {
+        img.addEventListener('load', handleLoad)
+        return () => img.removeEventListener('load', handleLoad)
+      }
+    }
+  }, [sourceImage?.image])
 
   if (!isOpen || !sourceImage) return null
 
   const scaleFactors = [1.5, 2, 3, 4]
 
+  const handleUpscalerChange = (upscalerName) => {
+    setCurrentUpscaler(upscalerName)
+    localStorage.setItem('lastUpscaler', upscalerName)
+  }
+
   const handleUpscale = (scaleFactor) => {
     onUpscale(currentUpscaler, scaleFactor)
+  }
+
+  const getScaledDimensions = (scaleFactor) => {
+    if (imageDimensions.width === 0 || imageDimensions.height === 0) return null
+    return {
+      width: Math.round(imageDimensions.width * scaleFactor),
+      height: Math.round(imageDimensions.height * scaleFactor)
+    }
   }
 
   return (
@@ -45,6 +95,7 @@ const UpscaleDialog = ({
           {/* Source Image Preview */}
           <div className="flex justify-center">
             <img
+              ref={imgRef}
               src={sourceImage.image}
               alt="Source"
               className="max-w-full max-h-32 object-contain rounded border border-studio-border"
@@ -56,31 +107,32 @@ const UpscaleDialog = ({
             <label className="block text-sm font-medium text-studio-text">
               Upscaler
             </label>
-            <div className="space-y-2 max-h-32 overflow-y-auto">
+            <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto">
               {availableUpscalers.length > 0 ? (
                 availableUpscalers.map((upscaler) => (
-                  <label key={upscaler.name} className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="upscaler"
-                      value={upscaler.name}
-                      checked={currentUpscaler === upscaler.name}
-                      onChange={(e) => setCurrentUpscaler(e.target.value)}
-                      className="text-studio-accent focus:ring-studio-accent"
-                      disabled={loading}
-                    />
-                    <span className="text-sm text-studio-textSecondary">
-                      {upscaler.name}
-                      {upscaler.scale && upscaler.scale !== 1 && (
-                        <span className="text-studio-textMuted ml-1">
-                          ({upscaler.scale}x)
-                        </span>
-                      )}
-                    </span>
-                  </label>
+                  <button
+                    key={upscaler.name}
+                    onClick={() => handleUpscalerChange(upscaler.name)}
+                    disabled={loading}
+                    className={cn(
+                      "px-3 py-2 text-xs font-medium rounded-md transition-all duration-200 border whitespace-nowrap",
+                      currentUpscaler === upscaler.name
+                        ? "bg-studio-accent text-white border-studio-accent"
+                        : loading
+                        ? "bg-studio-surface border-studio-border text-studio-textMuted cursor-not-allowed"
+                        : "bg-studio-surface border-studio-border text-studio-text hover:bg-studio-panelHover hover:border-studio-accent"
+                    )}
+                  >
+                    {upscaler.name}
+                    {upscaler.scale && upscaler.scale !== 1 && (
+                      <span className="opacity-75 ml-1">
+                        ({upscaler.scale}x)
+                      </span>
+                    )}
+                  </button>
                 ))
               ) : (
-                <div className="text-sm text-studio-textSecondary">
+                <div className="text-sm text-studio-textSecondary py-2">
                   Loading upscalers...
                 </div>
               )}
@@ -93,21 +145,31 @@ const UpscaleDialog = ({
               Scale Factor
             </label>
             <div className="grid grid-cols-2 gap-2">
-              {scaleFactors.map((factor) => (
-                <button
-                  key={factor}
-                  onClick={() => handleUpscale(factor)}
-                  disabled={loading}
-                  className={cn(
-                    "px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 border",
-                    loading
-                      ? "bg-studio-surface border-studio-border text-studio-textMuted cursor-not-allowed"
-                      : "bg-studio-surface border-studio-border text-studio-text hover:bg-studio-panelHover hover:border-studio-accent"
-                  )}
-                >
-                  {factor}x
-                </button>
-              ))}
+              {scaleFactors.map((factor) => {
+                const scaledDims = getScaledDimensions(factor)
+                return (
+                  <button
+                    key={factor}
+                    onClick={() => handleUpscale(factor)}
+                    disabled={loading}
+                    className={cn(
+                      "px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 border text-left",
+                      loading
+                        ? "bg-studio-surface border-studio-border text-studio-textMuted cursor-not-allowed"
+                        : "bg-studio-surface border-studio-border text-studio-text hover:bg-studio-panelHover hover:border-studio-accent"
+                    )}
+                  >
+                    <div className="flex flex-col items-start">
+                      <span>{factor}x</span>
+                      {scaledDims && (
+                        <span className="text-xs text-studio-textSecondary mt-0.5">
+                          {scaledDims.width}×{scaledDims.height}
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                )
+              })}
             </div>
           </div>
 

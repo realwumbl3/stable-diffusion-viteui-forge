@@ -12,6 +12,29 @@ import { cn } from '../lib/utils'
 import PromptFooter from './PromptFooter.jsx'
 import ImageUploader from './ImageUploader.jsx'
 
+// Hook to track memory usage
+const useMemoryUsage = () => {
+  const [memoryUsage, setMemoryUsage] = useState(null)
+
+  useEffect(() => {
+    const updateMemoryUsage = () => {
+      if (performance.memory) {
+        const used = performance.memory.usedJSHeapSize
+        const usedMB = Math.round(used / 1024 / 1024)
+        setMemoryUsage(usedMB)
+      }
+    }
+
+    // Update immediately and then every 5 seconds
+    updateMemoryUsage()
+    const interval = setInterval(updateMemoryUsage, 5000)
+
+    return () => clearInterval(interval)
+  }, [])
+
+  return memoryUsage
+}
+
 const Canvas = ({
   currentImage,
   previewImage,
@@ -36,6 +59,7 @@ const Canvas = ({
   const canvasRef = useRef(null)
   const imageRef = useRef(null)
   const displayImage = previewImage || currentImage
+  const memoryUsage = useMemoryUsage()
 
   const getDisplayDimensions = () => {
     if (!imageRef.current) {
@@ -309,6 +333,9 @@ const Canvas = ({
           )}
         </div>
         <div className="flex items-center gap-4">
+          {memoryUsage && (
+            <span>mem: {memoryUsage}mb</span>
+          )}
           <span>Stable Diffusion WebUI</span>
           {progress && loading && (
             <span className="text-studio-accent">
