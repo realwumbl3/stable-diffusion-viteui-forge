@@ -5,7 +5,7 @@ import {
   Trash2
 } from 'lucide-react'
 import { useState } from 'react'
-import { cn } from '../lib/utils.js'
+import { cn } from '../lib/utils'
 import TimelineItem from './TimelineItem.jsx'
 
 const Sidebar = ({

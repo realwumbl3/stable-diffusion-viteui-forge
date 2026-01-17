@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
-import api from './api.js'
-import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts.js'
-import { useWebSocketProgress } from './hooks/useWebSocketProgress.js'
+import api from './Api.ts'
+import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
+import { useWebSocketProgress } from './hooks/useWebSocketProgress'
 import Header from './components/Header.jsx'
 import Sidebar from './components/Sidebar.jsx'
 import Canvas from './components/Canvas.jsx'
@@ -73,7 +73,6 @@ function App() {
   // UI state
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [propertiesCollapsed, setPropertiesCollapsed] = useState(false)
-  const [activeTool, setActiveTool] = useState('generate')
   const [showWelcome, setShowWelcome] = useState(true)
   const [forceInpaintEditMode, setForceInpaintEditMode] = useState(false)
   const [preserveInpaintMask, setPreserveInpaintMask] = useState(false)
@@ -413,10 +412,6 @@ function App() {
     'alt+n': () => handleGenerationModeChange('inpaint'),
     'ctrl+b': () => setSidebarCollapsed(!sidebarCollapsed),
     'ctrl+p': () => setPropertiesCollapsed(!propertiesCollapsed),
-    'ctrl+1': () => setActiveTool('generate'),
-    'ctrl+2': () => setActiveTool('edit'),
-    'ctrl+3': () => setActiveTool('layers'),
-    'ctrl+4': () => setActiveTool('image'),
   })
 
   // Show welcome screen if no images have been generated and user hasn't dismissed it
@@ -437,8 +432,6 @@ function App() {
           progress={progress}
           onGenerate={generateImage}
           canGenerate={!!prompt.trim()}
-          activeTool={activeTool}
-          onToolChange={setActiveTool}
           generationMode={generationMode}
           setGenerationMode={setGenerationMode}
           onSkip={handleSkip}
@@ -459,8 +452,6 @@ function App() {
         progress={progress}
         onGenerate={generateImage}
         canGenerate={!!prompt.trim()}
-        activeTool={activeTool}
-        onToolChange={setActiveTool}
         generationMode={generationMode}
         setGenerationMode={handleGenerationModeChange}
         onSkip={handleSkip}

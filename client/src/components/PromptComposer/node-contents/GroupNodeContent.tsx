@@ -1,5 +1,5 @@
 import React from 'react'
-import { cn } from '../../../lib/utils.js'
+import { cn } from '../../../lib/utils'
 import type { GroupNode, PromptNode } from '../types'
 import NodeField from '../components/NodeField'
 

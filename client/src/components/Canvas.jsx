@@ -8,7 +8,7 @@ import {
   Eye,
   EyeOff
 } from 'lucide-react'
-import { cn } from '../lib/utils.js'
+import { cn } from '../lib/utils'
 import PromptFooter from './PromptFooter.jsx'
 import ImageUploader from './ImageUploader.jsx'
 

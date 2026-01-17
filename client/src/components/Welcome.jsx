@@ -9,7 +9,7 @@ import {
   BookOpen,
   Settings
 } from 'lucide-react'
-import { cn } from '../lib/utils.js'
+import { cn } from '../lib/utils'
 
 const Welcome = ({ onGetStarted }) => {
   const [selectedTemplate, setSelectedTemplate] = useState(null)

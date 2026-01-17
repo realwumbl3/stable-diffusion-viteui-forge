@@ -1,5 +1,5 @@
 import React, { useRef } from 'react'
-import { cn } from '../../../lib/utils.js'
+import { cn } from '../../../lib/utils'
 import type { TagsNode, Tag } from '../types'
 import TagComponent from '../components/TagComponent'
 

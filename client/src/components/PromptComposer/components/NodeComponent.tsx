@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { cn } from '../../../lib/utils.js'
+import { cn } from '../../../lib/utils'
 import type { PromptNode, NodeType, GroupNode, TextNode, TagsNode, BreakNode } from '../types'
 import EyeIcon from '../icons/EyeIcon'
 import TagsNodeContent from '../node-contents/TagsNodeContent'

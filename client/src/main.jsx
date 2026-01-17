@@ -1,7 +1,7 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
-import api from './api.js'
+import api from './Api.ts'
 import './index.css'
 
 // Make the API available globally as sd_backend

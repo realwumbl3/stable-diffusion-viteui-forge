@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { Upload } from 'lucide-react'
-import { cn } from '../lib/utils.js'
+import { cn } from '../lib/utils'
 
 const ImageUploader = ({
   inputImage,

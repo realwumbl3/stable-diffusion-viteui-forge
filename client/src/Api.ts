@@ -1,0 +1,229 @@
+// API Types
+export interface Txt2ImgParams {
+  prompt: string;
+  negative_prompt?: string;
+  steps: number;
+  width: number;
+  height: number;
+  cfg_scale: number;
+  sampler_name: string;
+  batch_size: number;
+  n_iter: number;
+  clip_skip?: number;
+  save_images?: boolean;
+  save_grids?: boolean;
+  force_task_id?: string;
+}
+
+export interface Img2ImgParams extends Txt2ImgParams {
+  init_images: string[];
+  mask?: string;
+  mask_blur?: number;
+  inpainting_fill?: number;
+  inpaint_full_res?: boolean;
+  inpaint_full_res_padding?: number;
+  inpainting_mask_invert?: number;
+  denoising_strength: number;
+}
+
+export interface ModelInfo {
+  title: string;
+  model_name: string;
+  hash: string;
+  sha256: string;
+  filename: string;
+  config: string | null;
+}
+
+export interface SamplerInfo {
+  name: string;
+  aliases: string[];
+  options: Record<string, any>;
+}
+
+export interface UpscalerInfo {
+  name: string;
+  model_name?: string;
+  model_path?: string;
+  model_url?: string;
+  scale: number;
+}
+
+export interface ProgressInfo {
+  progress: number;
+  eta_relative: number;
+  state: {
+    skipped: boolean;
+    interrupted: boolean;
+    job: string;
+    job_count: number;
+    job_timestamp: string;
+    job_no: number;
+    sampling_step: number;
+    sampling_steps: number;
+  };
+  current_image?: string;
+  textinfo?: string;
+}
+
+export interface GenerationResponse {
+  images: string[];
+  parameters: Record<string, any>;
+  info: string;
+  taskId?: string;
+}
+
+const API_BASE_URL = '/api';
+
+class StableDiffusionAPI {
+  constructor(private baseUrl: string = API_BASE_URL) {}
+
+  async request<T = any>(endpoint: string, options: RequestInit = {}): Promise<T> {
+    const url = `${this.baseUrl}${endpoint}`;
+    const config: RequestInit = {
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers,
+      },
+      ...options,
+    };
+
+    try {
+      const response = await fetch(url, config);
+
+      if (!response.ok) {
+        throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error(`API request to ${endpoint} failed:`, error);
+      throw error;
+    }
+  }
+
+  // Text to Image (legacy - generates its own task ID)
+  async txt2img(params: Txt2ImgParams): Promise<GenerationResponse> {
+    // Add a task ID to track progress
+    const taskId = `task(txt2img-${Date.now()}-${Math.random().toString(36).substr(2, 9)})`
+    const paramsWithTaskId = { ...params, force_task_id: taskId }
+
+    const result = await this.request<GenerationResponse>('/sdapi/v1/txt2img', {
+      method: 'POST',
+      body: JSON.stringify(paramsWithTaskId),
+    });
+
+    // Add task ID to result for progress tracking
+    result.taskId = taskId
+    return result
+  }
+
+  // Text to Image with external task ID control
+  async txt2imgSimple(params: Txt2ImgParams): Promise<GenerationResponse> {
+    return this.request<GenerationResponse>('/sdapi/v1/txt2img', {
+      method: 'POST',
+      body: JSON.stringify(params),
+    });
+  }
+
+  // Image to Image
+  async img2img(params: Img2ImgParams): Promise<GenerationResponse> {
+    // Add a task ID to track progress
+    const taskId = `task(img2img-${Date.now()}-${Math.random().toString(36).substr(2, 9)})`
+    const paramsWithTaskId = { ...params, force_task_id: taskId }
+
+    const result = await this.request<GenerationResponse>('/sdapi/v1/img2img', {
+      method: 'POST',
+      body: JSON.stringify(paramsWithTaskId),
+    });
+
+    // Add task ID to result for progress tracking
+    result.taskId = taskId
+    return result
+  }
+
+  // Get available models
+  async getModels(): Promise<ModelInfo[]> {
+    return this.request<ModelInfo[]>('/sdapi/v1/sd-models');
+  }
+
+  // Get current options
+  async getOptions(): Promise<Record<string, any>> {
+    return this.request<Record<string, any>>('/sdapi/v1/options');
+  }
+
+  // Set current model
+  async setModel(modelTitle: string): Promise<void> {
+    return this.request<void>('/sdapi/v1/options', {
+      method: 'POST',
+      body: JSON.stringify({
+        sd_model_checkpoint: modelTitle,
+      }),
+    });
+  }
+
+  // Set options
+  async setOptions(options: Record<string, any>): Promise<void> {
+    return this.request<void>('/sdapi/v1/options', {
+      method: 'POST',
+      body: JSON.stringify(options),
+    });
+  }
+
+  // Get samplers
+  async getSamplers(): Promise<SamplerInfo[]> {
+    return this.request<SamplerInfo[]>('/sdapi/v1/samplers');
+  }
+
+  // Get upscalers
+  async getUpscalers(): Promise<UpscalerInfo[]> {
+    return this.request<UpscalerInfo[]>('/sdapi/v1/upscalers');
+  }
+
+  // Interrogate (analyze image)
+  async interrogate(image: File | Blob, model: string = 'clip'): Promise<{ caption: string }> {
+    const formData = new FormData();
+    formData.append('image', image);
+    formData.append('model', model);
+
+    return this.request<{ caption: string }>('/sdapi/v1/interrogate', {
+      method: 'POST',
+      body: formData,
+      headers: {}, // Let browser set content-type for FormData
+    });
+  }
+
+  // PNG Info (get metadata from image)
+  async getPngInfo(imageBase64: string): Promise<{ info: string; items: Record<string, any> }> {
+    return this.request<{ info: string; items: Record<string, any> }>('/sdapi/v1/png-info', {
+      method: 'POST',
+      body: JSON.stringify({
+        image: imageBase64,
+      }),
+    });
+  }
+
+  // Progress
+  async getProgress(): Promise<ProgressInfo> {
+    return this.request<ProgressInfo>('/sdapi/v1/progress');
+  }
+
+  // Skip current generation
+  async skip(): Promise<void> {
+    return this.request<void>('/sdapi/v1/skip', {
+      method: 'POST',
+    });
+  }
+
+  // Interrupt/stop all generations
+  async interrupt(): Promise<void> {
+    return this.request<void>('/sdapi/v1/interrupt', {
+      method: 'POST',
+    });
+  }
+}
+
+// Create singleton instance
+const api = new StableDiffusionAPI();
+
+export default api;

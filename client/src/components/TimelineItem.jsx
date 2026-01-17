@@ -1,5 +1,5 @@
 import { X } from "lucide-react";
-import { cn } from "../lib/utils.js";
+import { cn } from "../lib/utils";
 import { useState, useRef, useEffect } from "react";
 
 const TimelineItem = ({ item, isActive, onSelect, onDiscard, showDiscard = false, badge = null, onCommit, onReject, showCommitReject = false }) => {

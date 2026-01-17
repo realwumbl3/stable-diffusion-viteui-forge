@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { cn } from '../../../lib/utils.js'
+import { cn } from '../../../lib/utils'
 
 // Clear prompt button component
 interface ClearPromptButtonProps {

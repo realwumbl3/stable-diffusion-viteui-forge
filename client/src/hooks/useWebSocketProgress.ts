@@ -1,16 +1,33 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import api from '../api.js'
+import api from '../api'
+
+export interface ProgressData {
+  progress?: number
+  completed?: boolean
+  task_id?: string
+  textinfo?: string
+  sampling_step?: number
+  live_preview?: string | null
+  timestamp?: number
+  [key: string]: any
+}
+
+export interface WebSocketMessage extends ProgressData {
+  type?: 'connected' | 'disconnected' | 'ping' | 'pong'
+}
 
 export class ProgressWebSocketManager {
+  ws: WebSocket | null = null
+  reconnectAttempts: number = 0
+  maxReconnectAttempts: number = 5
+  listeners: Set<(data: WebSocketMessage) => void> = new Set()
+  currentTaskId: string | null = null
+
   constructor() {
-    this.ws = null
-    this.reconnectAttempts = 0
-    this.maxReconnectAttempts = 5
-    this.listeners = new Set()
-    this.currentTaskId = null
+    // Constructor is now empty - initialization moved to property declarations
   }
 
-  connect(taskId = null) {
+  connect(taskId: string | null = null): void {
     // If no taskId, disconnect
     if (!taskId) {
       this.disconnect()
@@ -39,22 +56,22 @@ export class ProgressWebSocketManager {
     try {
       this.ws = new WebSocket(wsUrl)
 
-      this.ws.onopen = () => {
+      this.ws.onopen = (): void => {
         console.log('WebSocket connected for progress updates')
         this.reconnectAttempts = 0
         this.broadcast({ type: 'connected' })
       }
 
-      this.ws.onmessage = (event) => {
+      this.ws.onmessage = (event: MessageEvent): void => {
         try {
-          const data = JSON.parse(event.data)
+          const data: WebSocketMessage = JSON.parse(event.data)
           this.broadcast(data)
         } catch (error) {
           console.error('Failed to parse WebSocket message:', error)
         }
       }
 
-      this.ws.onclose = (event) => {
+      this.ws.onclose = (event: CloseEvent): void => {
         console.log('WebSocket disconnected')
         this.broadcast({ type: 'disconnected' })
 
@@ -68,7 +85,7 @@ export class ProgressWebSocketManager {
         }
       }
 
-      this.ws.onerror = (error) => {
+      this.ws.onerror = (error: Event): void => {
         console.error('WebSocket error:', error)
       }
 
@@ -77,7 +94,7 @@ export class ProgressWebSocketManager {
     }
   }
 
-  disconnect() {
+  disconnect(): void {
     if (this.ws) {
       // Remove event handlers to prevent reconnection attempts
       this.ws.onclose = null
@@ -89,12 +106,12 @@ export class ProgressWebSocketManager {
     }
   }
 
-  subscribe(listener) {
+  subscribe(listener: (data: WebSocketMessage) => void): () => void {
     this.listeners.add(listener)
     return () => this.listeners.delete(listener)
   }
 
-  broadcast(data) {
+  broadcast(data: WebSocketMessage): void {
     this.listeners.forEach(listener => {
       try {
         listener(data)
@@ -104,7 +121,7 @@ export class ProgressWebSocketManager {
     })
   }
 
-  ping() {
+  ping(): void {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify({ type: 'ping' }))
     }
@@ -114,13 +131,20 @@ export class ProgressWebSocketManager {
 // Global WebSocket manager instance
 const progressManager = new ProgressWebSocketManager()
 
-export const useWebSocketProgress = (taskId = null) => {
-  const [progress, setProgress] = useState(null)
-  const [isConnected, setIsConnected] = useState(false)
-  const [livePreview, setLivePreview] = useState(null)
-  const pingIntervalRef = useRef(null)
-  const pollIntervalRef = useRef(null)
-  const completedTasksRef = useRef(new Set())
+export interface UseWebSocketProgressReturn {
+  progress: ProgressData | null
+  isConnected: boolean
+  livePreview: string | null
+  disconnect: () => void
+}
+
+export const useWebSocketProgress = (taskId: string | null = null): UseWebSocketProgressReturn => {
+  const [progress, setProgress] = useState<ProgressData | null>(null)
+  const [isConnected, setIsConnected] = useState<boolean>(false)
+  const [livePreview, setLivePreview] = useState<string | null>(null)
+  const pingIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  const completedTasksRef = useRef<Set<string>>(new Set())
 
   // Handle connection and ping interval
   useEffect(() => {

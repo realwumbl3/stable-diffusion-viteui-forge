@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { cn } from "../../../lib/utils.js";
+import { cn } from "../../../lib/utils";
 import type { Tag } from "../types";
 
 // Individual Tag Component

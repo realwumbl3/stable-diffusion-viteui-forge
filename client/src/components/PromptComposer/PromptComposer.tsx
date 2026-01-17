@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect, memo } from "react";
-import { cn } from "../../lib/utils.js";
+import { cn } from "../../lib/utils";
 import "./PromptComposer.css";
 import type { PromptComposerProps, PromptNode, GroupNode, TextNode } from "./types";
 import { composePromptsFromNodes, generateId, removeNode, insertNode, findNodeById } from "./utils/promptUtils";
