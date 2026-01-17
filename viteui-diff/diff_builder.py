@@ -25,7 +25,8 @@ EXCLUDE_DIRS = {
     'cache',
     'outputs',
     'tmp',
-    'viteui-diff'
+    'viteui-diff',
+    "original-forge",
 }
 
 # File extensions to skip (binary files, etc.)
