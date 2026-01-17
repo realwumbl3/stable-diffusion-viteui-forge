@@ -11,9 +11,13 @@ export function useDrawing({
     brushSize,
     drawingMode,
     brushHardness,
+    fillTarget,
+    fillTolerance,
+    fillOverfill,
+    preserveMaskOnImageChange,
 }) {
     // Undo/Redo system
-    const [maskHistory, setMaskHistory] = useState([]);
+    const [maskHistory, setMaskHistory] = useState<ImageData[]>([]);
     const [historyIndex, setHistoryIndex] = useState(-1);
 
     // Initialize canvases when input image loads (not when result changes)
@@ -32,12 +36,14 @@ export function useDrawing({
 
                     // Clear canvas only if not preserving mask
                     const ctx = maskCanvasRef.current.getContext("2d");
-                    ctx.clearRect(0, 0, naturalWidth, naturalHeight);
+                    if (!preserveMaskOnImageChange) {
+                        ctx.clearRect(0, 0, naturalWidth, naturalHeight);
 
-                    // Initialize history with empty state
-                    const emptyImageData = ctx.getImageData(0, 0, naturalWidth, naturalHeight);
-                    setMaskHistory([emptyImageData]);
-                    setHistoryIndex(0);
+                        // Initialize history with empty state
+                        const emptyImageData = ctx.getImageData(0, 0, naturalWidth, naturalHeight);
+                        setMaskHistory([emptyImageData]);
+                        setHistoryIndex(0);
+                    }
                     // If preserving mask, keep existing canvas content and history
                 }
                 if (borderCanvasRef.current) {
@@ -46,7 +52,7 @@ export function useDrawing({
                 }
             }
         }
-    }, [inputImage]);
+    }, [inputImage, preserveMaskOnImageChange]);
 
     // Drawing functions
     const getCanvasCoordinates = useCallback((e) => {
@@ -113,6 +119,8 @@ export function useDrawing({
         exportCanvas.height = sourceCanvas.height;
 
         const exportCtx = exportCanvas.getContext("2d");
+        if (!exportCtx) return null;
+
         exportCtx.drawImage(sourceCanvas, 0, 0);
 
         const imageData = exportCtx.getImageData(0, 0, exportCanvas.width, exportCanvas.height);
@@ -176,30 +184,6 @@ export function useDrawing({
         };
     }, []);
 
-    const clearMask = useCallback(() => {
-        if (maskCanvasRef.current) {
-            const ctx = maskCanvasRef.current.getContext("2d");
-            ctx.clearRect(0, 0, maskCanvasRef.current.width, maskCanvasRef.current.height);
-            setInpaintMask(null);
-            saveMaskState();
-            updateBorderVisualization();
-        }
-    }, [setInpaintMask]);
-
-    const fillMask = useCallback(() => {
-        if (maskCanvasRef.current) {
-            const ctx = maskCanvasRef.current.getContext("2d");
-            ctx.fillStyle = "rgba(255, 0, 0, 1.0)"; // Full opacity for fill
-            ctx.fillRect(0, 0, maskCanvasRef.current.width, maskCanvasRef.current.height);
-            const maskDataURL = getMaskDataUrl();
-            if (maskDataURL) {
-                setInpaintMask(maskDataURL);
-            }
-            saveMaskState();
-            updateBorderVisualization();
-        }
-    }, [setInpaintMask, getMaskDataUrl]);
-
     // Undo/Redo functions
     const saveMaskState = useCallback(() => {
         if (!maskCanvasRef.current) return;
@@ -224,6 +208,157 @@ export function useDrawing({
             return newHistory;
         });
     }, [historyIndex]);
+
+    const clearMask = useCallback(() => {
+        if (maskCanvasRef.current) {
+            const ctx = maskCanvasRef.current.getContext("2d");
+            ctx.clearRect(0, 0, maskCanvasRef.current.width, maskCanvasRef.current.height);
+            setInpaintMask(null);
+            saveMaskState();
+        }
+    }, [saveMaskState, setInpaintMask]);
+
+    const fillAtPoint = useCallback((x, y) => {
+        if (!maskCanvasRef.current || !imageRef.current) return;
+
+        const canvas = maskCanvasRef.current;
+        if (canvas.width === 0 || canvas.height === 0) return;
+
+        const startX = Math.floor(x);
+        const startY = Math.floor(y);
+        if (startX < 0 || startY < 0 || startX >= canvas.width || startY >= canvas.height) return;
+
+        const maskCtx = canvas.getContext("2d");
+        const maskImageData = maskCtx.getImageData(0, 0, canvas.width, canvas.height);
+        const maskData = maskImageData.data;
+
+        let sourceData: Uint8ClampedArray | null = null;
+        if (fillTarget !== "canvas") {
+            const sourceCanvas = document.createElement("canvas");
+            sourceCanvas.width = canvas.width;
+            sourceCanvas.height = canvas.height;
+            const sourceCtx = sourceCanvas.getContext("2d");
+            if (!sourceCtx) return;
+
+            sourceCtx.drawImage(imageRef.current, 0, 0, canvas.width, canvas.height);
+            const sourceImageData = sourceCtx.getImageData(0, 0, canvas.width, canvas.height);
+            sourceData = sourceImageData.data;
+        }
+
+        const startIndex = startY * canvas.width + startX;
+        const startOffset = startIndex * 4;
+        const targetMaskAlpha = maskData[startOffset + 3];
+        const targetMaskFilled = targetMaskAlpha > 0;
+
+        let targetR = 0;
+        let targetG = 0;
+        let targetB = 0;
+        let targetA = 0;
+        let source: Uint8ClampedArray | null = null;
+        if (fillTarget !== "canvas") {
+            if (!sourceData) return;
+            source = sourceData;
+            targetR = source[startOffset];
+            targetG = source[startOffset + 1];
+            targetB = source[startOffset + 2];
+            targetA = source[startOffset + 3];
+        }
+
+        const colorTolerance = Math.max(0, Math.min(255, fillTolerance ?? 32));
+        const visited = new Uint8Array(canvas.width * canvas.height);
+        const newlyFilled = new Uint8Array(canvas.width * canvas.height);
+        const stack = [startIndex];
+
+        while (stack.length) {
+            const index = stack.pop();
+            if (index === undefined) continue;
+            if (visited[index]) continue;
+            visited[index] = 1;
+
+            const offset = index * 4;
+            const maskAlpha = maskData[offset + 3];
+            const maskFilled = maskAlpha > 0;
+
+            if (fillTarget === "canvas") {
+                if (maskFilled !== targetMaskFilled) {
+                    continue;
+                }
+            } else {
+                if (!source) continue;
+                const r = source[offset];
+                const g = source[offset + 1];
+                const b = source[offset + 2];
+                const a = source[offset + 3];
+
+                if (
+                    Math.abs(r - targetR) > colorTolerance ||
+                    Math.abs(g - targetG) > colorTolerance ||
+                    Math.abs(b - targetB) > colorTolerance ||
+                    Math.abs(a - targetA) > colorTolerance
+                ) {
+                    continue;
+                }
+
+                if (fillTarget === "both" && maskFilled !== targetMaskFilled) {
+                    continue;
+                }
+            }
+
+            maskData[offset] = 255;
+            maskData[offset + 1] = 0;
+            maskData[offset + 2] = 0;
+            maskData[offset + 3] = 255;
+            newlyFilled[index] = 1;
+
+            const xPos = index % canvas.width;
+            const yPos = Math.floor(index / canvas.width);
+
+            if (xPos > 0) stack.push(index - 1);
+            if (xPos < canvas.width - 1) stack.push(index + 1);
+            if (yPos > 0) stack.push(index - canvas.width);
+            if (yPos < canvas.height - 1) stack.push(index + canvas.width);
+        }
+
+        // Apply overfill expansion to newly filled pixels only
+        if (fillOverfill > 0) {
+            const overfillMask = new Uint8Array(canvas.width * canvas.height);
+            for (let i = 0; i < newlyFilled.length; i++) {
+                if (newlyFilled[i]) {
+                    const x = i % canvas.width;
+                    const y = Math.floor(i / canvas.width);
+
+                    // Mark filled pixels and expand by overfill amount
+                    for (let dy = -fillOverfill; dy <= fillOverfill; dy++) {
+                        for (let dx = -fillOverfill; dx <= fillOverfill; dx++) {
+                            const nx = x + dx;
+                            const ny = y + dy;
+                            if (nx >= 0 && nx < canvas.width && ny >= 0 && ny < canvas.height) {
+                                overfillMask[ny * canvas.width + nx] = 1;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Apply overfill to mask
+            for (let i = 0; i < overfillMask.length; i++) {
+                if (overfillMask[i]) {
+                    const offset = i * 4;
+                    maskData[offset] = 255;
+                    maskData[offset + 1] = 0;
+                    maskData[offset + 2] = 0;
+                    maskData[offset + 3] = 255;
+                }
+            }
+        }
+
+        maskCtx.putImageData(maskImageData, 0, 0);
+        const maskDataURL = getMaskDataUrl();
+        if (maskDataURL) {
+            setInpaintMask(maskDataURL);
+        }
+        saveMaskState();
+    }, [fillTarget, fillTolerance, fillOverfill, getMaskDataUrl, imageRef, maskCanvasRef, saveMaskState, setInpaintMask]);
 
     const updateBorderVisualization = useCallback(() => {
         if (!borderCanvasRef.current || !inpaintFullRes || inpaintFullResPadding <= 0) {
@@ -267,6 +402,13 @@ export function useDrawing({
     useEffect(() => {
         updateBorderVisualization();
     }, [updateBorderVisualization]);
+
+    // Update border visualization after drawing operations
+    useEffect(() => {
+        if (maskHistory.length > 0) {
+            updateBorderVisualization();
+        }
+    }, [maskHistory, historyIndex, updateBorderVisualization]);
 
     const undoMask = useCallback(() => {
         if (historyIndex > 0) {
@@ -313,7 +455,7 @@ export function useDrawing({
         drawBrush,
         getMaskDataUrl,
         clearMask,
-        fillMask,
+        fillAtPoint,
         saveMaskState,
         undoMask,
         redoMask,

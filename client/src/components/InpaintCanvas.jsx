@@ -36,6 +36,8 @@ const InpaintCanvas = ({
     setInpaintFullResPadding,
     // Force edit mode for mask editing
     forceEditMode = false,
+    // Preserve mask when changing input image
+    preserveMaskOnImageChange = false,
 }) => {
     const displayImage = previewImage || currentImage;
 
@@ -51,6 +53,9 @@ const InpaintCanvas = ({
     const [brushSize, setBrushSize] = useState(initialBrushSize);
     const [drawingMode, setDrawingMode] = useState(initialDrawingMode);
     const [brushHardness, setBrushHardness] = useState(1.0); // 1.0 = 100% opacity/hardness
+    const [fillTarget, setFillTarget] = useState("image");
+    const [fillTolerance, setFillTolerance] = useState(32);
+    const [fillOverfill, setFillOverfill] = useState(0);
 
     // Initialize hooks
     const canvasState = useCanvasState({
@@ -77,6 +82,10 @@ const InpaintCanvas = ({
         brushSize,
         drawingMode,
         brushHardness,
+        fillTarget,
+        fillTolerance,
+        fillOverfill,
+        preserveMaskOnImageChange,
     });
 
     const fileHandling = useFileHandling({ onImageUpload });
@@ -88,7 +97,6 @@ const InpaintCanvas = ({
         brushHardness,
         setBrushHardness,
         setDrawingMode,
-        fillMask: drawing.fillMask,
         clearMask: drawing.clearMask,
         undoMask: drawing.undoMask,
         redoMask: drawing.redoMask,
@@ -236,6 +244,11 @@ const InpaintCanvas = ({
             canvasState.startPan(e);
             return;
         }
+        if (drawingMode === "fill") {
+            const { x, y } = drawing.getCanvasCoordinates(e);
+            drawing.fillAtPoint(x, y);
+            return;
+        }
         canvasState.setIsDrawing(true);
         canvasState.setMouseButtonDown(true);
         canvasState.setDrawingStartedOnCanvas(true);
@@ -256,7 +269,13 @@ const InpaintCanvas = ({
     const handleMouseEnter = (e) => {
         // Resume drawing only if mouse button is held down, we're not currently drawing,
         // drawing was started on canvas, and we're entering over a valid target
-        if (canvasState.mouseButtonDown && !canvasState.isDrawing && canvasState.drawingStartedOnCanvas && inputImage) {
+        if (
+            drawingMode !== "fill" &&
+            canvasState.mouseButtonDown &&
+            !canvasState.isDrawing &&
+            canvasState.drawingStartedOnCanvas &&
+            inputImage
+        ) {
             // Only resume if entering over a valid target
             canvasState.setIsDrawing(true);
             const { x, y } = drawing.getCanvasCoordinates(e);
@@ -297,6 +316,12 @@ const InpaintCanvas = ({
                         setBrushSize={setBrushSize}
                         brushHardness={brushHardness}
                         setBrushHardness={setBrushHardness}
+                        fillTarget={fillTarget}
+                        setFillTarget={setFillTarget}
+                        fillTolerance={fillTolerance}
+                        setFillTolerance={setFillTolerance}
+                        fillOverfill={fillOverfill}
+                        setFillOverfill={setFillOverfill}
                         zoom={canvasState.zoom}
                         showMask={canvasState.showMask}
                         setShowMask={canvasState.setMaskVisibility}
@@ -306,7 +331,6 @@ const InpaintCanvas = ({
                         inpaintFullResPadding={inpaintFullResPadding}
                         setInpaintFullResPadding={setInpaintFullResPadding}
                         onClear={drawing.clearMask}
-                        onFill={drawing.fillMask}
                         onUndo={drawing.undoMask}
                         onRedo={drawing.redoMask}
                         canUndo={drawing.canUndo}

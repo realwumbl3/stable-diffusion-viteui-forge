@@ -6,7 +6,6 @@ export function useKeyboardShortcuts({
     brushHardness,
     setBrushHardness,
     setDrawingMode,
-    fillMask,
     clearMask,
     undoMask,
     redoMask,
@@ -38,7 +37,7 @@ export function useKeyboardShortcuts({
                     setDrawingMode("erase");
                     break;
                 case "f":
-                    fillMask();
+                    setDrawingMode("fill");
                     break;
                 case "c":
                     clearMask();
@@ -60,5 +59,5 @@ export function useKeyboardShortcuts({
 
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [brushSize, setBrushSize, brushHardness, setBrushHardness, setDrawingMode, fillMask, clearMask, undoMask, redoMask]);
+    }, [brushSize, setBrushSize, brushHardness, setBrushHardness, setDrawingMode, clearMask, undoMask, redoMask]);
 }
