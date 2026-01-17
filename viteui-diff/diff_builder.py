@@ -121,14 +121,15 @@ def should_comment_removed(filepath):
     return ext == '.py'
 
 def count_changes(diff_lines, comment_start):
-    """Count the number of changes in diff content based on markers."""
-    change_count = 0
+    """Count the number of deletions and additions in diff content based on markers."""
+    deletions = 0
+    additions = 0
     in_addition = False
 
     for line in diff_lines:
         if line.startswith(f"{comment_start}-"):
             # Count removed lines
-            change_count += 1
+            deletions += 1
         elif line.startswith(f"{comment_start}+") and not line.startswith(f"{comment_start}end+"):
             # Start of addition block
             in_addition = True
@@ -137,9 +138,9 @@ def count_changes(diff_lines, comment_start):
             in_addition = False
         elif in_addition:
             # Count added lines within addition blocks
-            change_count += 1
+            additions += 1
 
-    return change_count
+    return deletions, additions
 
 def generate_comment_diff(original_path, current_path, relative_path):
     """Generate a comment-based diff that includes the full file content with changes marked."""
@@ -294,18 +295,18 @@ def main():
             path
         )
 
-        # Calculate change count
+        # Calculate change counts (deletions, additions)
         comment_start, _ = get_comment_syntax(path)
-        change_count = count_changes(diff_content, comment_start)
-        changed_files_with_counts.append((path, change_count))
+        deletions, additions = count_changes(diff_content, comment_start)
+        changed_files_with_counts.append((path, deletions, additions))
 
         # Always write the content (with or without change markers)
         with open(output_path, 'w', encoding='utf-8') as f:
             f.write('\n'.join(diff_content))
 
-    # Sort changed files by change count (descending)
-    changed_files_with_counts.sort(key=lambda x: x[1], reverse=True)
-    changed_files = [path for path, _ in changed_files_with_counts]
+    # Sort changed files by total changes (deletions + additions) descending
+    changed_files_with_counts.sort(key=lambda x: x[1] + x[2], reverse=True)
+    changed_files = [path for path, _, _ in changed_files_with_counts]
 
     # Process added files (copy entire content)
     for i, path in enumerate(added_files):
@@ -355,8 +356,8 @@ def main():
 
         if changed_files:
             f.write("Changed files (sorted by number of changes):\n")
-            for path, change_count in changed_files_with_counts:
-                f.write(f"  {path} ({change_count} changes)\n")
+            for path, deletions, additions in changed_files_with_counts:
+                f.write(f"  {path} (-{deletions} +{additions})\n")
 
         if added_files:
             f.write("\nAdded files:\n")
