@@ -1,5 +1,5 @@
 import { X, Maximize2 } from "lucide-react";
-import { cn } from "../lib/utils";
+import { cn, resolveImageSrc } from "../lib/utils";
 import { useState, useRef, useEffect } from "react";
 
 const TimelineItem = ({ item, isActive, onSelect, onDiscard, showDiscard = false, badge = null, onCommit, onReject, showCommitReject = false, onUpscale, showUpscale = false }) => {
@@ -36,7 +36,12 @@ const TimelineItem = ({ item, isActive, onSelect, onDiscard, showDiscard = false
             style={{ aspectRatio: aspectRatio }}
         >
             <button onClick={onSelect} className="w-full h-full text-left" type="button">
-                <img ref={imgRef} src={item.image} alt="Timeline item" className="w-full h-full object-contain" />
+                <img
+                    ref={imgRef}
+                    src={resolveImageSrc(item.image, "previews")}
+                    alt="Timeline item"
+                    className="w-full h-full object-contain"
+                />
             </button>
 
             {/* Header Container */}

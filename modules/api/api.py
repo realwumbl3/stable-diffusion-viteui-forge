@@ -8,10 +8,11 @@ import ipaddress
 import requests
 from threading import Lock
 from io import BytesIO
+from pathlib import Path
 from fastapi import APIRouter, Depends, FastAPI, Request, Response
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.exceptions import HTTPException
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
 from fastapi.encoders import jsonable_encoder
 from secrets import compare_digest
 
@@ -31,6 +32,9 @@ import piexif
 import piexif.helper
 from contextlib import closing
 from modules.progress import create_task_id, add_task_to_queue, start_task, finish_task, current_task, websocket_progress_endpoint
+from modules.workspace_manager import WorkspaceManager
+from modules.workspace_images import WorkspaceImageManager
+import mimetypes
 
 def script_name_to_index(name, scripts):
     try:
@@ -206,6 +210,8 @@ class Api:
         self.router = APIRouter()
         self.app = app
         self.queue_lock = queue_lock
+        self.workspace_manager = WorkspaceManager()
+        self.workspace_images = WorkspaceImageManager(preview_max_size=getattr(opts, "workspace_preview_max_size", 512))
         #api_middleware(self.app)  # FIXME: (legacy) this will have to be fixed
         self.add_api_route("/sdapi/v1/txt2img", self.text2imgapi, methods=["POST"], response_model=models.TextToImageResponse)
         self.add_api_route("/sdapi/v1/img2img", self.img2imgapi, methods=["POST"], response_model=models.ImageToImageResponse)
@@ -241,6 +247,18 @@ class Api:
         self.add_api_route("/sdapi/v1/scripts", self.get_scripts_list, methods=["GET"], response_model=models.ScriptsList)
         self.add_api_route("/sdapi/v1/script-info", self.get_script_info, methods=["GET"], response_model=list[models.ScriptInfo])
         self.add_api_route("/sdapi/v1/extensions", self.get_extensions_list, methods=["GET"], response_model=list[models.ExtensionItem])
+
+        # Workspace routes
+        self.add_api_route("/workspaces", self.list_workspaces, methods=["GET"])
+        self.add_api_route("/workspaces", self.create_workspace, methods=["POST"])
+        self.add_api_route("/workspaces/structure", self.get_workspace_structure, methods=["GET"])
+        self.add_api_route("/workspaces/folders", self.create_workspace_folder, methods=["POST"])
+        self.add_api_route("/workspaces/{name:path}/images/{path:path}", self.serve_workspace_image, methods=["GET"])
+        self.add_api_route("/workspaces/{name:path}/previews/{path:path}", self.serve_workspace_preview, methods=["GET"])
+        self.add_api_route("/workspaces/{name:path}/commit", self.commit_workspace_image, methods=["POST"])
+        self.add_api_route("/workspaces/{name:path}/reject", self.reject_workspace_image, methods=["POST"])
+        self.add_api_route("/workspaces/{name:path}/restore", self.restore_workspace_image, methods=["POST"])
+        self.add_api_route("/workspaces/{name:path}/import", self.import_workspace_image, methods=["POST"])
 
         if shared.cmd_opts.api_server_stop:
             self.add_api_route("/sdapi/v1/server-kill", self.kill_webui, methods=["POST"])
@@ -471,6 +489,11 @@ class Api:
         args.pop('save_grids', None) # save_grids is used to set do_not_save_grid, not passed to processing class
         args.pop('infotext', None)
 
+        workspace_name = args.pop('workspace_name', None)
+        if not workspace_name:
+            raise HTTPException(status_code=422, detail="workspace_name is required")
+        self.workspace_manager.ensure_workspace(workspace_name)
+
         script_args = self.init_script_args(txt2imgreq, self.default_script_arg_txt2img, selectable_scripts, selectable_script_idx, script_runner, input_script_args=infotext_script_args)
 
         send_images = args.pop('send_images', True)
@@ -599,9 +622,17 @@ class Api:
                     shared.state.end()
                     shared.total_tqdm.clear()
 
-        b64images = list(map(encode_pil_to_base64, processed.images + processed.extra_images)) if send_images else []
+        generated_images = processed.images + processed.extra_images
+        filesystem_paths = self.workspace_manager.save_generation_images(workspace_name, generated_images)
+        b64images = list(map(encode_pil_to_base64, generated_images)) if send_images else []
 
-        return models.TextToImageResponse(images=b64images, parameters=vars(txt2imgreq), info=processed.js())
+        return models.TextToImageResponse(
+            images=b64images,
+            filesystem_paths=filesystem_paths,
+            workspace_info={"workspace": workspace_name},
+            parameters=vars(txt2imgreq),
+            info=processed.js(),
+        )
 
     def img2imgapi(self, img2imgreq: models.StableDiffusionImg2ImgProcessingAPI):
         task_id = img2imgreq.force_task_id or create_task_id("img2img")
@@ -641,6 +672,11 @@ class Api:
         args.pop('alwayson_scripts', None)
         args.pop('infotext', None)
         args.pop('save_grids', None) # save_grids is used to set do_not_save_grid, not passed to processing class
+
+        workspace_name = args.pop('workspace_name', None)
+        if not workspace_name:
+            raise HTTPException(status_code=422, detail="workspace_name is required")
+        self.workspace_manager.ensure_workspace(workspace_name)
 
         script_args = self.init_script_args(img2imgreq, self.default_script_arg_img2img, selectable_scripts, selectable_script_idx, script_runner, input_script_args=infotext_script_args)
 
@@ -767,13 +803,123 @@ class Api:
                     shared.state.end()
                     shared.total_tqdm.clear()
 
-        b64images = list(map(encode_pil_to_base64, processed.images + processed.extra_images)) if send_images else []
+        generated_images = processed.images + processed.extra_images
+        filesystem_paths = self.workspace_manager.save_generation_images(workspace_name, generated_images, mask_image=mask)
+        b64images = list(map(encode_pil_to_base64, generated_images)) if send_images else []
 
         if not img2imgreq.include_init_images:
             img2imgreq.init_images = None
             img2imgreq.mask = None
 
-        return models.ImageToImageResponse(images=b64images, parameters=vars(img2imgreq), info=processed.js())
+        return models.ImageToImageResponse(
+            images=b64images,
+            filesystem_paths=filesystem_paths,
+            workspace_info={"workspace": workspace_name},
+            parameters=vars(img2imgreq),
+            info=processed.js(),
+        )
+
+    def list_workspaces(self):
+        return {"workspaces": self.workspace_manager.list_workspaces()}
+
+    def create_workspace(self, payload: dict):
+        name = payload.get("name") if isinstance(payload, dict) else None
+        if not name:
+            raise HTTPException(status_code=422, detail="Workspace name is required")
+        result = self.workspace_manager.create_workspace(name)
+        if not result["created"]:
+            return {"success": False, "message": f"Workspace '{result['name']}' already exists", "name": result["name"]}
+        return {"success": True, "message": f"Workspace '{result['name']}' created", "name": result["name"]}
+
+    def get_workspace_structure(self):
+        return {"structure": self.workspace_manager.get_workspace_structure()}
+
+    def create_workspace_folder(self, payload: dict):
+        path = payload.get("path") if isinstance(payload, dict) else None
+        if not path:
+            raise HTTPException(status_code=422, detail="Folder path is required")
+        result = self.workspace_manager.create_folder(path)
+        if not result["created"]:
+            return {"success": False, "message": "Folder already exists", "path": result["path"]}
+        return {"success": True, "path": result["path"]}
+
+    def serve_workspace_image(self, name: str, path: str):
+        try:
+            image_path = self.workspace_manager.resolve_workspace_file(name, path)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
+
+        if not image_path.exists():
+            raise HTTPException(status_code=404, detail="Image not found")
+
+        media_type, _ = mimetypes.guess_type(str(image_path))
+        return FileResponse(image_path, media_type=media_type or "application/octet-stream")
+
+    def serve_workspace_preview(self, name: str, path: str):
+        try:
+            image_path = self.workspace_manager.resolve_workspace_file(name, path)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
+
+        if not image_path.exists():
+            raise HTTPException(status_code=404, detail="Image not found")
+
+        preview_path = self.workspace_manager.resolve_workspace_file(name, f"previews/{path}")
+        if not preview_path.exists():
+            self.workspace_images.save_preview(image_path, preview_path, max_size=getattr(opts, "workspace_preview_max_size", 512))
+
+        media_type, _ = mimetypes.guess_type(str(preview_path))
+        return FileResponse(preview_path, media_type=media_type or "application/octet-stream")
+
+    def commit_workspace_image(self, name: str, payload: dict):
+        image_path = payload.get("image_path") if isinstance(payload, dict) else None
+        if not image_path:
+            raise HTTPException(status_code=422, detail="image_path is required")
+        try:
+            result = self.workspace_manager.commit_candidate(name, image_path)
+        except FileNotFoundError as e:
+            raise HTTPException(status_code=404, detail=str(e)) from e
+        return {"success": True, "commit_path": result["path"]}
+
+    def reject_workspace_image(self, name: str, payload: dict):
+        image_path = payload.get("image_path") if isinstance(payload, dict) else None
+        if not image_path:
+            raise HTTPException(status_code=422, detail="image_path is required")
+        try:
+            result = self.workspace_manager.reject_candidate(name, image_path)
+        except FileNotFoundError as e:
+            raise HTTPException(status_code=404, detail=str(e)) from e
+        return {"success": True, "reject_path": result["path"]}
+
+    def restore_workspace_image(self, name: str, payload: dict):
+        image_path = payload.get("image_path") if isinstance(payload, dict) else None
+        if not image_path:
+            raise HTTPException(status_code=422, detail="image_path is required")
+        try:
+            result = self.workspace_manager.restore_candidate(name, image_path)
+        except FileNotFoundError as e:
+            raise HTTPException(status_code=404, detail=str(e)) from e
+        return {"success": True, "restore_path": result["path"]}
+
+    def import_workspace_image(self, name: str, payload: dict):
+        image_base64 = payload.get("image_base64") if isinstance(payload, dict) else None
+        if not image_base64:
+            raise HTTPException(status_code=422, detail="image_base64 is required")
+
+        self.workspace_manager.ensure_workspace(name)
+        image = decode_base64_to_image(image_base64)
+        temp_root = Path(shared.opts.temp_dir or "tmp")
+        temp_root.mkdir(parents=True, exist_ok=True)
+        temp_file = temp_root / f"workspace_import_{time.time_ns()}.png"
+        image.save(temp_file, format="PNG")
+
+        image_path = self.workspace_manager.import_image(name, temp_file)
+        try:
+            temp_file.unlink(missing_ok=True)
+        except Exception:
+            pass
+
+        return {"success": True, "image_path": image_path}
 
     def extras_single_image_api(self, req: models.ExtrasSingleImageRequest):
         reqDict = setUpscalers(req)

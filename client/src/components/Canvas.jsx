@@ -8,7 +8,7 @@ import {
   Eye,
   EyeOff
 } from 'lucide-react'
-import { cn } from '../lib/utils'
+import { cn, resolveImageSrc } from '../lib/utils'
 import PromptFooter from './PromptFooter.jsx'
 import ImageUploader from './ImageUploader.jsx'
 
@@ -59,6 +59,8 @@ const Canvas = ({
   const canvasRef = useRef(null)
   const imageRef = useRef(null)
   const displayImage = previewImage || currentImage
+  const resolvedDisplayImage = resolveImageSrc(displayImage, 'images')
+  const resolvedInputImage = resolveImageSrc(inputImage, 'images')
   const memoryUsage = useMemoryUsage()
 
   const getDisplayDimensions = () => {
@@ -254,7 +256,7 @@ const Canvas = ({
             <img
                 key={livePreview ? 'live-preview' : (generationMode === 'img2img' && inputImage && !displayImage ? 'input-image' : 'current-image')}
                 ref={imageRef}
-            src={livePreview || displayImage || (generationMode === 'img2img' ? inputImage : null)}
+            src={livePreview || resolvedDisplayImage || (generationMode === 'img2img' ? resolvedInputImage : null)}
             alt={generationMode === 'img2img' && inputImage && !displayImage ? "Input image for img2img" : "Generated"}
                 className="max-w-none shadow-studio-lg rounded-lg"
                 style={

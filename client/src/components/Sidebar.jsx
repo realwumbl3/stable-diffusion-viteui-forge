@@ -6,7 +6,7 @@ import {
   Maximize2
 } from 'lucide-react'
 import { useState, useRef, useEffect } from 'react'
-import { cn } from '../lib/utils'
+import { cn, resolveImageSrc } from '../lib/utils'
 import TimelineItem from './TimelineItem.jsx'
 
 const Sidebar = ({
@@ -151,7 +151,7 @@ const Sidebar = ({
                     {currentImage ? (
                       <img
                         ref={canvasImgRef}
-                        src={currentImage}
+                        src={resolveImageSrc(currentImage, "images")}
                         alt="Canvas"
                         className="w-full object-contain"
                       />

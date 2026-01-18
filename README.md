@@ -138,7 +138,7 @@ stable-diffusion-webui-forge/
 │   │   ├── components/   # React components (PromptComposer, Canvas, etc.)
 │   │   ├── hooks/        # Custom React hooks
 │   │   ├── stores/       # State management
-│   │   └── api.js        # API client utilities
+│   │   └── Api.ts        # API client utilities
 │   ├── package.json
 │   └── vite.config.js
 ├── backend/              # Python backend (Forge)

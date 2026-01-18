@@ -99,6 +99,7 @@ StableDiffusionTxt2ImgProcessingAPI = PydanticModelGenerator(
     "StableDiffusionProcessingTxt2Img",
     StableDiffusionProcessingTxt2Img,
     [
+        {"key": "workspace_name", "type": str | None, "default": None},
         {"key": "sampler_index", "type": str, "default": "Euler"},
         {"key": "script_name", "type": str | None, "default": None},
         {"key": "script_args", "type": list, "default": []},
@@ -115,6 +116,7 @@ StableDiffusionImg2ImgProcessingAPI = PydanticModelGenerator(
     "StableDiffusionProcessingImg2Img",
     StableDiffusionProcessingImg2Img,
     [
+        {"key": "workspace_name", "type": str | None, "default": None},
         {"key": "sampler_index", "type": str, "default": "Euler"},
         {"key": "init_images", "type": list | None, "default": None},
         {"key": "denoising_strength", "type": float, "default": 0.75},
@@ -133,11 +135,15 @@ StableDiffusionImg2ImgProcessingAPI = PydanticModelGenerator(
 
 class TextToImageResponse(BaseModel):
     images: list[str] | None = Field(default=None, title="Image", description="The generated image in base64 format.")
+    filesystem_paths: list[str] | None = Field(default=None, title="Filesystem paths", description="Relative filesystem paths for generated images.")
+    workspace_info: dict | None = Field(default=None, title="Workspace info", description="Workspace metadata for generated images.")
     parameters: dict
     info: str
 
 class ImageToImageResponse(BaseModel):
     images: list[str] | None = Field(default=None, title="Image", description="The generated image in base64 format.")
+    filesystem_paths: list[str] | None = Field(default=None, title="Filesystem paths", description="Relative filesystem paths for generated images.")
+    workspace_info: dict | None = Field(default=None, title="Workspace info", description="Workspace metadata for generated images.")
     parameters: dict
     info: str
 

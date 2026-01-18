@@ -1,7 +1,6 @@
 import {
   Settings,
   Save,
-  FolderOpen,
   Download,
   Zap,
   Image as ImageIcon,
@@ -11,8 +10,21 @@ import {
   Edit
 } from 'lucide-react'
 import { cn } from '../lib/utils'
+import WorkspacePicker from './WorkspacePicker.jsx'
 
-const Header = ({ loading, progress, onGenerate, canGenerate, generationMode, setGenerationMode, onSkip, onInterrupt }) => {
+const Header = ({
+  loading,
+  progress,
+  onGenerate,
+  canGenerate,
+  generationMode,
+  setGenerationMode,
+  onSkip,
+  onInterrupt,
+  currentWorkspace,
+  onWorkspaceChange,
+  onOpenWorkspace
+}) => {
 
   return (
     <header className="studio-toolbar border-b-studio-border">
@@ -126,11 +138,14 @@ const Header = ({ loading, progress, onGenerate, canGenerate, generationMode, se
         </div>
       </div>
 
-      {/* Right Section - File Operations */}
-      <div className="flex items-center gap-1">
-        <button className="studio-btn-ghost p-2" title="Open Project (Ctrl+O)">
-          <FolderOpen size={18} />
-        </button>
+      {/* Right Section - Workspace + File Operations */}
+      <div className="flex items-center gap-3">
+        <WorkspacePicker
+          currentWorkspace={currentWorkspace}
+          onWorkspaceChange={onWorkspaceChange}
+          onOpenWorkspace={onOpenWorkspace}
+        />
+        <div className="w-px h-6 bg-studio-border" />
         <button className="studio-btn-ghost p-2" title="Save Project (Ctrl+S)">
           <Save size={18} />
         </button>

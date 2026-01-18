@@ -13,6 +13,7 @@ export interface Txt2ImgParams {
   save_images?: boolean;
   save_grids?: boolean;
   force_task_id?: string;
+  workspace_name: string;
 }
 
 export interface Img2ImgParams extends Txt2ImgParams {
@@ -83,8 +84,16 @@ export interface ProgressInfo {
   textinfo?: string;
 }
 
+export interface WorkspaceInfo {
+  name: string;
+  created?: string | null;
+  folders?: string[];
+}
+
 export interface GenerationResponse {
   images: string[];
+  filesystem_paths?: string[];
+  workspace_info?: Record<string, any>;
   parameters: Record<string, any>;
   info: string;
   taskId?: string;
@@ -93,9 +102,10 @@ export interface GenerationResponse {
 export interface ExtrasResponse {
   image: string;
   html_info: string;
+  taskId?: string;
 }
 
-const API_BASE_URL = '/api';
+const API_BASE_URL = 'http://localhost:7861/api';
 
 class StableDiffusionAPI {
   constructor(private baseUrl: string = API_BASE_URL) {}
@@ -257,6 +267,57 @@ class StableDiffusionAPI {
   async interrupt(): Promise<void> {
     return this.request<void>('/sdapi/v1/interrupt', {
       method: 'POST',
+    });
+  }
+
+  // Workspace APIs
+  async listWorkspaces(): Promise<{ workspaces: WorkspaceInfo[] }> {
+    return this.request<{ workspaces: WorkspaceInfo[] }>('/workspaces');
+  }
+
+  async createWorkspace(name: string): Promise<{ success: boolean; name: string; message?: string }> {
+    return this.request('/workspaces', {
+      method: 'POST',
+      body: JSON.stringify({ name }),
+    });
+  }
+
+  async getWorkspaceStructure(): Promise<{ structure: any }> {
+    return this.request('/workspaces/structure');
+  }
+
+  async createWorkspaceFolder(path: string): Promise<{ success: boolean; path: string; message?: string }> {
+    return this.request('/workspaces/folders', {
+      method: 'POST',
+      body: JSON.stringify({ path }),
+    });
+  }
+
+  async importWorkspaceImage(workspaceName: string, imageBase64: string): Promise<{ success: boolean; image_path: string }> {
+    return this.request(`/workspaces/${encodeURIComponent(workspaceName)}/import`, {
+      method: 'POST',
+      body: JSON.stringify({ image_base64: imageBase64 }),
+    });
+  }
+
+  async commitWorkspaceImage(workspaceName: string, imagePath: string): Promise<{ success: boolean; commit_path: string }> {
+    return this.request(`/workspaces/${encodeURIComponent(workspaceName)}/commit`, {
+      method: 'POST',
+      body: JSON.stringify({ image_path: imagePath }),
+    });
+  }
+
+  async rejectWorkspaceImage(workspaceName: string, imagePath: string): Promise<{ success: boolean; reject_path: string }> {
+    return this.request(`/workspaces/${encodeURIComponent(workspaceName)}/reject`, {
+      method: 'POST',
+      body: JSON.stringify({ image_path: imagePath }),
+    });
+  }
+
+  async restoreWorkspaceImage(workspaceName: string, imagePath: string): Promise<{ success: boolean; restore_path: string }> {
+    return this.request(`/workspaces/${encodeURIComponent(workspaceName)}/restore`, {
+      method: 'POST',
+      body: JSON.stringify({ image_path: imagePath }),
     });
   }
 }

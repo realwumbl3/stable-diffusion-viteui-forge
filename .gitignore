@@ -61,4 +61,5 @@ client/dist/
 client/build/
 Webui-BetterPrompt/
 original-forge/
-viteui-diff/diff-output
+viteui-diff/diff-output/
+workspaces/

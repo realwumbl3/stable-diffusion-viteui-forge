@@ -9,6 +9,8 @@ import InpaintCanvas from "./components/InpaintCanvas.jsx";
 import PropertiesPanel from "./components/PropertiesPanel.jsx";
 import Welcome from "./components/Welcome.jsx";
 import UpscaleDialog from "./components/UpscaleDialog.jsx";
+import WorkspaceBrowser from "./components/WorkspaceBrowser.jsx";
+import { WORKSPACE_PREFIX, parseWorkspaceImage, resolveImageSrc } from "./lib/utils";
 
 function App() {
     const [prompt, setPrompt] = useState("");
@@ -41,6 +43,7 @@ function App() {
             if (currentImage) {
                 setPreserveInpaintMask(true); // Preserve existing mask
                 setInputImage(currentImage);
+                setInputImageData(null);
             }
         } else {
             setForceInpaintEditMode(false);
@@ -73,6 +76,10 @@ function App() {
         discarded: [],
     });
 
+    const [currentWorkspace, setCurrentWorkspace] = useState(null);
+    const [workspaceBrowserOpen, setWorkspaceBrowserOpen] = useState(false);
+    const [inputImageData, setInputImageData] = useState(null);
+
     // Save settings
     const [saveImages, setSaveImages] = useState(true);
     const [saveGrids, setSaveGrids] = useState(false);
@@ -96,6 +103,7 @@ function App() {
 
     useEffect(() => {
         loadInitialData();
+        initializeWorkspace();
     }, []);
 
     const loadInitialData = async () => {
@@ -151,6 +159,69 @@ function App() {
         }
     };
 
+    const initializeWorkspace = async () => {
+        try {
+            const data = await api.listWorkspaces();
+            const workspaces = data.workspaces || [];
+            if (workspaces.length > 0) {
+                const sorted = [...workspaces].sort((a, b) => {
+                    const aTime = a.created ? new Date(a.created).getTime() : 0;
+                    const bTime = b.created ? new Date(b.created).getTime() : 0;
+                    return bTime - aTime;
+                });
+                setCurrentWorkspace(sorted[0].name);
+                return;
+            }
+
+            const created = await api.createWorkspace("untitled");
+            if (created?.name) {
+                setCurrentWorkspace(created.name);
+            }
+        } catch (error) {
+            console.error("Failed to initialize workspace:", error);
+        }
+    };
+
+    const handleWorkspaceChange = (workspaceName) => {
+        if (!workspaceName) return;
+        setCurrentWorkspace(workspaceName);
+        setTimeline({
+            generationQueue: [],
+            currentPreview: null,
+            committedHistory: [],
+            discarded: [],
+        });
+        setCurrentImage(null);
+        setInputImage(null);
+        setInputImageData(null);
+    };
+
+    const toWorkspaceImage = (workspaceName, relativePath) =>
+        `${WORKSPACE_PREFIX}${encodeURIComponent(workspaceName)}/${relativePath}`;
+
+    const fetchImageAsDataUrl = async (imageValue) => {
+        const imageUrl = resolveImageSrc(imageValue, "images");
+        const response = await fetch(imageUrl);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch image: ${response.status}`);
+        }
+        const blob = await response.blob();
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+        });
+    };
+
+    const getBase64Payload = async (imageValue) => {
+        if (!imageValue) return null;
+        if (typeof imageValue === "string" && imageValue.startsWith("data:")) {
+            return imageValue;
+        }
+        return await fetchImageAsDataUrl(imageValue);
+    };
+
     const createTimelineItem = (image, overrides = {}) => ({
         id: `timeline-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
         image,
@@ -172,6 +243,11 @@ function App() {
         }
         if (generationMode === "inpaint" && !inpaintMask) {
             alert("Please draw or upload a mask for inpainting mode.");
+            return;
+        }
+
+        if (!currentWorkspace) {
+            alert("Workspace not initialized yet. Please wait a moment and try again.");
             return;
         }
 
@@ -202,12 +278,17 @@ function App() {
                 save_images: saveImages,
                 save_grids: saveGrids,
                 force_task_id: taskId, // Use the same task ID
+                workspace_name: currentWorkspace,
             };
 
             let data;
             if (generationMode === "img2img") {
                 // Extract base64 data from data URL
-                const base64Data = inputImage.split(",")[1];
+                const imageDataUrl = inputImageData || (await getBase64Payload(inputImage));
+                if (!imageDataUrl) {
+                    throw new Error("No input image data available");
+                }
+                const base64Data = imageDataUrl.split(",")[1];
                 const img2imgParams = {
                     ...baseParams,
                     init_images: [base64Data],
@@ -216,7 +297,11 @@ function App() {
                 data = await api.img2img(img2imgParams);
             } else if (generationMode === "inpaint") {
                 // Extract base64 data from data URLs
-                const base64Data = inputImage.split(",")[1];
+                const imageDataUrl = inputImageData || (await getBase64Payload(inputImage));
+                if (!imageDataUrl) {
+                    throw new Error("No input image data available");
+                }
+                const base64Data = imageDataUrl.split(",")[1];
                 const maskBase64Data = inpaintMask.split(",")[1];
                 const inpaintParams = {
                     ...baseParams,
@@ -234,8 +319,10 @@ function App() {
                 data = await api.txt2imgSimple(baseParams);
             }
 
-            if (data.images && data.images.length > 0) {
-                const newImages = data.images.map((img) => `data:image/png;base64,${img}`);
+            if ((data.filesystem_paths && data.filesystem_paths.length > 0) || (data.images && data.images.length > 0)) {
+                const newImages = data.filesystem_paths?.length
+                    ? data.filesystem_paths.map((path) => toWorkspaceImage(currentWorkspace, path))
+                    : data.images.map((img) => `data:image/png;base64,${img}`);
                 const timelineItems = newImages.map((image) =>
                     createTimelineItem(image, {
                         source: "generation",
@@ -305,19 +392,28 @@ function App() {
     };
 
     const handleCanvasImageUpload = (imageSrc) => {
-        setInputImage(imageSrc);
-        setTimeline((prev) => {
-            let committedHistory = prev.committedHistory;
-            if (currentImage && currentImage !== imageSrc) {
-                committedHistory = appendCommittedImage(committedHistory, currentImage, "canvas");
-            }
-            committedHistory = appendCommittedImage(committedHistory, imageSrc, "upload");
-            return {
-                ...prev,
-                committedHistory,
-            };
-        });
-        setCurrentImage(imageSrc);
+        if (!currentWorkspace) return;
+        api.importWorkspaceImage(currentWorkspace, imageSrc)
+            .then((result) => {
+                const workspaceImage = toWorkspaceImage(currentWorkspace, result.image_path);
+                setInputImage(workspaceImage);
+                setInputImageData(imageSrc);
+                setTimeline((prev) => {
+                    let committedHistory = prev.committedHistory;
+                    if (currentImage && currentImage !== workspaceImage) {
+                        committedHistory = appendCommittedImage(committedHistory, currentImage, "canvas");
+                    }
+                    committedHistory = appendCommittedImage(committedHistory, workspaceImage, "upload");
+                    return {
+                        ...prev,
+                        committedHistory,
+                    };
+                });
+                setCurrentImage(workspaceImage);
+            })
+            .catch((error) => {
+                console.error("Failed to import image to workspace:", error);
+            });
     };
 
     const handlePreviewSelect = (item) => {
@@ -347,6 +443,7 @@ function App() {
                 currentPreview: null,
             };
         });
+        commitWorkspaceReject(timeline.currentPreview);
     };
 
     const handleCommitPreview = () => {
@@ -385,14 +482,16 @@ function App() {
             };
         });
 
-        setCurrentImage(preview.image);
+        setCurrentImage(preview.image); // Will be updated by commit handler
+        setInputImageData(null);
         if (generationMode === "inpaint") {
             setPreserveInpaintMask(true);
-            setInputImage(preview.image);
-            // Keep mask preserved for inpainting on the result
+            setInputImage(preview.image); // Will be updated by commit handler
         } else if (generationMode !== "txt2img") {
-            setInputImage(preview.image);
+            setInputImage(preview.image); // Will be updated by commit handler
         }
+
+        commitWorkspaceCommit(preview);
     };
 
     const handleDiscardGeneration = (item) => {
@@ -402,6 +501,7 @@ function App() {
             discarded: [item, ...prev.discarded],
             currentPreview: prev.currentPreview?.id === item.id ? null : prev.currentPreview,
         }));
+        commitWorkspaceReject(item);
     };
 
     const handleRestoreGeneration = (item) => {
@@ -411,6 +511,74 @@ function App() {
             generationQueue: [item, ...prev.generationQueue],
             currentPreview: item, // Automatically select the restored item for preview
         }));
+        commitWorkspaceRestore(item);
+    };
+
+    const commitWorkspaceCommit = async (item) => {
+        const info = parseWorkspaceImage(item?.image);
+        if (!info) return;
+
+        try {
+            const result = await api.commitWorkspaceImage(info.workspace, info.path);
+            console.log("Commit result:", result);
+            if (result.success && result.commit_path) {
+                // The backend might return a path that includes the workspace name
+                // Strip the workspace name if present to avoid duplication
+                let commitPath = result.commit_path;
+                const workspacePrefix = `${info.workspace}/`;
+                console.log("Original commitPath:", commitPath, "workspacePrefix:", workspacePrefix);
+                if (commitPath.startsWith(workspacePrefix)) {
+                    commitPath = commitPath.slice(workspacePrefix.length);
+                    console.log("Stripped commitPath:", commitPath);
+                }
+
+                // Update the image path to point to the committed location
+                const newImagePath = `workspace://${info.workspace}/${commitPath}`;
+                console.log("New image path:", newImagePath);
+
+                // Update the timeline item with the new path
+                setTimeline((prev) => {
+                    const updateItemInArray = (arrayItem) => {
+                        if (arrayItem.id === item.id) {
+                            console.log("Updating item", arrayItem.id, "from", arrayItem.image, "to", newImagePath);
+                            return { ...arrayItem, image: newImagePath };
+                        }
+                        return arrayItem;
+                    };
+
+                    return {
+                        ...prev,
+                        generationQueue: prev.generationQueue.map(updateItemInArray),
+                        committedHistory: prev.committedHistory.map(updateItemInArray),
+                        discarded: prev.discarded.map(updateItemInArray),
+                        currentPreview: prev.currentPreview?.id === item.id ? { ...prev.currentPreview, image: newImagePath } : prev.currentPreview,
+                    };
+                });
+
+                // Also update currentImage if it matches the old path
+                setCurrentImage((prev) => prev === item.image ? newImagePath : prev);
+                // Update inputImage if it matches the old path
+                setInputImage((prev) => prev === item.image ? newImagePath : prev);
+            }
+        } catch (error) {
+            console.error("Failed to commit workspace image:", error);
+        }
+    };
+
+    const commitWorkspaceReject = (item) => {
+        const info = parseWorkspaceImage(item?.image);
+        if (!info) return;
+        api.rejectWorkspaceImage(info.workspace, info.path).catch((error) => {
+            console.error("Failed to reject workspace image:", error);
+        });
+    };
+
+    const commitWorkspaceRestore = (item) => {
+        const info = parseWorkspaceImage(item?.image);
+        if (!info) return;
+        api.restoreWorkspaceImage(info.workspace, info.path).catch((error) => {
+            console.error("Failed to restore workspace image:", error);
+        });
     };
 
     // Upscale functionality
@@ -464,8 +632,12 @@ function App() {
         }));
 
         try {
+            const sourceImageData = await getBase64Payload(upscaleDialog.sourceImage.image);
+            if (!sourceImageData) {
+                throw new Error("No source image data available for upscaling");
+            }
             const params = {
-                image: upscaleDialog.sourceImage.image,
+                image: sourceImageData,
                 upscaler_1: upscaler,
                 upscaling_resize: scaleFactor,
                 resize_mode: 0, // Scale by factor
@@ -478,10 +650,20 @@ function App() {
                 throw new Error("Upscale failed. No images returned.");
             }
 
+            if (!currentWorkspace) {
+                throw new Error("Workspace not initialized");
+            }
+
+            const imported = await api.importWorkspaceImage(
+                currentWorkspace,
+                `data:image/png;base64,${result.image}`
+            );
+            const workspaceImage = toWorkspaceImage(currentWorkspace, imported.image_path);
+
             // Create timeline item for the upscaled result
             const upscaledItem = {
                 id: `upscale-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-                image: `data:image/png;base64,${result.image}`,
+                image: workspaceImage,
                 timestamp: Date.now(),
                 type: "upscale",
                 source: "generation",
@@ -555,10 +737,24 @@ function App() {
                     setGenerationMode={setGenerationMode}
                     onSkip={handleSkip}
                     onInterrupt={handleInterrupt}
+                    currentWorkspace={currentWorkspace}
+                    onWorkspaceChange={handleWorkspaceChange}
+                    onOpenWorkspace={() => setWorkspaceBrowserOpen(true)}
                 />
 
                 {/* Welcome Screen */}
                 <Welcome onGetStarted={handleGetStarted} />
+
+                {workspaceBrowserOpen && (
+                    <WorkspaceBrowser
+                        currentWorkspace={currentWorkspace}
+                        onSelectWorkspace={(name) => {
+                            handleWorkspaceChange(name);
+                            setWorkspaceBrowserOpen(false);
+                        }}
+                        onClose={() => setWorkspaceBrowserOpen(false)}
+                    />
+                )}
             </div>
         );
     }
@@ -575,6 +771,9 @@ function App() {
                 setGenerationMode={handleGenerationModeChange}
                 onSkip={handleSkip}
                 onInterrupt={handleInterrupt}
+                currentWorkspace={currentWorkspace}
+                onWorkspaceChange={handleWorkspaceChange}
+                onOpenWorkspace={() => setWorkspaceBrowserOpen(true)}
             />
 
             {/* Main Content Area */}
@@ -695,6 +894,17 @@ function App() {
                     loading={upscaleDialog.loading}
                     error={upscaleDialog.error}
                 />
+
+                {workspaceBrowserOpen && (
+                    <WorkspaceBrowser
+                        currentWorkspace={currentWorkspace}
+                        onSelectWorkspace={(name) => {
+                            handleWorkspaceChange(name);
+                            setWorkspaceBrowserOpen(false);
+                        }}
+                        onClose={() => setWorkspaceBrowserOpen(false)}
+                    />
+                )}
             </div>
         </div>
     );

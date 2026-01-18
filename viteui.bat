@@ -17,6 +17,14 @@ set ERROR_REPORTING=FALSE
 
 mkdir tmp 2>NUL
 
+setlocal enabledelayedexpansion
+
+rem Check for --vite argument
+set USE_VITE=0
+for %%i in (%*) do (
+    if "%%i"=="--vite" set USE_VITE=1
+)
+
 %PYTHON% -c "" >tmp/stdout.txt 2>tmp/stderr.txt
 if %ERRORLEVEL% == 0 goto :check_pip
 echo Couldn't launch python
@@ -65,42 +73,127 @@ set ACCELERATE="%VENV_DIR%\Scripts\accelerate.exe"
 if EXIST %ACCELERATE% goto :accelerate_launch
 
 :launch
-echo Starting Vite development server...
-cd client
-if exist node_modules (
-    start "Vite Dev Server" npm run run
+if %USE_VITE%==1 goto :vite_launch
+
+echo Checking if client is built...
+if not exist "client\dist" (
+    echo Client dist folder not found. Building client...
+    cd client
+    if not exist node_modules (
+        echo Installing client dependencies...
+        call npm install
+    )
+    echo Building client for production...
+    call npm run build
+    cd ..
+    if not exist "client\dist" (
+        echo ERROR: Failed to build client. Please check the build output above.
+        pause
+        goto :endofscript
+    )
+    echo Client built successfully.
 ) else (
-    echo Installing client dependencies...
-    npm install
-    start "Vite Dev Server" npm run run
+    echo Client dist folder found. Skipping build.
+    echo Note: To rebuild the client, delete the client\dist folder and run this script again.
 )
-cd ..
 
-echo Waiting for Vite server to initialize...
-timeout /t 3 /nobreak >nul
-
-echo Starting Stable Diffusion WebUI server in main window...
+echo Starting Stable Diffusion API server with integrated frontend...
+echo Frontend will be served from: http://localhost:7861
+echo API endpoints will be available at: http://localhost:7861/api/*
 %PYTHON% launch.py --disable-gpu-warning %*
 
 goto :endofscript
 
+:vite_launch
+echo Starting Vite development server and API server...
+echo Frontend will be served from: http://localhost:5173
+echo API endpoints will be available at: http://localhost:7861/api/* (proxied through Vite)
+
+rem Remove --vite from arguments for the API server
+set API_ARGS=
+for %%i in (%*) do (
+    if not "%%i"=="--vite" set API_ARGS=!API_ARGS! %%i
+)
+
+rem Start API server in background
+echo Starting API server on port 7861...
+start "Stable Diffusion API" %PYTHON% launch.py --disable-gpu-warning %API_ARGS%
+
+rem Wait a moment for API server to start
+timeout /t 3 /nobreak > nul
+
+rem Start Vite dev server
+echo Starting Vite dev server on port 5173...
+cd client
+if not exist node_modules (
+    echo Installing client dependencies...
+    call npm install
+)
+call npm run dev
+cd ..
+goto :endofscript
+
 :accelerate_launch
 echo Accelerating
-echo Starting Vite development server...
-cd client
-if exist node_modules (
-    start "Vite Dev Server" npm run run
-) else (
-    echo Installing client dependencies...
-    npm install
-    start "Vite Dev Server" npm run run
+if %USE_VITE%==1 goto :vite_accelerate_launch
+goto :accelerate_launch_normal
+
+:vite_accelerate_launch
+echo Starting Vite development server and API server with acceleration...
+echo Frontend will be served from: http://localhost:5173
+echo API endpoints will be available at: http://localhost:7861/api/* (proxied through Vite)
+
+rem Remove --vite from arguments for the API server
+set API_ARGS=
+for %%i in (%*) do (
+    if not "%%i"=="--vite" set API_ARGS=!API_ARGS! %%i
 )
+
+rem Start API server with acceleration in background
+echo Starting API server on port 7861 with acceleration...
+start "Stable Diffusion API" %ACCELERATE% launch --num_cpu_threads_per_process=6 launch.py --disable-gpu-warning --cuda-malloc %API_ARGS%
+
+rem Wait a moment for API server to start
+timeout /t 3 /nobreak > nul
+
+rem Start Vite dev server
+echo Starting Vite dev server on port 5173...
+cd client
+if not exist node_modules (
+    echo Installing client dependencies...
+    call npm install
+)
+call npm run dev
 cd ..
+goto :endofscript
 
-echo Waiting for Vite server to initialize...
-timeout /t 3 /nobreak >nul
+:accelerate_launch_normal
 
-echo Starting Stable Diffusion WebUI server with acceleration in main window...
+echo Checking if client is built...
+if not exist "client\dist" (
+    echo Client dist folder not found. Building client...
+    cd client
+    if not exist node_modules (
+        echo Installing client dependencies...
+        call npm install
+    )
+    echo Building client for production...
+    call npm run build
+    cd ..
+    if not exist "client\dist" (
+        echo ERROR: Failed to build client. Please check the build output above.
+        pause
+        goto :endofscript
+    )
+    echo Client built successfully.
+) else (
+    echo Client dist folder found. Skipping build.
+    echo Note: To rebuild the client, delete the client\dist folder and run this script again.
+)
+
+echo Starting Stable Diffusion API server with integrated frontend and acceleration...
+echo Frontend will be served from: http://localhost:7861
+echo API endpoints will be available at: http://localhost:7861/api/*
 %ACCELERATE% launch --num_cpu_threads_per_process=6 launch.py --disable-gpu-warning --cuda-malloc %*
 
 goto :endofscript

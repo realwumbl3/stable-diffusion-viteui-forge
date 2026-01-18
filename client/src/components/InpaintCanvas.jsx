@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import PromptFooter from "./PromptFooter.jsx";
 import InpaintToolbar from "./InpaintToolbar.jsx";
+import { resolveImageSrc } from "../lib/utils";
 
 // Import our extracted hooks and components
 import { useCanvasState } from "./InpaintCanvas/hooks/useCanvasState";
@@ -38,6 +39,10 @@ const InpaintCanvas = ({
     forceEditMode = false,
 }) => {
     const displayImage = previewImage || currentImage;
+    const resolvedDisplayImage = resolveImageSrc(displayImage, "images");
+    const resolvedInputImage = resolveImageSrc(inputImage, "images");
+    const resolvedPreviewImage = resolveImageSrc(previewImage, "images");
+    const resolvedCurrentImage = resolveImageSrc(currentImage, "images");
 
     // Refs
     const canvasRef = useRef(null);
@@ -57,20 +62,20 @@ const InpaintCanvas = ({
 
     // Initialize hooks
     const canvasState = useCanvasState({
-        displayImage,
-        inputImage,
+        displayImage: resolvedDisplayImage,
+        inputImage: resolvedInputImage,
         livePreview,
         generationWidth,
         generationHeight,
         forceEditMode,
-        previewImage,
+        previewImage: resolvedPreviewImage,
         canvasRef,
         imageRef,
         panTargetRef,
     });
 
     const drawing = useDrawing({
-        inputImage,
+        inputImage: resolvedInputImage,
         setInpaintMask,
         inpaintFullRes,
         inpaintFullResPadding,
@@ -359,10 +364,10 @@ const InpaintCanvas = ({
                 borderCanvasRef={borderCanvasRef}
                 overlayCanvasRef={overlayCanvasRef}
                 imageRef={imageRef}
-                displayImage={displayImage}
-                inputImage={inputImage}
-                previewImage={previewImage}
-                currentImage={currentImage}
+                displayImage={resolvedDisplayImage}
+                inputImage={resolvedInputImage}
+                previewImage={resolvedPreviewImage}
+                currentImage={resolvedCurrentImage}
                 livePreview={livePreview}
                 generationWidth={generationWidth}
                 generationHeight={generationHeight}
