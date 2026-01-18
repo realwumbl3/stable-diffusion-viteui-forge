@@ -347,6 +347,8 @@ def main():
     with open(summary_path, 'w', encoding='utf-8') as f:
         f.write(f"Diff Summary\n")
         f.write(f"============\n\n")
+        f.write(f"== USE #\+|#end\+ REGEX TO FIND ADDED AND REMOVED CODE ==\n\n")
+        f.write(f"============\n\n")
         f.write(f"Original directory: {original_dir.absolute()}\n")
         f.write(f"Current directory: {current_dir.absolute()}\n")
         f.write(f"Output directory: {output_dir.absolute()}\n\n")

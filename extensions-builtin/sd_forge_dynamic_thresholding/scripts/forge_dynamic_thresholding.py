@@ -2,6 +2,7 @@ import gradio as gr
 
 from modules import scripts
 from lib_dynamic_thresholding.dynthres import DynamicThresholdingNode
+from modules.forge_utils import create_default_args
 
 opDynamicThresholdingNode = DynamicThresholdingNode().patch
 
@@ -42,17 +43,16 @@ class DynamicThresholdingForForge(scripts.Script):
         return enabled, mimic_scale, threshold_percentile, mimic_mode, mimic_scale_min, cfg_mode, cfg_scale_min, \
             sched_val, separate_feature_channels, scaling_startpoint, variability_measure, interpolate_phi
 
-    def process_before_every_sampling(self, p, *script_args, **kwargs):
+    def process_before_every_sampling(self, p, *_script_args, **kwargs):
         # This will be called before every sampling.
         # If you use highres fix, this will be called twice.
 
         # Provide defaults for API-only mode (12 arguments expected)
-        defaults = [False, 7.0, 100.0, "Constant", 0.0, "Constant", 0.0, 0.0, "enable", "ZERO", "AD", 0.0]
-        args = list(script_args) + defaults[len(script_args):] if len(script_args) < len(defaults) else list(script_args[:len(defaults)])
+        script_args = create_default_args(_script_args, [False, 7.0, 100.0, "Constant", 0.0, "Constant", 0.0, 0.0, "enable", "ZERO", "AD", 0.0])
 
         enabled, mimic_scale, threshold_percentile, mimic_mode, mimic_scale_min, cfg_mode, cfg_scale_min, \
             sched_val, separate_feature_channels, scaling_startpoint, variability_measure, \
-            interpolate_phi = args
+            interpolate_phi = script_args
 
         # Ensure enabled is boolean
         enabled = bool(enabled) if enabled is not None else False

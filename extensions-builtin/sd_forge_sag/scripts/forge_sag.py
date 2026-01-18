@@ -8,6 +8,7 @@ from torch import einsum
 from einops import rearrange, repeat
 from modules import scripts, shared
 from modules.ui_components import InputAccordion
+from modules.forge_utils import create_default_args
 
 
 attn_precision = memory_management.force_upcast_attention_dtype()
@@ -195,10 +196,9 @@ class SAGForForge(scripts.Script):
 
     def process_before_every_sampling(self, p, *script_args, **kwargs):
         # Provide defaults for API-only mode (4 arguments expected)
-        defaults = [False, 1.0, 1.0, 1.0]
-        args = list(script_args) + defaults[len(script_args):] if len(script_args) < len(defaults) else list(script_args[:len(defaults)])
+        script_args = create_default_args(script_args, [False, 0.5, 2.0, 1.0])
 
-        enabled, scale, blur_sigma, threshold = args
+        enabled, scale, blur_sigma, threshold = script_args
 
         # Ensure proper types
         enabled = bool(enabled) if enabled is not None else False

@@ -2,6 +2,7 @@ import gradio as gr
 
 from modules import scripts
 from backend import memory_management
+from modules.forge_utils import create_default_args
 
 
 class NeverOOMForForge(scripts.Script):
@@ -24,11 +25,10 @@ class NeverOOMForForge(scripts.Script):
         return unet_enabled, vae_enabled
 
     def process(self, p, *script_args, **kwargs):
-        # Provide defaults for API-only mode
-        if len(script_args) >= 2:
-            unet_enabled, vae_enabled = script_args[:2]
-        else:
-            unet_enabled, vae_enabled = False, False
+        # Provide defaults for API-only mode (2 arguments expected)
+        script_args = create_default_args(script_args, [False, False])
+
+        unet_enabled, vae_enabled = script_args
 
         # Ensure values are boolean
         unet_enabled = bool(unet_enabled) if unet_enabled is not None else False

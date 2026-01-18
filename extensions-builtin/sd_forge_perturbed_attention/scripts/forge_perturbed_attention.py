@@ -5,6 +5,7 @@ from modules.script_callbacks import on_cfg_denoiser, remove_current_script_call
 from backend.patcher.base import set_model_options_patch_replace
 from backend.sampling.sampling_function import calc_cond_uncond_batch
 from modules.ui_components import InputAccordion
+from modules.forge_utils import create_default_args
 
 
 class PerturbedAttentionGuidanceForForge(scripts.Script):
@@ -48,10 +49,9 @@ class PerturbedAttentionGuidanceForForge(scripts.Script):
 
     def process_before_every_sampling(self, p, *script_args, **kwargs):
         # Provide defaults for API-only mode (5 arguments expected)
-        defaults = [False, 3.0, 0.0, 0.0, 1000.0]
-        args = list(script_args) + defaults[len(script_args):] if len(script_args) < len(defaults) else list(script_args[:len(defaults)])
+        script_args = create_default_args(script_args, [False, 3.0, 0.0, 0.0, 1.0])
 
-        enabled, scale, attenuation, start_step, end_step = args
+        enabled, scale, attenuation, start_step, end_step = script_args
 
         # Ensure proper types
         enabled = bool(enabled) if enabled is not None else False

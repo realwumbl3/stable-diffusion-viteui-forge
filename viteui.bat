@@ -1,5 +1,9 @@
 @echo off
 
+rem AUTO_CLOSE_WINDOW is no longer used - SD server now runs in main window
+rem Set to 1 to automatically close the main window after starting servers, 0 to keep it open (default)
+if not defined AUTO_CLOSE_WINDOW (set AUTO_CLOSE_WINDOW=0)
+
 if exist webui.settings.bat (
     call webui.settings.bat
 )
@@ -61,12 +65,6 @@ set ACCELERATE="%VENV_DIR%\Scripts\accelerate.exe"
 if EXIST %ACCELERATE% goto :accelerate_launch
 
 :launch
-echo Starting Stable Diffusion WebUI server...
-start "Stable Diffusion WebUI" %PYTHON% launch.py --disable-gpu-warning %*
-
-echo Waiting for server to initialize...
-timeout /t 5 /nobreak >nul
-
 echo Starting Vite development server...
 cd client
 if exist node_modules (
@@ -78,21 +76,16 @@ if exist node_modules (
 )
 cd ..
 
-echo Both server and client are starting...
-echo Server: http://localhost:7861
-echo Client: http://localhost:5173 (or check Vite output for exact port)
+echo Waiting for Vite server to initialize...
+timeout /t 3 /nobreak >nul
 
-pause
+echo Starting Stable Diffusion WebUI server in main window...
+%PYTHON% launch.py --disable-gpu-warning %*
+
 goto :endofscript
 
 :accelerate_launch
 echo Accelerating
-echo Starting Stable Diffusion WebUI server with acceleration...
-start "Stable Diffusion WebUI" %ACCELERATE% launch --num_cpu_threads_per_process=6 launch.py --disable-gpu-warning --cuda-malloc %*
-
-echo Waiting for server to initialize...
-timeout /t 5 /nobreak >nul
-
 echo Starting Vite development server...
 cd client
 if exist node_modules (
@@ -104,11 +97,12 @@ if exist node_modules (
 )
 cd ..
 
-echo Both server and client are starting...
-echo Server: http://localhost:7861
-echo Client: http://localhost:5173 (or check Vite output for exact port)
+echo Waiting for Vite server to initialize...
+timeout /t 3 /nobreak >nul
 
-pause
+echo Starting Stable Diffusion WebUI server with acceleration in main window...
+%ACCELERATE% launch --num_cpu_threads_per_process=6 launch.py --disable-gpu-warning --cuda-malloc %*
+
 goto :endofscript
 
 :show_stdout_stderr

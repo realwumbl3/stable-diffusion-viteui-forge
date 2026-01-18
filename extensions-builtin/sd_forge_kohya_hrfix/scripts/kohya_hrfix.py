@@ -3,6 +3,7 @@ import gradio as gr
 from modules import scripts, shared
 from modules.ui_components import InputAccordion
 from backend.misc.image_resize import adaptive_resize
+from modules.forge_utils import create_default_args
 
 
 class PatchModelAddDownscale:
@@ -77,11 +78,10 @@ class KohyaHRFixForForge(scripts.Script):
 
     def process_before_every_sampling(self, p, *script_args, **kwargs):
         # enabled, block_number, downscale_factor, start_percent, end_percent, downscale_after_skip, downscale_method, upscale_method = script_args
-        # Provide defaults for API-only mode (8 arguments expected) 
-        defaults = [False, 3, 2.0, 0.0, 1.0, True, "LR", "Nearest"]
-        args = list(script_args) + defaults[len(script_args):] if len(script_args) < len(defaults) else list(script_args[:len(defaults)])
+        # Provide defaults for API-only mode (8 arguments expected)
+        script_args = create_default_args(script_args, [False, 3, 2.0, 0.0, 0.35, True, "bicubic", "bicubic"])
 
-        enabled, block_number, downscale_factor, start_percent, end_percent, downscale_after_skip, downscale_method, upscale_method = args
+        enabled, block_number, downscale_factor, start_percent, end_percent, downscale_after_skip, downscale_method, upscale_method = script_args
 
         # Ensure proper types
         enabled = bool(enabled) if enabled is not None else False

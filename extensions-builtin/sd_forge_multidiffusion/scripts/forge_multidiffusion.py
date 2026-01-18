@@ -2,6 +2,7 @@ import gradio as gr
 from modules import scripts
 
 from lib_multidiffusion.tiled_diffusion import TiledDiffusion
+from modules.forge_utils import create_default_args
 
 
 opTiledDiffusion = TiledDiffusion().apply
@@ -34,10 +35,9 @@ class MultiDiffusionForForge(scripts.Script):
         # If you use highres fix, this will be called twice.
 
         # Provide defaults for API-only mode (6 arguments expected)
-        defaults = [False, "MultiDiffusion", 512, 512, 0, 1]
-        args = list(script_args) + defaults[len(script_args):] if len(script_args) < len(defaults) else list(script_args[:len(defaults)])
+        script_args = create_default_args(script_args, [False, "MultiDiffusion", 512, 512, 0, 1])
 
-        enabled, method, tile_width, tile_height, tile_overlap, tile_batch_size = args
+        enabled, method, tile_width, tile_height, tile_overlap, tile_batch_size = script_args
 
         # Ensure proper types
         enabled = bool(enabled) if enabled is not None else False

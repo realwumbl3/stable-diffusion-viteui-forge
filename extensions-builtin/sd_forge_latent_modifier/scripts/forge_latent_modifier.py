@@ -3,6 +3,7 @@ from modules import scripts
 from modules.infotext_utils import PasteField
 
 from lib_latent_modifier.sampler_mega_modifier import ModelSamplerLatentMegaModifier
+from modules.forge_utils import create_default_args
 
 opModelSamplerLatentMegaModifier = ModelSamplerLatentMegaModifier().mega_modify
 
@@ -94,10 +95,9 @@ class LatentModifierForForge(scripts.Script):
         # If you use highres fix, this will be called twice.
 
         # Provide defaults for API-only mode (21 arguments expected)
-        defaults = [False, 0.0, "none", 0.0, "none", 0.5, 0.0, "none", 0.0, 0.7, "none", "none", 0.0, 0.0, 0.0, 0.0, "none", 0.5, 0.0, False, 0.0]
-        args = list(script_args) + defaults[len(script_args):] if len(script_args) < len(defaults) else list(script_args[:len(defaults)])
+        script_args = create_default_args(script_args, [False, 0.0, "anisotropic", 0.0, "reinhard", 100.0, 0.0, "subtract", 0.0, 0.0, "gaussian", "add", 0.0, 100, 127, 0.0, "hard_clamp", 5.0, 0.0, "None", "None"])
 
-        enabled, sharpness_multiplier, sharpness_method, tonemap_multiplier, tonemap_method, tonemap_percentile, contrast_multiplier, combat_method, combat_cfg_drift, rescale_cfg_phi, extra_noise_type, extra_noise_method, extra_noise_multiplier, extra_noise_lowpass, divisive_norm_size, divisive_norm_multiplier, spectral_mod_mode, spectral_mod_percentile, spectral_mod_multiplier, affect_uncond, dyn_cfg_augmentation = args
+        enabled, sharpness_multiplier, sharpness_method, tonemap_multiplier, tonemap_method, tonemap_percentile, contrast_multiplier, combat_method, combat_cfg_drift, rescale_cfg_phi, extra_noise_type, extra_noise_method, extra_noise_multiplier, extra_noise_lowpass, divisive_norm_size, divisive_norm_multiplier, spectral_mod_mode, spectral_mod_percentile, spectral_mod_multiplier, affect_uncond, dyn_cfg_augmentation = script_args
 
         # Ensure proper types
         enabled = bool(enabled) if enabled is not None else False

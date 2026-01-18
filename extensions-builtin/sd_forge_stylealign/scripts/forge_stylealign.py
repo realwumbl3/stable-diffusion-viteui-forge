@@ -3,6 +3,7 @@ import gradio as gr
 
 from modules import scripts
 from backend import attention
+from modules.forge_utils import create_default_args
 
 
 def sdp(q, k, v, transformer_options):
@@ -31,10 +32,9 @@ class StyleAlignForForge(scripts.Script):
         # If you use highres fix, this will be called twice.
 
         # Provide defaults for API-only mode (2 arguments expected)
-        defaults = [False, 0.5]
-        args = list(script_args) + defaults[len(script_args):] if len(script_args) < len(defaults) else list(script_args[:len(defaults)])
+        script_args = create_default_args(script_args, [False, 1.0])
 
-        shared_attention, strength = args
+        shared_attention, strength = script_args
 
         # Ensure proper types
         shared_attention = bool(shared_attention) if shared_attention is not None else False

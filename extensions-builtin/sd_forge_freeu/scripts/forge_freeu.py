@@ -4,6 +4,7 @@ import gradio as gr
 from modules import scripts
 from modules.script_callbacks import on_cfg_denoiser, remove_current_script_callbacks
 from modules.ui_components import InputAccordion
+from modules.forge_utils import create_default_args
 
 
 def Fourier_filter(x, threshold, scale):
@@ -141,10 +142,9 @@ class FreeUForForge(scripts.Script):
         # If you use highres fix, this will be called twice.
 
         # Provide defaults for API-only mode (7 arguments expected)
-        defaults = [False, 1.2, 1.4, 0.9, 0.2, 0.0, 1.0]
-        args = list(script_args) + defaults[len(script_args):] if len(script_args) < len(defaults) else list(script_args[:len(defaults)])
+        script_args = create_default_args(script_args, [False, 1.2, 1.4, 0.9, 0.2, 0.0, 1.0])
 
-        freeu_enabled, freeu_b1, freeu_b2, freeu_s1, freeu_s2, freeu_start, freeu_end = args
+        freeu_enabled, freeu_b1, freeu_b2, freeu_s1, freeu_s2, freeu_start, freeu_end = script_args
 
         # Ensure enabled is boolean
         freeu_enabled = bool(freeu_enabled) if freeu_enabled is not None else False
