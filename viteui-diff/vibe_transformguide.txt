@@ -1,9 +1,19 @@
 #? explaination for following removal
 #- <removed code>
+#- <removed code>
+#- <removed code>
+#?end
+
 -or-
+
 #? explaination for following commented out code
 # <commented out code>
+# <commented out code>
+# <commented out code>
+#?end
 
 #+ explanation for following addition
 <added code>
-#end+
+<added code>
+<added code>
+#+end
