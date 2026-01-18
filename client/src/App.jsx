@@ -491,6 +491,17 @@ function App() {
         if (!preview) return;
 
         try {
+            // Reject all other candidates in the generation queue
+            const otherCandidates = timeline.generationQueue.filter(gen => gen.genid !== preview.genid);
+            for (const candidate of otherCandidates) {
+                try {
+                    await api.rejectWorkspaceImage(candidate.workspace, `candidates/${candidate.genid}/full.png`);
+                } catch (error) {
+                    console.error(`Failed to reject candidate ${candidate.genid}:`, error);
+                }
+            }
+
+            // Commit the selected preview
             await api.commitWorkspaceImage(preview.workspace, `candidates/${preview.genid}/full.png`);
             // Reload generations to get updated status
             await loadWorkspaceGenerations(currentWorkspace);
