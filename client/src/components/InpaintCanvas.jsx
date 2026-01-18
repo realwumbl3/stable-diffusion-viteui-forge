@@ -39,10 +39,10 @@ const InpaintCanvas = ({
     forceEditMode = false,
 }) => {
     const displayImage = previewImage || currentImage;
-    const resolvedDisplayImage = resolveImageSrc(displayImage, "images");
-    const resolvedInputImage = resolveImageSrc(inputImage, "images");
-    const resolvedPreviewImage = resolveImageSrc(previewImage, "images");
-    const resolvedCurrentImage = resolveImageSrc(currentImage, "images");
+    const resolvedDisplayImage = resolveImageSrc(displayImage, "full");
+    const resolvedInputImage = resolveImageSrc(inputImage, "full");
+    const resolvedPreviewImage = resolveImageSrc(previewImage, "full");
+    const resolvedCurrentImage = resolveImageSrc(currentImage, "full");
 
     // Refs
     const canvasRef = useRef(null);

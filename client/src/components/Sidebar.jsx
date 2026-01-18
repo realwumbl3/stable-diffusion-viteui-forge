@@ -19,8 +19,10 @@ const Sidebar = ({
   onRejectPreview,
   onDiscardGeneration,
   onRestoreGeneration,
+  onUncommitGeneration,
   onGenerationModeChange,
-  onUpscale
+  onUpscale,
+  getGenerationImageUrl
 }) => {
   const [committedPage, setCommittedPage] = useState(0)
   const [discardedPage, setDiscardedPage] = useState(0)
@@ -46,7 +48,7 @@ const Sidebar = ({
     }
   }, [currentImage])
 
-  const previewImage = timeline.currentPreview?.image
+  const previewImage = getGenerationImageUrl ? getGenerationImageUrl(timeline.currentPreview) : timeline.currentPreview?.image
   const hasQueueItems = timeline.generationQueue.length > 0
   const hasCommitted = timeline.committedHistory.length > 0
   const hasDiscarded = timeline.discarded.length > 0
@@ -111,17 +113,18 @@ const Sidebar = ({
                 </div>
                 {hasQueueItems ? (
                   <div className="grid grid-cols-1 gap-2">
-                    {timeline.generationQueue.map(item => (
+                    {timeline.generationQueue.map(generation => (
                       <TimelineItem
-                        key={item.id}
-                        item={item}
-                        isActive={timeline.currentPreview?.id === item.id}
-                        onSelect={() => onPreviewSelect(item)}
-                        onDiscard={() => onDiscardGeneration(item)}
+                        key={generation.genid}
+                        item={generation}
+                        isActive={timeline.currentPreview?.genid === generation.genid}
+                        onSelect={() => onPreviewSelect(generation)}
+                        onDiscard={() => onDiscardGeneration(generation)}
                         showDiscard
                         onCommit={onCommitPreview}
                         onReject={onRejectPreview}
                         showCommitReject
+                        getGenerationImageUrl={getGenerationImageUrl}
                       />
                     ))}
                   </div>
@@ -133,9 +136,9 @@ const Sidebar = ({
 
               {/* Canvas */}
               <div className="space-y-2">
-                <div className="flex items-center justify-between text-xs text-studio-textSecondary uppercase tracking-wider">
-                  <span>Canvas</span>
-                </div>
+                  <div className="flex items-center justify-between text-xs text-studio-textSecondary uppercase tracking-wider">
+                    <span>Canvas</span>
+                  </div>
                 <div className="studio-panel p-2 rounded-lg space-y-2">
                   <div className="relative rounded-md overflow-hidden border border-studio-border cursor-pointer group"
                        onClick={() => {
@@ -151,7 +154,7 @@ const Sidebar = ({
                     {currentImage ? (
                       <img
                         ref={canvasImgRef}
-                        src={resolveImageSrc(currentImage, "images")}
+                        src={resolveImageSrc(currentImage, "full")}
                         alt="Canvas"
                         className="w-full object-contain"
                       />
@@ -235,14 +238,18 @@ const Sidebar = ({
                 </div>
                 {hasCommitted ? (
                   <div className="grid grid-cols-1 gap-2">
-                    {displayedCommitted.map(item => (
+                    {displayedCommitted.map(generation => (
                       <TimelineItem
-                        key={item.id}
-                        item={item}
-                        isActive={timeline.currentPreview?.id === item.id}
-                        onSelect={() => onPreviewSelect(item)}
+                        key={generation.genid}
+                        item={generation}
+                        isActive={timeline.currentPreview?.genid === generation.genid}
+                        onSelect={() => onPreviewSelect(generation)}
                         onUpscale={onUpscale}
                         showUpscale
+                        onCommit={() => onUncommitGeneration(generation)}
+                        showCommitReject={true}
+                        commitLabel="Uncommit"
+                        getGenerationImageUrl={getGenerationImageUrl}
                       />
                     ))}
                   </div>
@@ -284,13 +291,14 @@ const Sidebar = ({
                 </div>
                 {hasDiscarded ? (
                   <div className="grid grid-cols-1 gap-2">
-                    {displayedDiscarded.map(item => (
+                    {displayedDiscarded.map(generation => (
                       <TimelineItem
-                        key={item.id}
-                        item={item}
+                        key={generation.genid}
+                        item={generation}
                         isActive={false}
-                        onSelect={() => onRestoreGeneration(item)}
+                        onSelect={() => onRestoreGeneration(generation)}
                         badge={<Trash2 size={12} />}
+                        getGenerationImageUrl={getGenerationImageUrl}
                       />
                     ))}
                   </div>

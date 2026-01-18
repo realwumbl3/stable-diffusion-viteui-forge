@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import api from "./Api";
+import api from "./api";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { useWebSocketProgress } from "./hooks/useWebSocketProgress";
 import Header from "./components/Header.jsx";
@@ -10,7 +10,7 @@ import PropertiesPanel from "./components/PropertiesPanel.jsx";
 import Welcome from "./components/Welcome.jsx";
 import UpscaleDialog from "./components/UpscaleDialog.jsx";
 import WorkspaceBrowser from "./components/WorkspaceBrowser.jsx";
-import { WORKSPACE_PREFIX, parseWorkspaceImage, resolveImageSrc } from "./lib/utils";
+import { WORKSPACE_PREFIX, parseWorkspaceImage, resolveImageSrc, API_BASE_URL } from "./lib/utils";
 
 function App() {
     const [prompt, setPrompt] = useState("");
@@ -70,10 +70,10 @@ function App() {
     const [inputImage, setInputImage] = useState(null);
 
     const [timeline, setTimeline] = useState({
-        generationQueue: [],
-        currentPreview: null,
-        committedHistory: [],
-        discarded: [],
+        generationQueue: [], // Array of Generation objects
+        currentPreview: null, // Generation object or null
+        committedHistory: [], // Array of Generation objects
+        discarded: [], // Array of Generation objects
     });
 
     const [currentWorkspace, setCurrentWorkspace] = useState(null);
@@ -170,37 +170,76 @@ function App() {
                     return bTime - aTime;
                 });
                 setCurrentWorkspace(sorted[0].name);
+                await loadWorkspaceGenerations(sorted[0].name);
                 return;
             }
 
             const created = await api.createWorkspace("untitled");
             if (created?.name) {
                 setCurrentWorkspace(created.name);
+                await loadWorkspaceGenerations(created.name);
             }
         } catch (error) {
             console.error("Failed to initialize workspace:", error);
         }
     };
 
+    const loadWorkspaceGenerations = async (workspaceName) => {
+        if (!workspaceName) return;
+
+        try {
+            const generations = await api.getGenerations(workspaceName);
+
+            // Separate generations by status
+            const generationQueue = generations.filter(gen => gen.status === 'candidate');
+            const committedHistory = generations.filter(gen => gen.status === 'commit');
+            const discarded = generations.filter(gen => gen.status === 'reject');
+
+            // Set the latest committed image as the current canvas image
+            if (committedHistory.length > 0) {
+                setCurrentImage(getGenerationImageUrl(committedHistory[0], 'full'));
+            }
+
+            setTimeline({
+                generationQueue,
+                currentPreview: generationQueue.length > 0 ? generationQueue[0] : null,
+                committedHistory,
+                discarded,
+            });
+        } catch (error) {
+            console.error("Failed to load workspace generations:", error);
+            // Fallback to empty timeline
+            setTimeline({
+                generationQueue: [],
+                currentPreview: null,
+                committedHistory: [],
+                discarded: [],
+            });
+        }
+    };
+
     const handleWorkspaceChange = (workspaceName) => {
         if (!workspaceName) return;
         setCurrentWorkspace(workspaceName);
-        setTimeline({
-            generationQueue: [],
-            currentPreview: null,
-            committedHistory: [],
-            discarded: [],
-        });
         setCurrentImage(null);
         setInputImage(null);
         setInputImageData(null);
+        loadWorkspaceGenerations(workspaceName);
     };
 
     const toWorkspaceImage = (workspaceName, relativePath) =>
         `${WORKSPACE_PREFIX}${encodeURIComponent(workspaceName)}/${relativePath}`;
 
+    // Get image URL for a generation
+    const getGenerationImageUrl = (generation, size = 'full') => {
+        if (!generation) return null;
+        const asset = size === 'preview' ? '512.png' : 'full.png';
+        const category = generation.status === 'commit' ? 'commits' : generation.status === 'reject' ? 'rejects' : 'candidates';
+        return `${API_BASE_URL}/api/workspaces/${encodeURIComponent(generation.workspace)}/${category}/${generation.genid}/${asset}`;
+    };
+
     const fetchImageAsDataUrl = async (imageValue) => {
-        const imageUrl = resolveImageSrc(imageValue, "images");
+        const imageUrl = resolveImageSrc(imageValue, "full");
         const response = await fetch(imageUrl);
         if (!response.ok) {
             throw new Error(`Failed to fetch image: ${response.status}`);
@@ -320,30 +359,8 @@ function App() {
             }
 
             if ((data.filesystem_paths && data.filesystem_paths.length > 0) || (data.images && data.images.length > 0)) {
-                const newImages = data.filesystem_paths?.length
-                    ? data.filesystem_paths.map((path) => toWorkspaceImage(currentWorkspace, path))
-                    : data.images.map((img) => `data:image/png;base64,${img}`);
-                const timelineItems = newImages.map((image) =>
-                    createTimelineItem(image, {
-                        source: "generation",
-                        type: generationMode,
-                        prompt,
-                        negativePrompt,
-                        parameters: {
-                            steps,
-                            cfgScale,
-                            width,
-                            height,
-                            sampler: selectedSampler,
-                            denoisingStrength,
-                        },
-                    })
-                );
-                setTimeline((prev) => ({
-                    ...prev,
-                    generationQueue: [...timelineItems, ...prev.generationQueue],
-                    currentPreview: prev.currentPreview ?? timelineItems[0],
-                }));
+                // Reload generations from the backend since they now include proper metadata
+                await loadWorkspaceGenerations(currentWorkspace);
             }
         } catch (error) {
             console.error("Error generating image:", error);
@@ -391,127 +408,137 @@ function App() {
         }
     };
 
-    const handleCanvasImageUpload = (imageSrc) => {
+    const handleCanvasImageUpload = async (imageSrc) => {
         if (!currentWorkspace) return;
-        api.importWorkspaceImage(currentWorkspace, imageSrc)
-            .then((result) => {
-                const workspaceImage = toWorkspaceImage(currentWorkspace, result.image_path);
-                setInputImage(workspaceImage);
-                setInputImageData(imageSrc);
-                setTimeline((prev) => {
-                    let committedHistory = prev.committedHistory;
-                    if (currentImage && currentImage !== workspaceImage) {
-                        committedHistory = appendCommittedImage(committedHistory, currentImage, "canvas");
+        try {
+            const result = await api.importWorkspaceImage(currentWorkspace, imageSrc);
+            const workspaceImage = toWorkspaceImage(currentWorkspace, result.image_path);
+
+            // Extract genid from the path (candidates/{genid}/full.png)
+            const pathParts = result.image_path.split('/');
+            const genid = pathParts.length >= 2 ? pathParts[1] : 'unknown';
+
+            // Create a Generation object for the uploaded image
+            const uploadedGeneration = {
+                genid,
+                status: 'candidate',
+                timestamp: Date.now(),
+                source: 'upload',
+                workspace: currentWorkspace,
+                prompt: 'Uploaded image',
+                negativePrompt: '',
+                parameters: {}
+            };
+
+            // Immediately commit the uploaded image
+            await api.commitWorkspaceImage(currentWorkspace, `candidates/${genid}/full.png`);
+
+            // Update the uploaded generation to reflect it's now committed
+            const committedGeneration = { ...uploadedGeneration, status: 'commit' };
+
+            setInputImage(getGenerationImageUrl(committedGeneration, 'full'));
+            setInputImageData(imageSrc);
+
+            setTimeline((prev) => {
+                let committedHistory = prev.committedHistory;
+                // Add the current canvas image to history if it exists and is different
+                if (currentImage) {
+                    // Find or create a generation object for the current image
+                    const currentGen = prev.committedHistory.find(g => getGenerationImageUrl(g, 'full') === currentImage);
+                    if (currentGen) {
+                        // Keep the existing generation in history
+                    } else {
+                        // This shouldn't happen with the new system, but handle it gracefully
+                        console.warn('Current image not found in committed history');
                     }
-                    committedHistory = appendCommittedImage(committedHistory, workspaceImage, "upload");
-                    return {
-                        ...prev,
-                        committedHistory,
-                    };
-                });
-                setCurrentImage(workspaceImage);
-            })
-            .catch((error) => {
-                console.error("Failed to import image to workspace:", error);
+                }
+                // Add the uploaded image as committed
+                committedHistory = [committedGeneration, ...committedHistory];
+                return {
+                    ...prev,
+                    committedHistory,
+                };
             });
+
+            setCurrentImage(getGenerationImageUrl(committedGeneration, 'full'));
+        } catch (error) {
+            console.error("Failed to import image to workspace:", error);
+        }
     };
 
-    const handlePreviewSelect = (item) => {
+    const handlePreviewSelect = (generation) => {
         setTimeline((prev) => ({
             ...prev,
-            currentPreview: item,
+            currentPreview: generation,
         }));
     };
 
-    const isQueuedGeneration = (item) => item?.source === "generation" || item?.type === "upscale";
-
-    const handleRejectPreview = () => {
-        setTimeline((prev) => {
-            const preview = prev.currentPreview;
-            if (!preview) return prev;
-            if (isQueuedGeneration(preview)) {
-                const remainingQueue = prev.generationQueue.filter((item) => item.id !== preview.id);
-                return {
-                    ...prev,
-                    generationQueue: remainingQueue,
-                    discarded: [preview, ...prev.discarded],
-                    currentPreview: remainingQueue.length > 0 ? remainingQueue[0] : null,
-                };
-            }
-            return {
-                ...prev,
-                currentPreview: null,
-            };
-        });
-        commitWorkspaceReject(timeline.currentPreview);
-    };
-
-    const handleCommitPreview = () => {
+    const handleRejectPreview = async () => {
         const preview = timeline.currentPreview;
         if (!preview) return;
 
-        setTimeline((prev) => {
-            let committedHistory = prev.committedHistory;
-            if (currentImage && currentImage !== preview.image) {
-                committedHistory = appendCommittedImage(committedHistory, currentImage, "canvas");
-            }
-
-            if (isQueuedGeneration(preview)) {
-                const remainingQueue = prev.generationQueue.filter((item) => item.id !== preview.id);
-                // Add the committed generation to the top of committed history
-                const newCommittedItem = {
-                    id: preview.id,
-                    image: preview.image,
-                    timestamp: Date.now(),
-                    type: preview.type || "generation",
-                    source: "committed",
-                };
-                return {
-                    ...prev,
-                    generationQueue: [],
-                    discarded: [...remainingQueue, ...prev.discarded],
-                    committedHistory: [newCommittedItem, ...committedHistory],
-                    currentPreview: null,
-                };
-            }
-
-            return {
-                ...prev,
-                committedHistory,
-                currentPreview: null,
-            };
-        });
-
-        setCurrentImage(preview.image); // Will be updated by commit handler
-        setInputImageData(null);
-        if (generationMode === "inpaint") {
-            setPreserveInpaintMask(true);
-            setInputImage(preview.image); // Will be updated by commit handler
-        } else if (generationMode !== "txt2img") {
-            setInputImage(preview.image); // Will be updated by commit handler
+        try {
+            await api.rejectWorkspaceImage(preview.workspace, `candidates/${preview.genid}/full.png`);
+            // Reload generations to get updated status
+            await loadWorkspaceGenerations(currentWorkspace);
+        } catch (error) {
+            console.error("Failed to reject generation:", error);
         }
-
-        commitWorkspaceCommit(preview);
     };
 
-    const handleDiscardGeneration = (item) => {
-        setTimeline((prev) => ({
-            ...prev,
-            generationQueue: prev.generationQueue.filter((entry) => entry.id !== item.id),
-            discarded: [item, ...prev.discarded],
-            currentPreview: prev.currentPreview?.id === item.id ? null : prev.currentPreview,
-        }));
-        commitWorkspaceReject(item);
+    const handleCommitPreview = async () => {
+        const preview = timeline.currentPreview;
+        if (!preview) return;
+
+        try {
+            await api.commitWorkspaceImage(preview.workspace, `candidates/${preview.genid}/full.png`);
+            // Reload generations to get updated status
+            await loadWorkspaceGenerations(currentWorkspace);
+
+            // Update current image if it was the committed one
+            const committedImageUrl = getGenerationImageUrl({ ...preview, status: 'commit' });
+            setCurrentImage(committedImageUrl);
+            setInputImageData(null);
+
+            if (generationMode === "inpaint") {
+                setPreserveInpaintMask(true);
+                setInputImage(committedImageUrl);
+            } else if (generationMode !== "txt2img") {
+                setInputImage(committedImageUrl);
+            }
+        } catch (error) {
+            console.error("Failed to commit generation:", error);
+        }
     };
 
-    const handleRestoreGeneration = (item) => {
-        setTimeline((prev) => ({
-            ...prev,
-            discarded: prev.discarded.filter((entry) => entry.id !== item.id),
-            generationQueue: [item, ...prev.generationQueue],
-            currentPreview: item, // Automatically select the restored item for preview
-        }));
-        commitWorkspaceRestore(item);
+    const handleDiscardGeneration = async (generation) => {
+        try {
+            await api.rejectWorkspaceImage(generation.workspace, `${generation.status === 'candidate' ? 'candidates' : generation.status === 'commit' ? 'commits' : 'rejects'}/${generation.genid}/full.png`);
+            // Reload generations to get updated status
+            await loadWorkspaceGenerations(currentWorkspace);
+        } catch (error) {
+            console.error("Failed to discard generation:", error);
+        }
+    };
+
+    const handleRestoreGeneration = async (generation) => {
+        try {
+            await api.restoreWorkspaceImage(generation.workspace, `${generation.status === 'reject' ? 'rejects' : 'commits'}/${generation.genid}/full.png`);
+            // Reload generations to get updated status
+            await loadWorkspaceGenerations(currentWorkspace);
+        } catch (error) {
+            console.error("Failed to restore generation:", error);
+        }
+    };
+
+    const handleUncommitGeneration = async (generation) => {
+        try {
+            await api.uncommitWorkspaceImage(generation.workspace, `commits/${generation.genid}/full.png`);
+            // Reload generations to get updated status
+            await loadWorkspaceGenerations(currentWorkspace);
+        } catch (error) {
+            console.error("Failed to uncommit generation:", error);
+        }
     };
 
     const commitWorkspaceCommit = async (item) => {
@@ -565,21 +592,46 @@ function App() {
         }
     };
 
-    const commitWorkspaceReject = (item) => {
+    const commitWorkspaceReject = async (item) => {
         const info = parseWorkspaceImage(item?.image);
-        if (!info) return;
-        api.rejectWorkspaceImage(info.workspace, info.path).catch((error) => {
+
+        try {
+            if (info) {
+                const result = await api.rejectWorkspaceImage(info.workspace, info.path);
+                console.log("Reject result:", result);
+                if (result.success && result.reject_path) {
+                    // Update the image path to point to the rejected location
+                    let rejectPath = result.reject_path;
+                    const workspacePrefix = `${info.workspace}/`;
+                    if (rejectPath.startsWith(workspacePrefix)) {
+                        rejectPath = rejectPath.slice(workspacePrefix.length);
+                    }
+
+                    const newImagePath = `workspace://${info.workspace}/${rejectPath}`;
+
+                    // Create updated item with new path and add to discarded
+                    const updatedItem = { ...item, image: newImagePath };
+                    setTimeline((prev) => ({
+                        ...prev,
+                        discarded: [updatedItem, ...prev.discarded],
+                    }));
+                    return; // Successfully rejected, return early
+                }
+            }
+            // If we get here, either parsing failed or API call failed
+            // Fall through to add with original path
+        } catch (error) {
             console.error("Failed to reject workspace image:", error);
-        });
+            // Fall through to add with original path
+        }
+
+        // Always ensure the item gets added to discarded, even if workspace operations fail
+        setTimeline((prev) => ({
+            ...prev,
+            discarded: [item, ...prev.discarded],
+        }));
     };
 
-    const commitWorkspaceRestore = (item) => {
-        const info = parseWorkspaceImage(item?.image);
-        if (!info) return;
-        api.restoreWorkspaceImage(info.workspace, info.path).catch((error) => {
-            console.error("Failed to restore workspace image:", error);
-        });
-    };
 
     // Upscale functionality
     const handleOpenUpscaleDialog = (sourceImage) => {
@@ -789,15 +841,17 @@ function App() {
                     onRejectPreview={handleRejectPreview}
                     onDiscardGeneration={handleDiscardGeneration}
                     onRestoreGeneration={handleRestoreGeneration}
+                    onUncommitGeneration={handleUncommitGeneration}
                     onGenerationModeChange={handleGenerationModeChange}
                     onUpscale={handleOpenUpscaleDialog}
+                    getGenerationImageUrl={getGenerationImageUrl}
                 />
 
                 {/* Main Canvas Area */}
                 {generationMode === "inpaint" ? (
                     <InpaintCanvas
                         currentImage={currentImage}
-                        previewImage={timeline.currentPreview?.image}
+                        previewImage={getGenerationImageUrl(timeline.currentPreview)}
                         inputImage={inputImage}
                         livePreview={livePreview}
                         loading={loading}
@@ -819,7 +873,7 @@ function App() {
                 ) : (
                     <Canvas
                         currentImage={currentImage}
-                        previewImage={timeline.currentPreview?.image}
+                        previewImage={getGenerationImageUrl(timeline.currentPreview)}
                         livePreview={livePreview}
                         loading={loading}
                         progress={progress}

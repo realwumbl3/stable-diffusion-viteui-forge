@@ -1,29 +1,46 @@
 import { X, Maximize2 } from "lucide-react";
-import { cn, resolveImageSrc } from "../lib/utils";
+import { cn, resolveImageSrc, parseWorkspaceImage } from "../lib/utils";
 import { useState, useRef, useEffect } from "react";
+import api from "../api";
 
-const TimelineItem = ({ item, isActive, onSelect, onDiscard, showDiscard = false, badge = null, onCommit, onReject, showCommitReject = false, onUpscale, showUpscale = false }) => {
+const TimelineItem = ({
+    item,
+    isActive,
+    onSelect,
+    onDiscard,
+    showDiscard = false,
+    badge = null,
+    onCommit,
+    onReject,
+    showCommitReject = false,
+    onUpscale,
+    showUpscale = false,
+    commitLabel = "Commit",
+    getGenerationImageUrl,
+}) => {
     const [aspectRatio, setAspectRatio] = useState(1);
     const [imageDimensions, setImageDimensions] = useState({ width: 0, height: 0 });
     const imgRef = useRef(null);
 
     useEffect(() => {
-        const img = imgRef.current;
-        if (img) {
-            const handleLoad = () => {
-                const width = img.naturalWidth;
-                const height = img.naturalHeight;
-                setAspectRatio(width / height);
-                setImageDimensions({ width, height });
-            };
-            if (img.complete) {
-                handleLoad();
-            } else {
-                img.addEventListener("load", handleLoad);
-                return () => img.removeEventListener("load", handleLoad);
+        const fetchDimensions = async () => {
+            if (item.genid && item.workspace) {
+                try {
+                    console.log("Fetching generation metadata", { genid: item.genid, workspace: item.workspace });
+                    const category = item.status === 'commit' ? 'commits' : item.status === 'reject' ? 'rejects' : 'candidates';
+                    const meta = await api.getGenerationAsset(item.workspace, category, item.genid, 'meta.json');
+                    const width = meta.full_width;
+                    const height = meta.full_height;
+                    setAspectRatio(width > 0 && height > 0 ? width / height : 1);
+                    setImageDimensions({ width, height });
+                } catch (error) {
+                    console.warn("Failed to fetch generation metadata", error);
+                }
             }
-        }
-    }, [item.image]);
+        };
+
+        fetchDimensions();
+    }, [item.genid, item.workspace, item.status]);
 
     return (
         <div
@@ -38,7 +55,7 @@ const TimelineItem = ({ item, isActive, onSelect, onDiscard, showDiscard = false
             <button onClick={onSelect} className="w-full h-full text-left" type="button">
                 <img
                     ref={imgRef}
-                    src={resolveImageSrc(item.image, "previews")}
+                    src={getGenerationImageUrl ? getGenerationImageUrl(item, 'preview') : resolveImageSrc(item.image, "preview")}
                     alt="Timeline item"
                     className="w-full h-full object-contain"
                 />
@@ -104,7 +121,7 @@ const TimelineItem = ({ item, isActive, onSelect, onDiscard, showDiscard = false
                             className="flex-1 px-2 py-1 bg-studio-accent text-white text-xs rounded hover:bg-studio-accent/80 transition-colors"
                             type="button"
                         >
-                            Commit
+                            {commitLabel}
                         </button>
                         <button
                             onClick={(event) => {

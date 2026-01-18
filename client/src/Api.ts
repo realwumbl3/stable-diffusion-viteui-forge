@@ -105,6 +105,17 @@ export interface ExtrasResponse {
   taskId?: string;
 }
 
+export interface Generation {
+  genid: string;
+  status: 'candidate' | 'commit' | 'reject';
+  timestamp: number;
+  source: 'txt2img' | 'img2img' | 'inpaint' | 'upscale';
+  prompt?: string;
+  negativePrompt?: string;
+  parameters?: Record<string, any>;
+  workspace: string;
+}
+
 const API_BASE_URL = 'http://localhost:7861/api';
 
 class StableDiffusionAPI {
@@ -320,6 +331,34 @@ class StableDiffusionAPI {
       body: JSON.stringify({ image_path: imagePath }),
     });
   }
+
+  async uncommitWorkspaceImage(workspaceName: string, imagePath: string): Promise<{ success: boolean; uncommit_path: string }> {
+    return this.request(`/workspaces/${encodeURIComponent(workspaceName)}/uncommit`, {
+      method: 'POST',
+      body: JSON.stringify({ image_path: imagePath }),
+    });
+  }
+
+  // Get generation asset (meta.json, full.png, 512.png)
+  async getGenerationAsset(workspaceName: string, category: string, genid: string, asset: string): Promise<any> {
+    const url = `/workspaces/${encodeURIComponent(workspaceName)}/${category}/${genid}/${asset}`;
+    if (asset.endsWith('.json')) {
+      return this.request(url);
+    } else {
+      // For binary assets like images, return the raw response
+      const response = await fetch(`${this.baseUrl}${url}`);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch asset: ${response.status} ${response.statusText}`);
+      }
+      return response;
+    }
+  }
+
+  // Get generations for a workspace
+  async getGenerations(workspaceName: string): Promise<Generation[]> {
+    return this.request<Generation[]>(`/workspaces/${encodeURIComponent(workspaceName)}/generations`);
+  }
+
 }
 
 // Create singleton instance

@@ -11,7 +11,7 @@ export const WORKSPACE_PREFIX = "workspace://"
 // API base URL for constructing absolute URLs
 export const API_BASE_URL = 'http://localhost:7861'
 
-export function isWorkspaceImage(value?: string | null): boolean {
+function isWorkspaceImage(value?: string | null): boolean {
   return typeof value === "string" && value.startsWith(WORKSPACE_PREFIX)
 }
 
@@ -23,19 +23,56 @@ export function parseWorkspaceImage(value?: string | null): { workspace: string;
   return { workspace: decodeURIComponent(encodedWorkspace), path: pathParts.join("/") }
 }
 
-export function buildWorkspaceUrl(workspace: string, path: string, kind: "images" | "previews" = "images"): string {
+function buildWorkspaceUrl(workspace: string, path: string): string {
   const encodedWorkspace = encodeURIComponent(workspace)
   const encodedPath = path
     .split("/")
     .map((segment) => encodeURIComponent(segment))
     .join("/")
-  return `${API_BASE_URL}/api/workspaces/${encodedWorkspace}/${kind}/${encodedPath}`
+
+  return `${API_BASE_URL}/api/workspaces/${encodedWorkspace}/${encodedPath}`
 }
 
-export function resolveImageSrc(value?: string | null, kind: "images" | "previews" = "images"): string | null {
+// Resolve image source for full-size or preview images
+export function resolveImageSrc(value?: string | null, kind: "full" | "preview" = "full"): string | null {
   if (!value) return null
   if (value.startsWith("data:") || value.startsWith("http")) return value
   const workspaceInfo = parseWorkspaceImage(value)
   if (!workspaceInfo) return value
-  return buildWorkspaceUrl(workspaceInfo.workspace, workspaceInfo.path, kind)
+
+  // Extract category and genid from path
+  const pathParts = workspaceInfo.path.split('/')
+  if (pathParts.length >= 2 && ['candidates', 'commits', 'rejects'].includes(pathParts[0])) {
+    const category = pathParts[0]
+    const genid = pathParts[1]
+    const asset = kind === "preview" ? "512.png" : "full.png"
+
+    // Build path for new unified endpoint
+    const assetPath = `${category}/${genid}/${asset}`
+    return buildWorkspaceUrl(workspaceInfo.workspace, assetPath)
+  }
+
+  // Fallback to old structure (shouldn't happen with new code)
+  return buildWorkspaceUrl(workspaceInfo.workspace, workspaceInfo.path)
+}
+
+// Get metadata for a generation
+export function resolveMetaSrc(value?: string | null): string | null {
+  if (!value) return null
+  const workspaceInfo = parseWorkspaceImage(value)
+  if (!workspaceInfo) return null
+
+  // Extract category and genid from path
+  const pathParts = workspaceInfo.path.split('/')
+  if (pathParts.length >= 2 && ['candidates', 'commits', 'rejects'].includes(pathParts[0])) {
+    const category = pathParts[0]
+    const genid = pathParts[1]
+
+    // Build path for new unified endpoint
+    const assetPath = `${category}/${genid}/meta.json`
+    return buildWorkspaceUrl(workspaceInfo.workspace, assetPath)
+  }
+
+  // Fallback to old structure (shouldn't happen with new code)
+  return buildWorkspaceUrl(workspaceInfo.workspace, workspaceInfo.path)
 }

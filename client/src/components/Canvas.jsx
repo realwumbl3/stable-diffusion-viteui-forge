@@ -59,8 +59,8 @@ const Canvas = ({
   const canvasRef = useRef(null)
   const imageRef = useRef(null)
   const displayImage = previewImage || currentImage
-  const resolvedDisplayImage = resolveImageSrc(displayImage, 'images')
-  const resolvedInputImage = resolveImageSrc(inputImage, 'images')
+  const resolvedDisplayImage = resolveImageSrc(displayImage, 'full')
+  const resolvedInputImage = resolveImageSrc(inputImage, 'full')
   const memoryUsage = useMemoryUsage()
 
   const getDisplayDimensions = () => {

@@ -3,14 +3,97 @@ import shutil
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
+import time
+from pathlib import Path
+from PIL import Image
+from fastapi import HTTPException
+from modules.shared import opts
+from modules.workspace_image_server import WorkspaceImageServer
+
+
+class WorkspaceImageManager:
+    def __init__(self, workspace_root: str = "workspaces", preview_max_size: int = 512):
+        self.workspace_root = Path(workspace_root).resolve()
+        self.preview_max_size = preview_max_size
+
+    def resize_for_preview(self, image_path: Path, max_size: Optional[int] = None) -> Image.Image:
+        max_size = max_size or self.preview_max_size
+        if max_size <= 0:
+            max_size = self.preview_max_size
+
+        with Image.open(image_path) as image:
+            width, height = image.size
+            long_side = max(width, height)
+            if long_side <= max_size:
+                return image.copy()
+
+            scale = max_size / float(long_side)
+            new_size = (max(1, int(width * scale)), max(1, int(height * scale)))
+            return image.resize(new_size, Image.Resampling.LANCZOS)
+
+    def save_preview(self, image_path: Path, output_path: Path, max_size: Optional[int] = None) -> Path:
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        preview_image = self.resize_for_preview(image_path, max_size=max_size)
+        preview_image.save(output_path, format="PNG")
+        return output_path
+
+    def save_image_with_preview_and_meta(self, image_path: Path, output_dir: Path, max_size: Optional[int] = None) -> dict:
+        """Save an image with preview and metadata files in the new format.
+
+        Creates:
+        - full.png: The original full-size image
+        - {width}|{height}.png: Preview image resized to max_size
+        - meta.json: Metadata including dimensions
+
+        Returns dict with paths and metadata.
+        """
+        max_size = max_size or self.preview_max_size
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        # Load the original image to get dimensions
+        with Image.open(image_path) as image:
+            width, height = image.size
+
+            # Save full image
+            full_path = output_dir / "full.png"
+            image.save(full_path, format="PNG")
+
+            # Save preview image as 512.png
+            preview_image = self.resize_for_preview(image_path, max_size=max_size)
+            preview_width, preview_height = preview_image.size
+            preview_path = output_dir / "512.png"
+            preview_image.save(preview_path, format="PNG")
+
+            # Create metadata
+            metadata = {
+                "full_width": width,
+                "full_height": height,
+                "preview_width": preview_width,
+                "preview_height": preview_height,
+                "preview_max_size": max_size,
+            }
+
+            # Save metadata
+            meta_path = output_dir / "meta.json"
+            meta_path.write_text(json.dumps(metadata, indent=2), encoding="utf-8")
+
+            return {
+                "full_path": full_path,
+                "preview_path": preview_path,
+                "meta_path": meta_path,
+                "metadata": metadata,
+            }
 
 
 class WorkspaceManager:
-    def __init__(self, workspace_root: str = "workspaces"):
+    def __init__(self, api, workspace_root: str = "workspaces", preview_max_size: int = 512):
         self.workspace_root = Path(workspace_root).resolve()
         self.workspace_root.mkdir(parents=True, exist_ok=True)
+        self.workspace_images = WorkspaceImageManager(workspace_root=str(workspace_root), preview_max_size=preview_max_size)
+        self.image_server = WorkspaceImageServer(self.resolve_workspace_file, self.workspace_images)
+        self.api = api
 
-    def list_workspaces(self) -> list[dict]:
+    def list_workspaces(self) -> dict:
         workspaces = []
         for workspace_dir in self._iter_workspace_dirs():
             metadata = self._load_metadata(workspace_dir)
@@ -19,18 +102,40 @@ class WorkspaceManager:
                 "created": metadata.get("created"),
                 "folders": metadata.get("folders", []),
             })
-        return workspaces
 
-    def create_workspace(self, name: str) -> dict:
+        # If no workspaces exist, create a default one
+        if not workspaces:
+            try:
+                default_workspace = self.create_workspace({"name": "default"})
+                if default_workspace.get("success"):
+                    # Get the workspace path and load its metadata
+                    workspace_path = self._resolve_workspace_path(default_workspace["name"])
+                    metadata = self._load_metadata(workspace_path)
+                    workspaces.append({
+                        "name": metadata["name"],
+                        "created": metadata.get("created"),
+                        "folders": metadata.get("folders", []),
+                    })
+            except Exception as e:
+                # If creation fails for any reason, just continue with empty list
+                print(f"Warning: Failed to create default workspace: {e}")
+                pass
+
+        return {"workspaces": workspaces}
+
+    def create_workspace(self, payload: dict) -> dict:
+        name = payload.get("name") if isinstance(payload, dict) else None
+        if not name:
+            raise HTTPException(status_code=422, detail="Workspace name is required")
+
         workspace_path = self._resolve_workspace_path(name)
         if workspace_path.exists():
-            return {"created": False, "name": self._relative_path(workspace_path)}
+            return {"success": False, "name": self._relative_path(workspace_path), "message": f"Workspace '{self._relative_path(workspace_path)}' already exists"}
 
         workspace_path.mkdir(parents=True, exist_ok=False)
         (workspace_path / "commits").mkdir()
         (workspace_path / "rejects").mkdir()
         (workspace_path / "candidates").mkdir()
-        (workspace_path / "previews").mkdir()
 
         metadata = {
             "name": self._relative_path(workspace_path),
@@ -38,7 +143,7 @@ class WorkspaceManager:
             "folders": [],
         }
         self._save_metadata(workspace_path, metadata)
-        return {"created": True, "name": metadata["name"]}
+        return {"success": True, "name": metadata["name"], "message": f"Workspace '{metadata['name']}' created"}
 
     def ensure_workspace(self, name: str) -> dict:
         workspace_path = self._resolve_workspace_path(name)
@@ -53,6 +158,64 @@ class WorkspaceManager:
 
         folder_path.mkdir(parents=True, exist_ok=False)
         return {"created": True, "path": self._relative_path(folder_path)}
+
+    def list_generations(self, name: str) -> list[dict]:
+        """List all generations in a workspace with their metadata"""
+        workspace_path = self._resolve_workspace_path(name)
+        generations = []
+
+        # Helper function to process a category
+        def process_category(category: str, status: str) -> None:
+            category_path = workspace_path / category
+            if not category_path.exists():
+                return
+
+            for genid_dir in category_path.iterdir():
+                if not genid_dir.is_dir():
+                    continue
+
+                genid = genid_dir.name
+                meta_path = genid_dir / "meta.json"
+
+                if not meta_path.exists():
+                    continue
+
+                try:
+                    # Read metadata
+                    metadata = json.loads(meta_path.read_text(encoding="utf-8"))
+
+                    # Extract generation info from metadata or create defaults
+                    generation = {
+                        "genid": genid,
+                        "status": status,
+                        "timestamp": metadata.get("timestamp", 0),
+                        "source": metadata.get("source", "txt2img"),
+                        "workspace": name,
+                    }
+
+                    # Add optional fields if present
+                    if "prompt" in metadata:
+                        generation["prompt"] = metadata["prompt"]
+                    if "negative_prompt" in metadata:
+                        generation["negative_prompt"] = metadata["negative_prompt"]
+                    if "parameters" in metadata:
+                        generation["parameters"] = metadata["parameters"]
+
+                    generations.append(generation)
+
+                except (json.JSONDecodeError, KeyError):
+                    # Skip invalid metadata
+                    continue
+
+        # Process each category
+        process_category("candidates", "candidate")
+        process_category("commits", "commit")
+        process_category("rejects", "reject")
+
+        # Sort by timestamp descending
+        generations.sort(key=lambda x: x["timestamp"], reverse=True)
+
+        return generations
 
     def get_workspace_structure(self) -> dict:
         def build_tree(path: Path) -> dict:
@@ -77,9 +240,9 @@ class WorkspaceManager:
                 "children": children,
             }
 
-        return build_tree(self.workspace_root)
+        return {"structure": build_tree(self.workspace_root)}
 
-    def save_generation_images(self, workspace_name: str, images: list, mask_image: Optional[object] = None) -> list[str]:
+    def save_generation_images(self, workspace_name: str, images: list, mask_image: Optional[object] = None, generation_metadata: Optional[dict] = None) -> list[str]:
         workspace_path = self._resolve_workspace_path(workspace_name)
         candidates_root = workspace_path / "candidates"
         candidates_root.mkdir(parents=True, exist_ok=True)
@@ -92,14 +255,33 @@ class WorkspaceManager:
             candidate_path = candidates_root / candidate_id
             candidate_path.mkdir(parents=True, exist_ok=False)
 
-            image_path = candidate_path / "image.png"
-            image.save(image_path, format="PNG")
+            # Create a temporary image file to pass to save_image_with_preview_and_meta
+            temp_image_path = candidate_path / "temp_image.png"
+            image.save(temp_image_path, format="PNG")
+
+            # Save with new format (full.png, preview, meta.json)
+            result = self.workspace_images.save_image_with_preview_and_meta(temp_image_path, candidate_path)
+
+            # Remove temp file
+            temp_image_path.unlink()
+
+            # Update metadata with generation info
+            if generation_metadata:
+                # Merge generation metadata with existing image metadata
+                updated_metadata = result["metadata"].copy()
+                updated_metadata.update(generation_metadata)
+                updated_metadata["timestamp"] = int(datetime.now().timestamp() * 1000)  # milliseconds
+
+                # Save updated metadata
+                meta_path = candidate_path / "meta.json"
+                meta_path.write_text(json.dumps(updated_metadata, indent=2), encoding="utf-8")
 
             if mask_image is not None:
                 mask_path = candidate_path / "mask.png"
                 mask_image.save(mask_path, format="PNG")
 
-            saved_paths.append(self._workspace_relative_path(workspace_name, image_path))
+            # Return path to full.png for backward compatibility
+            saved_paths.append(self._workspace_relative_path(workspace_name, result["full_path"]))
 
         return saved_paths
 
@@ -112,6 +294,9 @@ class WorkspaceManager:
     def restore_candidate(self, workspace_name: str, image_relative_path: str) -> dict:
         return self._move_candidate(workspace_name, image_relative_path, destination="candidates")
 
+    def uncommit_candidate(self, workspace_name: str, image_relative_path: str) -> dict:
+        return self._move_candidate(workspace_name, image_relative_path, destination="candidates")
+
     def import_image(self, workspace_name: str, image_path: Path, mask_path: Optional[Path] = None) -> str:
         workspace_path = self._resolve_workspace_path(workspace_name)
         candidates_root = workspace_path / "candidates"
@@ -122,11 +307,85 @@ class WorkspaceManager:
         candidate_path = candidates_root / candidate_id
         candidate_path.mkdir(parents=True, exist_ok=False)
 
-        shutil.copy2(image_path, candidate_path / "image.png")
+        # Save with new format (full.png, preview, meta.json)
+        result = self.workspace_images.save_image_with_preview_and_meta(image_path, candidate_path)
+
         if mask_path and mask_path.exists():
             shutil.copy2(mask_path, candidate_path / "mask.png")
 
-        return self._workspace_relative_path(workspace_name, candidate_path / "image.png")
+        # Return path to full.png for backward compatibility
+        return self._workspace_relative_path(workspace_name, result["full_path"])
+
+    def create_workspace_folder(self, payload: dict):
+        path = payload.get("path") if isinstance(payload, dict) else None
+        if not path:
+            raise HTTPException(status_code=422, detail="Folder path is required")
+        result = self.create_folder(path)
+        if not result["created"]:
+            return {"success": False, "message": "Folder already exists", "path": result["path"]}
+        return {"success": True, "path": result["path"]}
+
+    def commit_workspace_image(self, name: str, payload: dict):
+        image_path = payload.get("image_path") if isinstance(payload, dict) else None
+        if not image_path:
+            raise HTTPException(status_code=422, detail="image_path is required")
+        try:
+            result = self.commit_candidate(name, image_path)
+        except FileNotFoundError as e:
+            raise HTTPException(status_code=404, detail=str(e)) from e
+        return {"success": True, "commit_path": result["path"]}
+
+    def reject_workspace_image(self, name: str, payload: dict):
+        image_path = payload.get("image_path") if isinstance(payload, dict) else None
+        if not image_path:
+            raise HTTPException(status_code=422, detail="image_path is required")
+        try:
+            result = self.reject_candidate(name, image_path)
+        except FileNotFoundError as e:
+            raise HTTPException(status_code=404, detail=str(e)) from e
+        return {"success": True, "reject_path": result["path"]}
+
+    def restore_workspace_image(self, name: str, payload: dict):
+        image_path = payload.get("image_path") if isinstance(payload, dict) else None
+        if not image_path:
+            raise HTTPException(status_code=422, detail="image_path is required")
+        try:
+            result = self.restore_candidate(name, image_path)
+        except FileNotFoundError as e:
+            raise HTTPException(status_code=404, detail=str(e)) from e
+        return {"success": True, "restore_path": result["path"]}
+
+    def uncommit_workspace_image(self, name: str, payload: dict):
+        image_path = payload.get("image_path") if isinstance(payload, dict) else None
+        if not image_path:
+            raise HTTPException(status_code=422, detail="image_path is required")
+        try:
+            result = self.uncommit_candidate(name, image_path)
+        except FileNotFoundError as e:
+            raise HTTPException(status_code=404, detail=str(e)) from e
+        return {"success": True, "uncommit_path": result["path"]}
+
+    def import_workspace_image(self, name: str, payload: dict):
+        from modules.api.api import decode_base64_to_image
+
+        image_base64 = payload.get("image_base64") if isinstance(payload, dict) else None
+        if not image_base64:
+            raise HTTPException(status_code=422, detail="image_base64 is required")
+
+        self.ensure_workspace(name)
+        image = decode_base64_to_image(image_base64)
+        temp_root = Path(opts.temp_dir or "tmp")
+        temp_root.mkdir(parents=True, exist_ok=True)
+        temp_file = temp_root / f"workspace_import_{time.time_ns()}.png"
+        image.save(temp_file, format="PNG")
+
+        image_path = self.import_image(name, temp_file)
+        try:
+            temp_file.unlink(missing_ok=True)
+        except Exception:
+            pass
+
+        return {"success": True, "image_path": image_path}
 
     def resolve_workspace_file(self, workspace_name: str, relative_path: str) -> Path:
         workspace_path = self._resolve_workspace_path(workspace_name)
@@ -258,3 +517,24 @@ class WorkspaceManager:
     def _save_metadata(self, workspace_path: Path, metadata: dict) -> None:
         metadata_path = self._metadata_path(workspace_path)
         metadata_path.write_text(json.dumps(metadata, indent=2), encoding="utf-8")
+
+    def register_routes(self, api):
+        """Register workspace API routes with the given API instance"""
+        # Workspace routes
+        api.add_api_route("/workspaces", self.list_workspaces, methods=["GET"])
+        api.add_api_route("/workspaces", self.create_workspace, methods=["POST"])
+        api.add_api_route("/workspaces/structure", self.get_workspace_structure, methods=["GET"])
+        api.add_api_route("/workspaces/folders", self.create_workspace_folder, methods=["POST"])
+
+        # Unified asset endpoint: /workspaces/{name}/{category}/{genid}/{asset}
+        api.add_api_route("/workspaces/{name:path}/{category}/{genid}/{asset}", self.image_server.serve_generation_asset, methods=["GET"])
+
+        # Generations endpoint: /workspaces/{name}/generations
+        api.add_api_route("/workspaces/{name:path}/generations", self.list_generations, methods=["GET"])
+
+        # Action routes
+        api.add_api_route("/workspaces/{name:path}/commit", self.commit_workspace_image, methods=["POST"])
+        api.add_api_route("/workspaces/{name:path}/reject", self.reject_workspace_image, methods=["POST"])
+        api.add_api_route("/workspaces/{name:path}/restore", self.restore_workspace_image, methods=["POST"])
+        api.add_api_route("/workspaces/{name:path}/uncommit", self.uncommit_workspace_image, methods=["POST"])
+        api.add_api_route("/workspaces/{name:path}/import", self.import_workspace_image, methods=["POST"])

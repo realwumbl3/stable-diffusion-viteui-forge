@@ -1,0 +1,69 @@
+---
+alwaysApply: true
+---
+VITEUI – HARD RULES
+Project Scope
+
+viteui is a client-focused project.
+The goal is to abandon Gradio and the original WebUI frontend and instead:
+Wrap the original Forge (WebUI) API
+
+Build the UI entirely with Vite
+located in: client/src/
+
+This is a hybrid project:
+Original Forge code is kept only to:
+Pull upstream improvements
+
+Maintain compatibility with extensions
+
+Support future Forge/WebUI changes
+
+Original Forge Code (READ-ONLY)
+The untouched reference copy of Forge lives in:
+original-forge/
+This folder is FOR REFERENCE ONLY.
+
+🚫 NEVER modify, run, or depend on the following files or paths:
+launch.py
+launch_utils.py
+webui*.bat
+webui*.py
+webui*.sh
+
+original-forge/
+viteui does not use these files at runtime.
+ViteUI Fork Rules
+
+Every new or modified file in the viteui fork MUST start with:# VITE UI
+
+Modifying Forge Code (LAST RESORT)
+Only if absolutely unavoidable, you may touch code inside:/modules//modules_forge//extensions-builtin//extensions//backend//scripts/
+When this happens:
+Changes must be minimal
+
+Logic must be handled externally via:/viteui-gradio/(e.g. wrappers, adapters, shims)
+Required Modification Markup
+
+Any change to original Forge code MUST use one of the following formats.
+Removing code; we keep the code but comment it out. Explain why we are removing it.
+#? explanation for following removal
+#- removed line
+#- removed line
+#?end
+
+Adding code
+#+ explanation for following addition
+added line
+added line
+#+end
+
+🚫 No unannotated edits
+🚫 No refactors
+🚫 No stylistic changes
+
+Client Testing
+
+To test client-side changes without conflicts, always run:
+cd client
+npm run dev --port 5174
