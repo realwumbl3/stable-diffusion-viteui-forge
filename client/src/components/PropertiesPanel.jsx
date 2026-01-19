@@ -34,8 +34,6 @@ const PropertiesPanel = ({
     onClipSkipChange,
     saveImages,
     setSaveImages,
-    saveGrids,
-    setSaveGrids,
     // Inpainting parameters
     inpaintMask,
     setInpaintMask,
@@ -313,24 +311,9 @@ const PropertiesPanel = ({
                                                     Save images to output folder
                                                 </label>
                                             </div>
-                                            <div className="flex items-center space-x-2">
-                                                <input
-                                                    type="checkbox"
-                                                    id="save-grids-toggle"
-                                                    checked={saveGrids}
-                                                    onChange={(e) => setSaveGrids(e.target.checked)}
-                                                    className="w-4 h-4 text-studio-accent bg-studio-bg border-studio-border rounded focus:ring-studio-accent focus:ring-2"
-                                                />
-                                                <label
-                                                    htmlFor="save-grids-toggle"
-                                                    className="text-sm text-studio-text cursor-pointer"
-                                                >
-                                                    Save image grids to output folder
-                                                </label>
-                                            </div>
                                         </div>
                                         <p className="text-xs text-studio-text-muted mt-1">
-                                            When enabled, generated images and grids will be saved to the server's
+                                            When enabled, generated images will be saved to the server's
                                             output directory
                                         </p>
                                     </div>

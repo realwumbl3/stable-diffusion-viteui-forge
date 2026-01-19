@@ -3,7 +3,7 @@ import api from "./api";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { useWebSocketProgress } from "./hooks/useWebSocketProgress";
 import Header from "./components/Header.jsx";
-import Sidebar from "./components/Sidebar.jsx";     
+import Sidebar from "./components/Sidebar.jsx";
 import Canvas from "./components/Canvas.jsx";
 import InpaintCanvas from "./components/InpaintCanvas.jsx";
 import PropertiesPanel from "./components/PropertiesPanel.jsx";
@@ -82,7 +82,6 @@ function App() {
 
     // Save settings
     const [saveImages, setSaveImages] = useState(true);
-    const [saveGrids, setSaveGrids] = useState(false);
 
     // UI state
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -90,6 +89,7 @@ function App() {
     const [showWelcome, setShowWelcome] = useState(true);
     const [forceInpaintEditMode, setForceInpaintEditMode] = useState(false);
     const [preserveInpaintMask, setPreserveInpaintMask] = useState(false);
+    const [pageLocked, setPageLocked] = useState(false);
 
     // Upscale dialog state
     const [upscaleDialog, setUpscaleDialog] = useState({
@@ -110,6 +110,25 @@ function App() {
     useEffect(() => {
         console.log("Loading state changed:", loading);
     }, [loading]);
+
+    // Handle page lock functionality
+    useEffect(() => {
+        const handleBeforeUnload = (e) => {
+            if (pageLocked) {
+                e.preventDefault();
+                e.returnValue = ''; // Chrome requires returnValue to be set
+                return '';
+            }
+        };
+
+        if (pageLocked) {
+            window.addEventListener('beforeunload', handleBeforeUnload);
+        }
+
+        return () => {
+            window.removeEventListener('beforeunload', handleBeforeUnload);
+        };
+    }, [pageLocked]);
 
     const loadInitialData = async () => {
         try {
@@ -266,19 +285,6 @@ function App() {
         return await fetchImageAsDataUrl(imageValue);
     };
 
-    const createTimelineItem = (image, overrides = {}) => ({
-        id: `timeline-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-        image,
-        createdAt: Date.now(),
-        ...overrides,
-    });
-
-    const appendCommittedImage = (history, image, source) => {
-        if (!image) return history;
-        if (history[0]?.image === image) return history;
-        return [createTimelineItem(image, { source }), ...history];
-    };
-
     const generateImage = async () => {
         if (!prompt.trim()) return;
         if ((generationMode === "img2img" || generationMode === "inpaint") && timeline.committedHistory.length === 0) {
@@ -326,7 +332,6 @@ function App() {
                 n_iter: count,
                 clip_skip: clipSkip,
                 save_images: saveImages,
-                save_grids: saveGrids,
                 force_task_id: taskId, // Use the same task ID
                 workspace_name: currentWorkspace,
             };
@@ -354,7 +359,8 @@ function App() {
                 };
                 data = await api.img2img(inpaintParams);
             } else {
-                data = await api.txt2imgSimple(baseParams);
+                console.warn("Unsupported generation mode:", generationMode);
+                return;
             }
 
             if ((data.filesystem_paths && data.filesystem_paths.length > 0) || (data.images && data.images.length > 0)) {
@@ -587,98 +593,6 @@ function App() {
         }
     };
 
-    const commitWorkspaceCommit = async (item) => {
-        const info = parseWorkspaceImage(item?.image);
-        if (!info) return;
-
-        try {
-            const result = await api.commitWorkspaceImage(info.workspace, info.path);
-            console.log("Commit result:", result);
-            if (result.success && result.commit_path) {
-                // The backend might return a path that includes the workspace name
-                // Strip the workspace name if present to avoid duplication
-                let commitPath = result.commit_path;
-                const workspacePrefix = `${info.workspace}/`;
-                console.log("Original commitPath:", commitPath, "workspacePrefix:", workspacePrefix);
-                if (commitPath.startsWith(workspacePrefix)) {
-                    commitPath = commitPath.slice(workspacePrefix.length);
-                    console.log("Stripped commitPath:", commitPath);
-                }
-
-                // Update the image path to point to the committed location
-                const newImagePath = `workspace://${info.workspace}/${commitPath}`;
-                console.log("New image path:", newImagePath);
-
-                // Update the timeline item with the new path
-                setTimeline((prev) => {
-                    const updateItemInArray = (arrayItem) => {
-                        if (arrayItem.id === item.id) {
-                            console.log("Updating item", arrayItem.id, "from", arrayItem.image, "to", newImagePath);
-                            return { ...arrayItem, image: newImagePath };
-                        }
-                        return arrayItem;
-                    };
-
-                    return {
-                        ...prev,
-                        generationQueue: prev.generationQueue.map(updateItemInArray),
-                        committedHistory: prev.committedHistory.map(updateItemInArray),
-                        discarded: prev.discarded.map(updateItemInArray),
-                        currentPreview: prev.currentPreview?.id === item.id ? { ...prev.currentPreview, image: newImagePath } : prev.currentPreview,
-                    };
-                });
-
-                // Also update currentImage if it matches the old path
-                setCurrentImage((prev) => prev === item.image ? newImagePath : prev);
-                // Update inputImage if it matches the old path
-                setInputImage((prev) => prev === item.image ? newImagePath : prev);
-            }
-        } catch (error) {
-            console.error("Failed to commit workspace image:", error);
-        }
-    };
-
-    const commitWorkspaceReject = async (item) => {
-        const info = parseWorkspaceImage(item?.image);
-
-        try {
-            if (info) {
-                const result = await api.rejectWorkspaceImage(info.workspace, info.path);
-                console.log("Reject result:", result);
-                if (result.success && result.reject_path) {
-                    // Update the image path to point to the rejected location
-                    let rejectPath = result.reject_path;
-                    const workspacePrefix = `${info.workspace}/`;
-                    if (rejectPath.startsWith(workspacePrefix)) {
-                        rejectPath = rejectPath.slice(workspacePrefix.length);
-                    }
-
-                    const newImagePath = `workspace://${info.workspace}/${rejectPath}`;
-
-                    // Create updated item with new path and add to discarded
-                    const updatedItem = { ...item, image: newImagePath };
-                    setTimeline((prev) => ({
-                        ...prev,
-                        discarded: [updatedItem, ...prev.discarded],
-                    }));
-                    return; // Successfully rejected, return early
-                }
-            }
-            // If we get here, either parsing failed or API call failed
-            // Fall through to add with original path
-        } catch (error) {
-            console.error("Failed to reject workspace image:", error);
-            // Fall through to add with original path
-        }
-
-        // Always ensure the item gets added to discarded, even if workspace operations fail
-        setTimeline((prev) => ({
-            ...prev,
-            discarded: [item, ...prev.discarded],
-        }));
-    };
-
-
     // Upscale functionality
     const handleOpenUpscaleDialog = (sourceImage) => {
         // Fetch available upscalers if not already loaded
@@ -816,10 +730,10 @@ function App() {
     // Show welcome screen if no images have been generated and user hasn't dismissed it
     const hasTimelineContent = Boolean(
         currentImage ||
-            timeline.currentPreview ||
-            timeline.generationQueue.length ||
-            timeline.committedHistory.length ||
-            timeline.discarded.length
+        timeline.currentPreview ||
+        timeline.generationQueue.length ||
+        timeline.committedHistory.length ||
+        timeline.discarded.length
     );
 
     if (showWelcome && !hasTimelineContent) {
@@ -838,6 +752,8 @@ function App() {
                     currentWorkspace={currentWorkspace}
                     onWorkspaceChange={handleWorkspaceChange}
                     onOpenWorkspace={() => setWorkspaceBrowserOpen(true)}
+                    pageLocked={pageLocked}
+                    onToggleLock={() => setPageLocked(!pageLocked)}
                 />
 
                 {/* Welcome Screen */}
@@ -872,6 +788,8 @@ function App() {
                 currentWorkspace={currentWorkspace}
                 onWorkspaceChange={handleWorkspaceChange}
                 onOpenWorkspace={() => setWorkspaceBrowserOpen(true)}
+                pageLocked={pageLocked}
+                onToggleLock={() => setPageLocked(!pageLocked)}
             />
 
             {/* Main Content Area */}
@@ -968,8 +886,6 @@ function App() {
                     onClipSkipChange={handleClipSkipChange}
                     saveImages={saveImages}
                     setSaveImages={setSaveImages}
-                    saveGrids={saveGrids}
-                    setSaveGrids={setSaveGrids}
                     // Inpainting parameters
                     inpaintMask={inpaintMask}
                     setInpaintMask={setInpaintMask}

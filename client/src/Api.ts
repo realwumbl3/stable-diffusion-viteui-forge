@@ -151,7 +151,7 @@ class StableDiffusionAPI {
     const taskId = `task(txt2img-${Date.now()}-${Math.random().toString(36).substr(2, 9)})`
     const paramsWithTaskId = { ...params, force_task_id: taskId }
 
-    const result = await this.request<GenerationResponse>('/sdapi/v1/txt2img', {
+    const result = await this.request<GenerationResponse>('/viteapi/txt2img', {
       method: 'POST',
       body: JSON.stringify(paramsWithTaskId),
     });
@@ -161,13 +161,6 @@ class StableDiffusionAPI {
     return result
   }
 
-  // Text to Image with external task ID control
-  async txt2imgSimple(params: Txt2ImgParams): Promise<GenerationResponse> {
-    return this.request<GenerationResponse>('/sdapi/v1/txt2img', {
-      method: 'POST',
-      body: JSON.stringify(params),
-    });
-  }
 
   // Image to Image
   async img2img(params: Img2ImgParams): Promise<GenerationResponse> {

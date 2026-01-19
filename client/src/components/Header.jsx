@@ -7,7 +7,9 @@ import {
   Type,
   SkipForward,
   Square,
-  Edit
+  Edit,
+  Lock,
+  Unlock
 } from 'lucide-react'
 import { cn } from '../lib/utils'
 import WorkspacePicker from './WorkspacePicker.jsx'
@@ -23,7 +25,9 @@ const Header = ({
   onInterrupt,
   currentWorkspace,
   onWorkspaceChange,
-  onOpenWorkspace
+  onOpenWorkspace,
+  pageLocked,
+  onToggleLock
 }) => {
   console.log("Header render: loading =", loading, "progress =", progress);
 
@@ -154,6 +158,16 @@ const Header = ({
           <Download size={18} />
         </button>
         <div className="w-px h-6 bg-studio-border mx-2" />
+        <button
+          onClick={onToggleLock}
+          className={cn(
+            "studio-btn-ghost p-2",
+            pageLocked && "text-studio-accent"
+          )}
+          title={pageLocked ? "Unlock page (prevents accidental navigation)" : "Lock page (prevents accidental navigation)"}
+        >
+          {pageLocked ? <Lock size={18} /> : <Unlock size={18} />}
+        </button>
         <button className="studio-btn-ghost p-2" title="Settings">
           <Settings size={18} />
         </button>

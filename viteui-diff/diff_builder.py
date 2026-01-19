@@ -279,6 +279,10 @@ def main():
     print(f"Found {len(changed_files)} changed files, {len(added_files)} added files, {len(deleted_files)} deleted files")
 
     # Create output directory structure and generate diffs
+    # Clear existing output directory if it exists
+    if output_dir.exists():
+        import shutil
+        shutil.rmtree(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Process changed files and calculate change counts

@@ -2,13 +2,13 @@ import json
 import shutil
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 import time
 from pathlib import Path
 from PIL import Image
 from fastapi import HTTPException, Request
 from modules.shared import opts
-from modules.workspace_image_server import WorkspaceImageServer
+from modules.viteapi.workspace_image_server import WorkspaceImageServer
 
 
 class WorkspaceImageManager:
@@ -518,6 +518,26 @@ class WorkspaceManager:
         metadata_path = self._metadata_path(workspace_path)
         metadata_path.write_text(json.dumps(metadata, indent=2), encoding="utf-8")
 
+    async def viteapi_txt2img(self, request: Request):
+        """ViteUI txt2img endpoint that loads images from workspace instead of accepting base64 from client"""
+
+        # Get request body as JSON
+        try:
+            request_dict = await request.json()
+        except Exception as e:
+            raise HTTPException(status_code=400, detail="Invalid JSON request")
+
+        # Extract parameters from request
+        genid = request_dict.get('genid')
+        workspace_name = request_dict.get('workspace_name')
+
+        if not genid:
+            raise HTTPException(status_code=422, detail="genid is required")
+        if not workspace_name:
+            raise HTTPException(status_code=422, detail="workspace_name is required")
+
+        return await self.api.text2imgapi(request)
+
     async def viteapi_img2img(self, request: Request):
         """ViteUI img2img endpoint that loads images from workspace instead of accepting base64 from client"""
         import base64
@@ -560,7 +580,7 @@ class WorkspaceManager:
             raise HTTPException(status_code=500, detail=f"Failed to process image: {str(e)}")
 
         # Create a new request dict with init_images instead of genid
-        img2img_request_dict = dict(request_dict)  # Copy the original request
+        img2img_request_dict = dict[Any, Any](request_dict)  # Copy the original request
         img2img_request_dict['init_images'] = [image_data_url]
         if 'genid' in img2img_request_dict:
             del img2img_request_dict['genid']
@@ -572,8 +592,8 @@ class WorkspaceManager:
         except Exception as e:
             raise HTTPException(status_code=422, detail=f"Invalid request parameters: {str(e)}")
 
-        # Call the original img2img API
-        return self.api.img2imgapi(img2img_request)
+        # Call the async img2img API wrapper
+        return await self.api.viteapi.img2imgapi_async(img2img_request)
 
     def register_routes(self, api):
         """Register workspace API routes with the given API instance"""
@@ -598,3 +618,4 @@ class WorkspaceManager:
 
         # ViteUI specific endpoints
         api.add_api_route("/viteapi/img2img", self.viteapi_img2img, methods=["POST"])
+        api.add_api_route("/viteapi/txt2img", self.viteapi_txt2img, methods=["POST"])

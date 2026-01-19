@@ -32,7 +32,7 @@ import piexif
 import piexif.helper
 from contextlib import closing
 from modules.progress import create_task_id, add_task_to_queue, start_task, finish_task, current_task, websocket_progress_endpoint
-from modules.workspace_manager import WorkspaceManager
+from modules.viteapi.viteapi import ViteAPI
 
 def script_name_to_index(name, scripts):
     try:
@@ -208,7 +208,7 @@ class Api:
         self.router = APIRouter()
         self.app = app
         self.queue_lock = queue_lock
-        self.workspace_manager = WorkspaceManager(self)
+        self.viteapi = ViteAPI(self)
         #api_middleware(self.app)  # FIXME: (legacy) this will have to be fixed
         self.add_api_route("/sdapi/v1/txt2img", self.text2imgapi, methods=["POST"], response_model=models.TextToImageResponse)
         self.add_api_route("/sdapi/v1/img2img", self.img2imgapi, methods=["POST"], response_model=models.ImageToImageResponse)
@@ -247,15 +247,13 @@ class Api:
 
         #+ workspace manager routes
         # Register workspace routes
-        self.workspace_manager.register_routes(self)
+        self.viteapi.register_routes(self)
         #end+
 
         if shared.cmd_opts.api_server_stop:
             self.add_api_route("/sdapi/v1/server-kill", self.kill_webui, methods=["POST"])
             self.add_api_route("/sdapi/v1/server-restart", self.restart_webui, methods=["POST"])
             self.add_api_route("/sdapi/v1/server-stop", self.stop_webui, methods=["POST"])
-
-        # WebSocket routes are registered via progress.py setup_progress_api
 
         self.default_script_arg_txt2img = []
         self.default_script_arg_img2img = []
@@ -464,7 +462,7 @@ class Api:
         populate = txt2imgreq.copy(update={  # Override __init__ params
             "sampler_name": validate_sampler_name(sampler),
             "do_not_save_samples": not txt2imgreq.save_images,
-            "do_not_save_grid": not txt2imgreq.save_grids,
+            "do_not_save_grid": not txt2imgreq.save_images,
         })
         if populate.sampler_name:
             populate.sampler_index = None  # prevent a warning later on
@@ -476,13 +474,9 @@ class Api:
         args.pop('script_name', None)
         args.pop('script_args', None) # will refeed them to the pipeline directly after initializing them
         args.pop('alwayson_scripts', None)
-        args.pop('save_grids', None) # save_grids is used to set do_not_save_grid, not passed to processing class
         args.pop('infotext', None)
 
         workspace_name = args.pop('workspace_name', None)
-        if not workspace_name:
-            raise HTTPException(status_code=422, detail="workspace_name is required")
-        self.workspace_manager.ensure_workspace(workspace_name)
 
         script_args = self.init_script_args(txt2imgreq, self.default_script_arg_txt2img, selectable_scripts, selectable_script_idx, script_runner, input_script_args=infotext_script_args)
 
@@ -502,81 +496,8 @@ class Api:
                     shared.state.begin(job="scripts_txt2img")
                     start_task(task_id)
 
-                    # Start a background thread to broadcast progress updates during generation
-                    import threading
-                    from modules.progress import websocket_manager, current_task
-
-                    def progress_broadcaster():
-                        """Broadcast progress updates periodically during generation"""
-                        try:
-                            start_time = time.time()
-                            last_progress = -1
-                            while shared.state.job == "scripts_txt2img" and current_task == task_id and shared.state.sampling_step != -1 and (time.time() - start_time) < 300:  # Max 5 minutes
-                                current_progress = 0
-                                if shared.state.sampling_steps > 0:
-                                    current_progress = min(shared.state.sampling_step / shared.state.sampling_steps, 1.0)
-
-                                # Only broadcast if progress has changed
-                                if current_progress != last_progress:
-                                    elapsed = time.time() - shared.state.time_start
-                                    eta = None
-                                    if current_progress > 0:
-                                        predicted_duration = elapsed / current_progress
-                                        eta = predicted_duration - elapsed
-
-                                    # Include live preview if enabled
-                                    live_preview = None
-                                    id_live_preview = getattr(shared.state, 'id_live_preview', -1)
-
-                                    if opts.live_previews_enable:
-                                        shared.state.set_current_image()
-                                        if shared.state.current_image is not None:
-                                            import io
-                                            import base64
-                                            buffered = io.BytesIO()
-
-                                            if opts.live_previews_image_format == "png":
-                                                # using optimize for large images takes an enormous amount of time
-                                                if max(*shared.state.current_image.size) <= 256:
-                                                    save_kwargs = {"optimize": True}
-                                                else:
-                                                    save_kwargs = {"optimize": False, "compress_level": 1}
-                                            else:
-                                                save_kwargs = {}
-
-                                            shared.state.current_image.save(buffered, format=opts.live_previews_image_format, **save_kwargs)
-                                            base64_image = base64.b64encode(buffered.getvalue()).decode('ascii')
-                                            live_preview = f"data:image/{opts.live_previews_image_format};base64,{base64_image}"
-                                            id_live_preview = shared.state.id_live_preview
-
-                                    progress_data = {
-                                        "active": True,
-                                        "queued": False,
-                                        "completed": False,
-                                        "progress": current_progress,
-                                        "eta": eta,
-                                        "live_preview": live_preview,
-                                        "id_live_preview": id_live_preview,
-                                        "textinfo": shared.state.textinfo or "Generating...",
-                                        "sampling_step": shared.state.sampling_step,
-                                        "sampling_steps": shared.state.sampling_steps,
-                                        "timestamp": time.time(),
-                                    }
-
-                                    websocket_manager.broadcast_task_progress_sync(task_id, progress_data)
-                                    last_progress = current_progress
-
-                                # Stop if generation appears complete (sampling_step reached sampling_steps)
-                                if shared.state.sampling_step >= shared.state.sampling_steps and shared.state.sampling_steps > 0:
-                                    break
-
-                                time.sleep(0.5)  # Update every 0.5 seconds
-                        except Exception as e:
-                            print(f"Progress broadcaster error: {e}")
-
-                    # Start the progress broadcaster thread
-                    progress_thread = threading.Thread(target=progress_broadcaster, daemon=True)
-                    progress_thread.start()
+                    # Start progress broadcasting using viteapi
+                    progress_thread = self.viteapi.start_progress_broadcasting(task_id, "scripts_txt2img")
 
                     if selectable_scripts is not None:
                         p.script_args = script_args
@@ -586,26 +507,9 @@ class Api:
                         processed = process_images(p)
                     process_extra_images(processed)
 
-                    # Send completion message before shared.state gets reset
-                    completion_data = {
-                        "active": False,
-                        "queued": False,
-                        "completed": True,
-                        "progress": 1.0,
-                        "eta": None,
-                        "textinfo": "Completed",
-                        "sampling_step": shared.state.sampling_steps,
-                        "sampling_steps": shared.state.sampling_steps,
-                        "timestamp": time.time(),
-                    }
-                    websocket_manager.broadcast_task_progress_sync(task_id, completion_data)
-
-                    # Signal the progress thread to stop
-                    shared.state.job = ""
-                    shared.state.sampling_step = -1  # This will cause the progress thread to exit
-
-                    # Wait for progress thread to finish
-                    progress_thread.join(timeout=2)
+                    # Send completion message and cleanup using viteapi
+                    self.viteapi.send_completion_message(task_id)
+                    self.viteapi.cleanup_after_generation(task_id, progress_thread)
 
                     finish_task(task_id)
                 finally:
@@ -615,6 +519,7 @@ class Api:
                     shared.total_tqdm.clear()
 
         generated_images = processed.images + processed.extra_images
+        b64images = list(map(encode_pil_to_base64, generated_images)) if send_images else []
 
         # Prepare generation metadata
         generation_metadata = {
@@ -635,8 +540,7 @@ class Api:
 
         # Save aborted generations directly to rejects folder
         destination = "rejects" if was_interrupted else "candidates"
-        filesystem_paths = self.workspace_manager.save_generation_images(workspace_name, generated_images, generation_metadata=generation_metadata, destination=destination)
-        b64images = list(map(encode_pil_to_base64, generated_images)) if send_images else []
+        filesystem_paths = self.viteapi.get_workspace_manager().save_generation_images(workspace_name, generated_images, generation_metadata=generation_metadata, destination=destination)
 
         return models.TextToImageResponse(
             images=b64images,
@@ -668,7 +572,7 @@ class Api:
         populate = img2imgreq.copy(update={  # Override __init__ params
             "sampler_name": validate_sampler_name(sampler),
             "do_not_save_samples": not img2imgreq.save_images,
-            "do_not_save_grid": not img2imgreq.save_grids,
+            "do_not_save_grid": not img2imgreq.save_images,
             "mask": mask,
         })
         if populate.sampler_name:
@@ -683,13 +587,11 @@ class Api:
         args.pop('script_args', None)  # will refeed them to the pipeline directly after initializing them
         args.pop('alwayson_scripts', None)
         args.pop('infotext', None)
-        args.pop('save_grids', None) # save_grids is used to set do_not_save_grid, not passed to processing class
         args.pop('genid', None)  # genid is used by viteapi but not by StableDiffusionProcessingImg2Img
 
         workspace_name = args.pop('workspace_name', None)
         if not workspace_name:
             raise HTTPException(status_code=422, detail="workspace_name is required")
-        self.workspace_manager.ensure_workspace(workspace_name)
 
         script_args = self.init_script_args(img2imgreq, self.default_script_arg_img2img, selectable_scripts, selectable_script_idx, script_runner, input_script_args=infotext_script_args)
 
@@ -710,75 +612,8 @@ class Api:
                     shared.state.begin(job="scripts_img2img")
                     start_task(task_id)
 
-                    # Start a background thread to broadcast progress updates during generation
-                    import threading
-                    from modules.progress import websocket_manager, current_task
-
-                    def progress_broadcaster():
-                        """Broadcast progress updates periodically during generation"""
-                        try:
-                            start_time = time.time()
-                            while shared.state.job == "scripts_img2img" and current_task == task_id and shared.state.sampling_step != -1 and (time.time() - start_time) < 300:  # Max 5 minutes
-                                if shared.state.sampling_steps > 0 and shared.state.sampling_step <= shared.state.sampling_steps:
-                                    progress = min(shared.state.sampling_step / shared.state.sampling_steps, 1.0)
-                                    elapsed = time.time() - shared.state.time_start
-                                    eta = None
-                                    if progress > 0:
-                                        predicted_duration = elapsed / progress
-                                        eta = predicted_duration - elapsed
-
-                                    # Include live preview if enabled
-                                    live_preview = None
-                                    id_live_preview = getattr(shared.state, 'id_live_preview', -1)
-
-                                    if opts.live_previews_enable:
-                                        shared.state.set_current_image()
-                                        if shared.state.current_image is not None:
-                                            import io
-                                            import base64
-                                            buffered = io.BytesIO()
-
-                                            if opts.live_previews_image_format == "png":
-                                                # using optimize for large images takes an enormous amount of time
-                                                if max(*shared.state.current_image.size) <= 256:
-                                                    save_kwargs = {"optimize": True}
-                                                else:
-                                                    save_kwargs = {"optimize": False, "compress_level": 1}
-                                            else:
-                                                save_kwargs = {}
-
-                                            shared.state.current_image.save(buffered, format=opts.live_previews_image_format, **save_kwargs)
-                                            base64_image = base64.b64encode(buffered.getvalue()).decode('ascii')
-                                            live_preview = f"data:image/{opts.live_previews_image_format};base64,{base64_image}"
-                                            id_live_preview = shared.state.id_live_preview
-
-                                    progress_data = {
-                                        "active": True,
-                                        "queued": False,
-                                        "completed": False,
-                                        "progress": progress,
-                                        "eta": eta,
-                                        "live_preview": live_preview,
-                                        "id_live_preview": id_live_preview,
-                                        "textinfo": shared.state.textinfo or "Generating...",
-                                        "sampling_step": shared.state.sampling_step,
-                                        "sampling_steps": shared.state.sampling_steps,
-                                        "timestamp": time.time(),
-                                    }
-
-                                    websocket_manager.broadcast_task_progress_sync(task_id, progress_data)
-
-                                # Stop if generation appears complete (sampling_step reached sampling_steps)
-                                if shared.state.sampling_step >= shared.state.sampling_steps and shared.state.sampling_steps > 0:
-                                    break
-
-                                time.sleep(1)  # Update every second
-                        except Exception as e:
-                            print(f"Progress broadcaster error: {e}")
-
-                    # Start the progress broadcaster thread
-                    progress_thread = threading.Thread(target=progress_broadcaster, daemon=True)
-                    progress_thread.start()
+                    # Start progress broadcasting using viteapi
+                    progress_thread = self.viteapi.start_progress_broadcasting(task_id, "scripts_img2img")
 
                     if selectable_scripts is not None:
                         p.script_args = script_args
@@ -788,28 +623,9 @@ class Api:
                         processed = process_images(p)
                     process_extra_images(processed)
 
-                    # Send completion message before shared.state gets reset
-                    completion_data = {
-                        "active": False,
-                        "queued": False,
-                        "completed": True,
-                        "progress": 1.0,
-                        "eta": None,
-                        "live_preview": None,
-                        "id_live_preview": getattr(shared.state, 'id_live_preview', -1),
-                        "textinfo": "Completed",
-                        "sampling_step": shared.state.sampling_steps,
-                        "sampling_steps": shared.state.sampling_steps,
-                        "timestamp": time.time(),
-                    }
-                    websocket_manager.broadcast_task_progress_sync(task_id, completion_data)
-
-                    # Signal the progress thread to stop
-                    shared.state.job = ""
-                    shared.state.sampling_step = -1  # This will cause the progress thread to exit
-
-                    # Wait for progress thread to finish
-                    progress_thread.join(timeout=2)
+                    # Send completion message and cleanup using viteapi
+                    self.viteapi.send_completion_message(task_id)
+                    self.viteapi.cleanup_after_generation(task_id, progress_thread)
 
                     finish_task(task_id)
                 finally:
@@ -819,6 +635,7 @@ class Api:
                     shared.total_tqdm.clear()
 
         generated_images = processed.images + processed.extra_images
+        b64images = list(map(encode_pil_to_base64, generated_images)) if send_images else []
 
         # Prepare generation metadata
         generation_metadata = {
@@ -840,8 +657,7 @@ class Api:
 
         # Save aborted generations directly to rejects folder
         destination = "rejects" if was_interrupted else "candidates"
-        filesystem_paths = self.workspace_manager.save_generation_images(workspace_name, generated_images, mask_image=mask, generation_metadata=generation_metadata, destination=destination)
-        b64images = list(map(encode_pil_to_base64, generated_images)) if send_images else []
+        filesystem_paths = self.viteapi.get_workspace_manager().save_generation_images(workspace_name, generated_images, generation_metadata=generation_metadata, destination=destination)
 
         if not img2imgreq.include_init_images:
             img2imgreq.init_images = None
