@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Brush, Eraser, PaintBucket, RotateCcw, Undo, Redo, Eye, EyeOff, Minus, Plus, Square } from "lucide-react";
-import { cn } from "../lib/utils";
+import { cn } from "../../../lib/utils";
 
 const InpaintToolbar = ({
     drawingMode,

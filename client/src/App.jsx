@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
-import api from "./api";
+import api from "./Api";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { useWebSocketProgress } from "./hooks/useWebSocketProgress";
 import Header from "./components/Header.jsx";
 import Sidebar from "./components/Sidebar.jsx";
 import Canvas from "./components/Canvas.jsx";
-import InpaintCanvas from "./components/InpaintCanvas.jsx";
+import InpaintCanvas from "./components/InpaintCanvas/components/InpaintCanvas.jsx";
 import PropertiesPanel from "./components/PropertiesPanel.jsx";
 import Welcome from "./components/Welcome.jsx";
 import UpscaleDialog from "./components/UpscaleDialog.jsx";
@@ -56,8 +56,9 @@ function App() {
     const [maskBlur, setMaskBlur] = useState(4);
     const [inpaintingFill, setInpaintingFill] = useState(0);
     const [inpaintFullRes, setInpaintFullRes] = useState(true);
-    const [inpaintFullResPadding, setInpaintFullResPadding] = useState(0);
+    const [inpaintFullResPadding, setInpaintFullResPadding] = useState(64);
     const [inpaintingMaskInvert, setInpaintingMaskInvert] = useState(false);
+    const [canvasPadding, setCanvasPadding] = useState(64);
     const [steps, setSteps] = useState(20);
     const [cfgScale, setCfgScale] = useState(7);
     const [width, setWidth] = useState(512);
@@ -81,11 +82,11 @@ function App() {
     const [inputImageData, setInputImageData] = useState(null);
 
     // Save settings
-    const [saveImages, setSaveImages] = useState(true);
+    const [saveImages, setSaveImages] = useState(false);
 
     // UI state
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-    const [propertiesCollapsed, setPropertiesCollapsed] = useState(false);
+    const [propertiesCollapsed, setPropertiesCollapsed] = useState(true);
     const [showWelcome, setShowWelcome] = useState(true);
     const [forceInpaintEditMode, setForceInpaintEditMode] = useState(false);
     const [preserveInpaintMask, setPreserveInpaintMask] = useState(false);
@@ -745,8 +746,6 @@ function App() {
                     progress={progress}
                     onGenerate={generateImage}
                     canGenerate={!!prompt.trim()}
-                    generationMode={generationMode}
-                    setGenerationMode={setGenerationMode}
                     onSkip={handleSkip}
                     onInterrupt={handleInterrupt}
                     currentWorkspace={currentWorkspace}
@@ -754,6 +753,24 @@ function App() {
                     onOpenWorkspace={() => setWorkspaceBrowserOpen(true)}
                     pageLocked={pageLocked}
                     onToggleLock={() => setPageLocked(!pageLocked)}
+                    // New header controls
+                    steps={steps}
+                    setSteps={setSteps}
+                    count={count}
+                    setCount={setCount}
+                    selectedSampler={selectedSampler}
+                    setSelectedSampler={setSelectedSampler}
+                    cfgScale={cfgScale}
+                    setCfgScale={setCfgScale}
+                    models={models}
+                    selectedModel={selectedModel}
+                    onModelChange={handleModelChange}
+                    samplers={samplers}
+                    width={width}
+                    setWidth={setWidth}
+                    height={height}
+                    setHeight={setHeight}
+                    inputImage={inputImage}
                 />
 
                 {/* Welcome Screen */}
@@ -781,8 +798,6 @@ function App() {
                 progress={progress}
                 onGenerate={generateImage}
                 canGenerate={!!prompt.trim()}
-                generationMode={generationMode}
-                setGenerationMode={handleGenerationModeChange}
                 onSkip={handleSkip}
                 onInterrupt={handleInterrupt}
                 currentWorkspace={currentWorkspace}
@@ -790,6 +805,24 @@ function App() {
                 onOpenWorkspace={() => setWorkspaceBrowserOpen(true)}
                 pageLocked={pageLocked}
                 onToggleLock={() => setPageLocked(!pageLocked)}
+                // New header controls
+                steps={steps}
+                setSteps={setSteps}
+                count={count}
+                setCount={setCount}
+                selectedSampler={selectedSampler}
+                setSelectedSampler={setSelectedSampler}
+                cfgScale={cfgScale}
+                setCfgScale={setCfgScale}
+                models={models}
+                selectedModel={selectedModel}
+                onModelChange={handleModelChange}
+                samplers={samplers}
+                width={width}
+                setWidth={setWidth}
+                height={height}
+                setHeight={setHeight}
+                inputImage={inputImage}
             />
 
             {/* Main Content Area */}
@@ -807,6 +840,7 @@ function App() {
                     onRestoreGeneration={handleRestoreGeneration}
                     onUncommitGeneration={handleUncommitGeneration}
                     onGenerationModeChange={handleGenerationModeChange}
+                    generationMode={generationMode}
                     onUpscale={handleOpenUpscaleDialog}
                     getGenerationImageUrl={getGenerationImageUrl}
                 />
@@ -832,7 +866,17 @@ function App() {
                         inpaintFullRes={inpaintFullRes}
                         inpaintFullResPadding={inpaintFullResPadding}
                         setInpaintFullResPadding={setInpaintFullResPadding}
+                        setInpaintFullRes={setInpaintFullRes}
                         forceEditMode={forceInpaintEditMode}
+                        maskBlur={maskBlur}
+                        setMaskBlur={setMaskBlur}
+                        inpaintingFill={inpaintingFill}
+                        setInpaintingFill={setInpaintingFill}
+                        denoisingStrength={denoisingStrength}
+                        setDenoisingStrength={setDenoisingStrength}
+                        inpaintingMaskInvert={inpaintingMaskInvert}
+                        setInpaintingMaskInvert={setInpaintingMaskInvert}
+                        canvasPadding={canvasPadding}
                     />
                 ) : (
                     <Canvas
@@ -860,24 +904,12 @@ function App() {
                     // Generation settings
                     generationMode={generationMode}
                     setGenerationMode={setGenerationMode}
-                    models={models}
-                    selectedModel={selectedModel}
-                    onModelChange={handleModelChange}
-                    samplers={samplers}
-                    selectedSampler={selectedSampler}
-                    setSelectedSampler={setSelectedSampler}
-                    steps={steps}
-                    setSteps={setSteps}
-                    cfgScale={cfgScale}
-                    setCfgScale={setCfgScale}
                     width={width}
                     setWidth={setWidth}
                     height={height}
                     setHeight={setHeight}
                     batchSize={batchSize}
                     setBatchSize={setBatchSize}
-                    count={count}
-                    setCount={setCount}
                     denoisingStrength={denoisingStrength}
                     setDenoisingStrength={setDenoisingStrength}
                     inputImage={inputImage}
@@ -886,17 +918,6 @@ function App() {
                     onClipSkipChange={handleClipSkipChange}
                     saveImages={saveImages}
                     setSaveImages={setSaveImages}
-                    // Inpainting parameters
-                    inpaintMask={inpaintMask}
-                    setInpaintMask={setInpaintMask}
-                    maskBlur={maskBlur}
-                    setMaskBlur={setMaskBlur}
-                    inpaintingFill={inpaintingFill}
-                    setInpaintingFill={setInpaintingFill}
-                    inpaintFullRes={inpaintFullRes}
-                    setInpaintFullRes={setInpaintFullRes}
-                    inpaintingMaskInvert={inpaintingMaskInvert}
-                    setInpaintingMaskInvert={setInpaintingMaskInvert}
                 />
 
                 {/* Upscale Dialog */}

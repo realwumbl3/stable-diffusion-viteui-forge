@@ -1,17 +1,34 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 
-export function useCanvasState({
-    displayImage,
-    inputImage,
-    livePreview,
-    generationWidth,
-    generationHeight,
-    forceEditMode,
-    previewImage,
-    canvasRef,
-    imageRef,
-    panTargetRef
-}) {
+interface UseCanvasStateProps {
+    displayImage: string | null;
+    inputImage: string | null;
+    livePreview: boolean;
+    generationWidth: number | null;
+    generationHeight: number | null;
+    forceEditMode: boolean;
+    previewImage: string | null;
+    canvasRef: React.RefObject<HTMLDivElement>;
+    imageRef: React.RefObject<HTMLImageElement>;
+    panTargetRef: React.RefObject<HTMLDivElement>;
+    canvasPadding?: number;
+    fitToScreenPadding?: number;
+}
+
+export function useCanvasState(props: UseCanvasStateProps) {
+    const {
+        displayImage,
+        inputImage,
+        livePreview,
+        generationWidth,
+        generationHeight,
+        forceEditMode,
+        previewImage,
+        canvasRef,
+        imageRef,
+        panTargetRef,
+        fitToScreenPadding = 16
+    } = props;
     // Zoom and pan state
     const [zoom, setZoom] = useState(1);
     const [showGrid, setShowGrid] = useState(false);
@@ -60,9 +77,9 @@ export function useCanvasState({
         const container = canvasRef.current.getBoundingClientRect();
         const { width: imageWidth, height: imageHeight } = getDisplayDimensions();
 
-        // Get available space (accounting for padding)
-        const availableWidth = container.width - 64; // 32px padding on each side = 64px total
-        const availableHeight = container.height - 64; // 32px padding on each side = 64px total
+        // Get available space (accounting for fit-to-screen padding)
+        const availableWidth = container.width - fitToScreenPadding;
+        const availableHeight = container.height - fitToScreenPadding;
 
         // Calculate scale to fit the longest side
         const scaleX = availableWidth / imageWidth;
@@ -70,13 +87,13 @@ export function useCanvasState({
         const scale = Math.min(scaleX, scaleY);
 
         return scale;
-    }, [getDisplayDimensions]);
+    }, [getDisplayDimensions, fitToScreenPadding]);
 
     const calculateCenterOffset = useCallback((scale) => {
         // The flexbox centering works for vertical alignment, but horizontal might need adjustment
-        // Try offsetting by the padding amount to compensate
-        return { x: -32, y: 0 };
-    }, []);
+        // Try offsetting by half the fit-to-screen padding amount to compensate
+        return { x: -(fitToScreenPadding / 2), y: 0 };
+    }, [fitToScreenPadding]);
 
     // Auto-fit to screen when image changes
     useEffect(() => {
@@ -136,7 +153,6 @@ export function useCanvasState({
             setFitToScreen(false);
 
             // Zoom towards center of viewport for button zoom
-            const zoomRatio = newZoom / prev;
             const centerX = 0; // Center of viewport (relative to canvas center)
             const centerY = 0;
 
@@ -164,7 +180,6 @@ export function useCanvasState({
             setFitToScreen(false);
 
             // Zoom towards center of viewport for button zoom
-            const zoomRatio = newZoom / prev;
             const centerX = 0; // Center of viewport (relative to canvas center)
             const centerY = 0;
 

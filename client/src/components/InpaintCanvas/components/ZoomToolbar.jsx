@@ -1,4 +1,4 @@
-import { ZoomIn, ZoomOut, Maximize, Grid3X3, Upload } from "lucide-react";
+import { ZoomIn, ZoomOut, Maximize, Grid3X3, Upload, Eye } from "lucide-react";
 
 const ZoomToolbar = ({
     zoom,
@@ -10,6 +10,8 @@ const ZoomToolbar = ({
     handleResetZoom,
     handleFitToScreen,
     openFileDialog,
+    uiVisible,
+    setUiVisible,
 }) => {
     return (
         <div className="studio-panel p-2">
@@ -45,6 +47,14 @@ const ZoomToolbar = ({
                 <div className="w-px h-6 bg-studio-border mx-1" />
                 <button onClick={openFileDialog} className="studio-btn-ghost p-2" title="Upload Image">
                     <Upload size={16} />
+                </button>
+                <div className="w-px h-6 bg-studio-border mx-1" />
+                <button
+                    onMouseEnter={() => setUiVisible(false)}
+                    onMouseLeave={() => setUiVisible(true)}
+                    className="studio-btn-ghost p-2"
+                >
+                    <Eye size={16} />
                 </button>
             </div>
         </div>

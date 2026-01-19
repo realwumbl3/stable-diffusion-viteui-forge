@@ -1,16 +1,17 @@
+// VITE UI
 import { useState, useRef, useEffect, useCallback } from "react";
-import PromptFooter from "./PromptFooter.jsx";
+import PromptFooter from "../../PromptFooter.jsx";
 import InpaintToolbar from "./InpaintToolbar.jsx";
-import { resolveImageSrc } from "../lib/utils";
+import { resolveImageSrc } from "../../../lib/utils";
 
 // Import our extracted hooks and components
-import { useCanvasState } from "./InpaintCanvas/hooks/useCanvasState";
-import { useDrawing } from "./InpaintCanvas/hooks/useDrawing";
-import { useFileHandling } from "./InpaintCanvas/hooks/useFileHandling";
-import { useKeyboardShortcuts } from "./InpaintCanvas/hooks/useKeyboardShortcuts";
-import ZoomToolbar from "./InpaintCanvas/components/ZoomToolbar.jsx";
-import CanvasArea from "./InpaintCanvas/components/CanvasArea.jsx";
-import StatusBar from "./InpaintCanvas/components/StatusBar.jsx";
+import { useCanvasState } from "../hooks/useCanvasState";
+import { useDrawing } from "../hooks/useDrawing";
+import { useFileHandling } from "../hooks/useFileHandling";
+import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
+import ZoomToolbar from "./ZoomToolbar.jsx";
+import CanvasArea from "./CanvasArea.jsx";
+import StatusBar from "./StatusBar.jsx";
 
 const InpaintCanvas = ({
     currentImage,
@@ -37,6 +38,17 @@ const InpaintCanvas = ({
     setInpaintFullResPadding,
     // Force edit mode for mask editing
     forceEditMode = false,
+    // Inpaint parameters
+    maskBlur,
+    setMaskBlur,
+    inpaintingFill,
+    setInpaintingFill,
+    denoisingStrength,
+    setDenoisingStrength,
+    setInpaintFullRes,
+    inpaintingMaskInvert,
+    setInpaintingMaskInvert,
+    canvasPadding,
 }) => {
     const displayImage = previewImage || currentImage;
     const resolvedDisplayImage = resolveImageSrc(displayImage, "full");
@@ -60,6 +72,9 @@ const InpaintCanvas = ({
     const [fillTolerance, setFillTolerance] = useState(32);
     const [fillOverfill, setFillOverfill] = useState(0);
 
+    // UI visibility state
+    const [uiVisible, setUiVisible] = useState(true);
+
     // Initialize hooks
     const canvasState = useCanvasState({
         displayImage: resolvedDisplayImage,
@@ -72,6 +87,7 @@ const InpaintCanvas = ({
         canvasRef,
         imageRef,
         panTargetRef,
+        canvasPadding,
     });
 
     const drawing = useDrawing({
@@ -308,7 +324,7 @@ const InpaintCanvas = ({
         <main className="studio-canvas relative flex flex-col min-h-0">
             {/* Left Toolbar - Mask Controls */}
             {(displayImage || inputImage) && !canvasState.isDrawing && (
-                <div className="absolute top-4 left-4 z-10">
+                <div className={`absolute top-4 left-4 z-10 transition-opacity duration-200 ${uiVisible ? 'opacity-100' : 'opacity-0'}`}>
                     <InpaintToolbar
                         drawingMode={drawingMode}
                         setDrawingMode={setDrawingMode}
@@ -341,7 +357,7 @@ const InpaintCanvas = ({
 
             {/* Right Toolbar - Image Controls */}
             {(displayImage || inputImage) && !canvasState.isDrawing && (
-                <div className="absolute top-4 right-4 z-10">
+                <div className={`absolute top-4 right-4 z-10 transition-opacity duration-200 ${uiVisible ? 'opacity-100' : 'opacity-0'}`}>
                     <ZoomToolbar
                         zoom={canvasState.zoom}
                         showGrid={canvasState.showGrid}
@@ -352,9 +368,12 @@ const InpaintCanvas = ({
                         handleResetZoom={canvasState.handleResetZoom}
                         handleFitToScreen={canvasState.handleFitToScreen}
                         openFileDialog={fileHandling.openFileDialog}
+                        uiVisible={uiVisible}
+                        setUiVisible={setUiVisible}
                     />
                 </div>
             )}
+
 
             {/* Canvas Area */}
             <CanvasArea
@@ -399,6 +418,16 @@ const InpaintCanvas = ({
                 brushHardness={brushHardness}
                 setBrushHardness={setBrushHardness}
                 openFileDialog={fileHandling.openFileDialog}
+                maskBlur={maskBlur}
+                setMaskBlur={setMaskBlur}
+                inpaintingFill={inpaintingFill}
+                setInpaintingFill={setInpaintingFill}
+                denoisingStrength={denoisingStrength}
+                setDenoisingStrength={setDenoisingStrength}
+                setInpaintFullRes={setInpaintFullRes}
+                inpaintingMaskInvert={inpaintingMaskInvert}
+                setInpaintingMaskInvert={setInpaintingMaskInvert}
+                uiVisible={uiVisible}
             />
 
             {/* Prompt Footer */}

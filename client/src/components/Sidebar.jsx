@@ -3,7 +3,9 @@ import {
   ChevronRight,
   Image as ImageIcon,
   Trash2,
-  Maximize2
+  Maximize2,
+  Type,
+  Edit
 } from 'lucide-react'
 import { useState, useRef, useEffect } from 'react'
 import { cn, resolveImageSrc } from '../lib/utils'
@@ -21,6 +23,7 @@ const Sidebar = ({
   onRestoreGeneration,
   onUncommitGeneration,
   onGenerationModeChange,
+  generationMode,
   onUpscale,
   getGenerationImageUrl
 }) => {
@@ -97,8 +100,47 @@ const Sidebar = ({
         )}>
           {/* Sidebar Header */}
           <div className="studio-sidebar-header flex-shrink-0">
-            <div className="flex items-center justify-between">
-              <h3 className="text-studio-text font-semibold text-sm">Timeline</h3>
+            {/* Generation Mode Buttons */}
+            <div className="flex items-center bg-studio-surface rounded-lg p-1 border border-studio-border mb-4">
+              <button
+                onClick={() => onGenerationModeChange('txt2img')}
+                className={cn(
+                  "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all duration-200",
+                  generationMode === 'txt2img'
+                    ? "bg-studio-accent text-studio-bg shadow-sm"
+                    : "text-studio-textSecondary hover:text-studio-text hover:bg-studio-surface"
+                )}
+                title="Text to Image (Alt+T)"
+              >
+                <Type size={16} />
+                <span className="hidden sm:inline">Text</span>
+              </button>
+              <button
+                onClick={() => onGenerationModeChange('img2img')}
+                className={cn(
+                  "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all duration-200",
+                  generationMode === 'img2img'
+                    ? "bg-studio-accent text-studio-bg shadow-sm"
+                    : "text-studio-textSecondary hover:text-studio-text hover:bg-studio-surface"
+                )}
+                title="Image to Image (Alt+I)"
+              >
+                <ImageIcon size={16} />
+                <span className="hidden sm:inline">Image</span>
+              </button>
+              <button
+                onClick={() => onGenerationModeChange('inpaint')}
+                className={cn(
+                  "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all duration-200",
+                  generationMode === 'inpaint'
+                    ? "bg-studio-accent text-studio-bg shadow-sm"
+                    : "text-studio-textSecondary hover:text-studio-text hover:bg-studio-surface"
+                )}
+                title="Inpaint (Alt+N)"
+              >
+                <Edit size={16} />
+                <span className="hidden sm:inline">Inpaint</span>
+              </button>
             </div>
           </div>
 

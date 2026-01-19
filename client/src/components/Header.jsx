@@ -11,74 +11,59 @@ import {
   Lock,
   Unlock
 } from 'lucide-react'
+import NumberSelector from './NumberSelector.jsx'
 import { cn } from '../lib/utils'
 import WorkspacePicker from './WorkspacePicker.jsx'
+import ResolutionIndicator from './ResolutionIndicator.jsx'
 
 const Header = ({
   loading,
   progress,
   onGenerate,
   canGenerate,
-  generationMode,
-  setGenerationMode,
   onSkip,
   onInterrupt,
   currentWorkspace,
   onWorkspaceChange,
   onOpenWorkspace,
   pageLocked,
-  onToggleLock
+  onToggleLock,
+  // New parameters for header controls
+  steps,
+  setSteps,
+  count,
+  setCount,
+  selectedSampler,
+  setSelectedSampler,
+  cfgScale,
+  setCfgScale,
+  models,
+  selectedModel,
+  onModelChange,
+  samplers,
+  // Resolution parameters
+  width,
+  setWidth,
+  height,
+  setHeight,
+  inputImage
 }) => {
   console.log("Header render: loading =", loading, "progress =", progress);
 
   return (
     <header className="studio-toolbar border-b-studio-border">
+      {/* Left Section - Workspace */}
+      <div className="flex items-center gap-3">
+        <WorkspacePicker
+          currentWorkspace={currentWorkspace}
+          onWorkspaceChange={onWorkspaceChange}
+          onOpenWorkspace={onOpenWorkspace}
+        />
+      </div>
+
       {/* Center Section - Main Actions */}
       <div className="flex-1 flex justify-center">
         <div className="flex items-center gap-2">
-          {/* Generation Mode Buttons */}
-          <div className="flex items-center bg-studio-surface rounded-lg p-1 border border-studio-border">
-            <button
-              onClick={() => setGenerationMode('txt2img')}
-              className={cn(
-                "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all duration-200",
-                generationMode === 'txt2img'
-                  ? "bg-studio-accent text-studio-bg shadow-sm"
-                  : "text-studio-textSecondary hover:text-studio-text hover:bg-studio-surface"
-              )}
-              title="Text to Image (Alt+T)"
-            >
-              <Type size={16} />
-              <span className="hidden sm:inline">Text</span>
-            </button>
-            <button
-              onClick={() => setGenerationMode('img2img')}
-              className={cn(
-                "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all duration-200",
-                generationMode === 'img2img'
-                  ? "bg-studio-accent text-studio-bg shadow-sm"
-                  : "text-studio-textSecondary hover:text-studio-text hover:bg-studio-surface"
-              )}
-              title="Image to Image (Alt+I)"
-            >
-              <ImageIcon size={16} />
-              <span className="hidden sm:inline">Image</span>
-            </button>
-            <button
-              onClick={() => setGenerationMode('inpaint')}
-              className={cn(
-                "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all duration-200",
-                generationMode === 'inpaint'
-                  ? "bg-studio-accent text-studio-bg shadow-sm"
-                  : "text-studio-textSecondary hover:text-studio-text hover:bg-studio-surface"
-              )}
-              title="Inpaint (Alt+N)"
-            >
-              <Edit size={16} />
-              <span className="hidden sm:inline">Inpaint</span>
-            </button>
-          </div>
-
           {/* Skip and Interrupt buttons - only show when generating */}
           {loading && (
             <div className="flex items-center gap-2">
@@ -101,63 +86,140 @@ const Header = ({
             </div>
           )}
 
-          <button
-            onClick={onGenerate}
-            disabled={!canGenerate || loading}
-            className={cn(
-              "studio-btn-primary flex items-center gap-2 px-6 py-2 relative",
-              (!canGenerate || loading) && "opacity-50 cursor-not-allowed"
-            )}
-          >
-            {loading && progress ? (
-              <>
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 border-2 border-studio-bg border-t-transparent rounded-full animate-spin" />
-                  <span>{Math.round(progress.progress * 100)}%</span>
-                  {progress.total_batches > 1 && (
-                    <span className="text-xs text-studio-textSecondary">
-                      (Batch {progress.current_batch}/{progress.total_batches})
-                    </span>
-                  )}
-                </div>
-                {/* Progress bar overlay */}
-                <div className="absolute bottom-0 left-0 right-0 h-1 bg-studio-bg/20 rounded-b-md overflow-hidden">
-                  <div
-                    className="h-full bg-studio-accent transition-all duration-300 ease-out"
-                    style={{ width: `${progress.progress * 100}%` }}
-                  />
-                </div>
-              </>
-            ) : loading ? (
-              <>
-                <div className="w-4 h-4 border-2 border-studio-bg border-t-transparent rounded-full animate-spin" />
-                Generating...
-              </>
-            ) : (
-              <>
-                <Zap size={16} />
-                Generate
-              </>
-            )}
-          </button>
         </div>
       </div>
 
-      {/* Right Section - Workspace + File Operations */}
+      {/* Right Section - Model Controls and File Operations */}
       <div className="flex items-center gap-3">
-        <WorkspacePicker
-          currentWorkspace={currentWorkspace}
-          onWorkspaceChange={onWorkspaceChange}
-          onOpenWorkspace={onOpenWorkspace}
+        {/* Resolution Indicator */}
+        <ResolutionIndicator
+          width={width}
+          setWidth={setWidth}
+          height={height}
+          setHeight={setHeight}
+          inputImage={inputImage}
         />
-        <div className="w-px h-6 bg-studio-border" />
-        <button className="studio-btn-ghost p-2" title="Save Project (Ctrl+S)">
-          <Save size={18} />
+
+        <button
+          onClick={onGenerate}
+          disabled={!canGenerate || loading}
+          className={cn(
+            "studio-btn-primary flex items-center gap-2 px-6 py-2 relative",
+            (!canGenerate || loading) && "opacity-50 cursor-not-allowed"
+          )}
+        >
+          {loading && progress ? (
+            <>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 border-2 border-studio-bg border-t-transparent rounded-full animate-spin" />
+                <span>{Math.round(progress.progress * 100)}%</span>
+                {progress.total_batches > 1 && (
+                  <span className="text-xs text-studio-textSecondary">
+                    (Batch {progress.current_batch}/{progress.total_batches})
+                  </span>
+                )}
+              </div>
+              {/* Progress bar overlay */}
+              <div className="absolute bottom-0 left-0 right-0 h-1 bg-studio-bg/20 rounded-b-md overflow-hidden">
+                <div
+                  className="h-full bg-studio-accent transition-all duration-300 ease-out"
+                  style={{ width: `${progress.progress * 100}%` }}
+                />
+              </div>
+            </>
+          ) : loading ? (
+            <>
+              <div className="w-4 h-4 border-2 border-studio-bg border-t-transparent rounded-full animate-spin" />
+              Generating...
+            </>
+          ) : (
+            <>
+              <Zap size={16} />
+              Generate
+            </>
+          )}
         </button>
-        <button className="studio-btn-ghost p-2" title="Export (Ctrl+Shift+S)">
-          <Download size={18} />
-        </button>
+
+        {/* Steps and Count controls */}
+        <div className="flex items-center gap-3">
+          <div className="flex flex-col items-center gap-1">
+            <NumberSelector
+              value={steps}
+              onChange={setSteps}
+              min={1}
+              max={100}
+              step={1}
+            />
+            <label className="text-xs text-studio-textSecondary font-medium">Steps</label>
+          </div>
+
+          <div className="flex flex-col items-center gap-1">
+            <NumberSelector
+              value={count}
+              onChange={setCount}
+              min={1}
+              max={50}
+              step={1}
+            />
+            <label className="text-xs text-studio-textSecondary font-medium">Count</label>
+          </div>
+
+          {/* Model and Sampler Controls */}
+          <div className="flex items-center gap-2 ml-2 pl-2 border-l border-studio-border">
+            {/* Model and Sampler Stack */}
+            <div className="flex flex-col gap-1">
+              <div className="flex justify-end gap-2">
+                <label className="text-xs text-studio-textSecondary font-medium">Model</label>
+                <select
+                  value={selectedModel}
+                  onChange={(e) => onModelChange(e.target.value)}
+                  className="px-2 py-1 text-sm bg-studio-surface border border-studio-border rounded focus:outline-none focus:ring-1 focus:ring-studio-accent w-auto"
+                >
+                  {models.map((model) => (
+                    <option key={model.title} value={model.title}>
+                      {model.model_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex justify-end gap-2">
+                <label className="text-xs text-studio-textSecondary font-medium">Sampler</label>
+                <select
+                  value={selectedSampler}
+                  onChange={(e) => setSelectedSampler(e.target.value)}
+                  className="px-2 py-1 text-sm bg-studio-surface border border-studio-border rounded focus:outline-none focus:ring-1 focus:ring-studio-accent w-auto"
+                >
+                  {samplers.map((sampler) => (
+                    <option key={sampler.name} value={sampler.name}>
+                      {sampler.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <NumberSelector
+                value={cfgScale}
+                onChange={setCfgScale}
+                min={1}
+                max={33}
+                step={1}
+              />
+              <label className="text-xs text-studio-textSecondary font-medium">CFG</label>
+            </div>
+          </div>
+        </div>
+
         <div className="w-px h-6 bg-studio-border mx-2" />
+
+        {/* <button className="studio-btn-ghost p-2" title="Save Project (Ctrl+S)">
+          <Save size={18} />
+        </button> */}
+        {/* <button className="studio-btn-ghost p-2" title="Export (Ctrl+Shift+S)">
+          <Download size={18} />
+        </button> */}
         <button
           onClick={onToggleLock}
           className={cn(
@@ -168,9 +230,9 @@ const Header = ({
         >
           {pageLocked ? <Lock size={18} /> : <Unlock size={18} />}
         </button>
-        <button className="studio-btn-ghost p-2" title="Settings">
+        {/* <button className="studio-btn-ghost p-2" title="Settings">
           <Settings size={18} />
-        </button>
+        </button> */}
       </div>
     </header>
   )

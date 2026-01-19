@@ -1,18 +1,16 @@
 import { Upload } from "lucide-react";
 import { cn } from "../../../lib/utils";
 import BrushSettings from "./BrushSettings.jsx";
+import InpaintParametersPanel from "./InpaintParametersPanel.jsx";
 
 const CanvasArea = ({
     canvasRef,
     panTargetRef,
     maskCanvasRef,
     borderCanvasRef,
-    overlayCanvasRef,
     imageRef,
     displayImage,
     inputImage,
-    previewImage,
-    currentImage,
     livePreview,
     generationWidth,
     generationHeight,
@@ -44,6 +42,17 @@ const CanvasArea = ({
     handleMouseUp,
     handleMouseEnter,
     openFileDialog,
+    // Inpaint parameters
+    maskBlur,
+    setMaskBlur,
+    inpaintingFill,
+    setInpaintingFill,
+    denoisingStrength,
+    setDenoisingStrength,
+    setInpaintFullRes,
+    inpaintingMaskInvert,
+    setInpaintingMaskInvert,
+    uiVisible = true,
 }) => {
     const mainImageSrc = viewMode === "edit" ? livePreview || inputImage || displayImage : displayImage || inputImage;
 
@@ -195,14 +204,32 @@ const CanvasArea = ({
 
                 {/* Brush Settings Panel - Outside transformed content */}
                 {(displayImage || inputImage) && !isDrawing && (
-                    <BrushSettings
-                        brushSize={brushSize}
-                        setBrushSize={setBrushSize}
-                        brushHardness={brushHardness}
-                        setBrushHardness={setBrushHardness}
-                        zoom={zoom}
-                    />
+                    <div className={`transition-opacity duration-200 ${uiVisible ? 'opacity-100' : 'opacity-0'}`}>
+                        <BrushSettings
+                            brushSize={brushSize}
+                            setBrushSize={setBrushSize}
+                            brushHardness={brushHardness}
+                            setBrushHardness={setBrushHardness}
+                            zoom={zoom}
+                        />
+                    </div>
                 )}
+
+                {/* Inpaint Parameters Panel */}
+                <div className={`transition-opacity duration-200 ${uiVisible ? 'opacity-100' : 'opacity-0'}`}>
+                    <InpaintParametersPanel
+                        maskBlur={maskBlur}
+                        setMaskBlur={setMaskBlur}
+                        inpaintingFill={inpaintingFill}
+                        setInpaintingFill={setInpaintingFill}
+                        denoisingStrength={denoisingStrength}
+                        setDenoisingStrength={setDenoisingStrength}
+                        inpaintFullRes={inpaintFullRes}
+                        setInpaintFullRes={setInpaintFullRes}
+                        inpaintingMaskInvert={inpaintingMaskInvert}
+                        setInpaintingMaskInvert={setInpaintingMaskInvert}
+                    />
+                </div>
                 </div>
             </div>
         );
