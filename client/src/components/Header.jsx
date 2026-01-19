@@ -25,6 +25,7 @@ const Header = ({
   onWorkspaceChange,
   onOpenWorkspace
 }) => {
+  console.log("Header render: loading =", loading, "progress =", progress);
 
   return (
     <header className="studio-toolbar border-b-studio-border">

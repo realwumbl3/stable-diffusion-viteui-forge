@@ -609,6 +609,8 @@ class Api:
 
                     finish_task(task_id)
                 finally:
+                    # Capture interrupted state before resetting it
+                    was_interrupted = shared.state.interrupted
                     shared.state.end()
                     shared.total_tqdm.clear()
 
@@ -631,7 +633,9 @@ class Api:
             }
         }
 
-        filesystem_paths = self.workspace_manager.save_generation_images(workspace_name, generated_images, generation_metadata=generation_metadata)
+        # Save aborted generations directly to rejects folder
+        destination = "rejects" if was_interrupted else "candidates"
+        filesystem_paths = self.workspace_manager.save_generation_images(workspace_name, generated_images, generation_metadata=generation_metadata, destination=destination)
         b64images = list(map(encode_pil_to_base64, generated_images)) if send_images else []
 
         return models.TextToImageResponse(
@@ -680,6 +684,7 @@ class Api:
         args.pop('alwayson_scripts', None)
         args.pop('infotext', None)
         args.pop('save_grids', None) # save_grids is used to set do_not_save_grid, not passed to processing class
+        args.pop('genid', None)  # genid is used by viteapi but not by StableDiffusionProcessingImg2Img
 
         workspace_name = args.pop('workspace_name', None)
         if not workspace_name:
@@ -808,6 +813,8 @@ class Api:
 
                     finish_task(task_id)
                 finally:
+                    # Capture interrupted state before resetting it
+                    was_interrupted = shared.state.interrupted
                     shared.state.end()
                     shared.total_tqdm.clear()
 
@@ -831,7 +838,9 @@ class Api:
             }
         }
 
-        filesystem_paths = self.workspace_manager.save_generation_images(workspace_name, generated_images, mask_image=mask, generation_metadata=generation_metadata)
+        # Save aborted generations directly to rejects folder
+        destination = "rejects" if was_interrupted else "candidates"
+        filesystem_paths = self.workspace_manager.save_generation_images(workspace_name, generated_images, mask_image=mask, generation_metadata=generation_metadata, destination=destination)
         b64images = list(map(encode_pil_to_base64, generated_images)) if send_images else []
 
         if not img2imgreq.include_init_images:

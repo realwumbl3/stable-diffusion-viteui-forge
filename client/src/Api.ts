@@ -17,7 +17,7 @@ export interface Txt2ImgParams {
 }
 
 export interface Img2ImgParams extends Txt2ImgParams {
-  init_images: string[];
+  genid: string;
   mask?: string;
   mask_blur?: number;
   inpainting_fill?: number;
@@ -175,7 +175,7 @@ class StableDiffusionAPI {
     const taskId = `task(img2img-${Date.now()}-${Math.random().toString(36).substr(2, 9)})`
     const paramsWithTaskId = { ...params, force_task_id: taskId }
 
-    const result = await this.request<GenerationResponse>('/sdapi/v1/img2img', {
+    const result = await this.request<GenerationResponse>('/viteapi/img2img', {
       method: 'POST',
       body: JSON.stringify(paramsWithTaskId),
     });

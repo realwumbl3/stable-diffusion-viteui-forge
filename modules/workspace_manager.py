@@ -6,7 +6,7 @@ from typing import Optional
 import time
 from pathlib import Path
 from PIL import Image
-from fastapi import HTTPException
+from fastapi import HTTPException, Request
 from modules.shared import opts
 from modules.workspace_image_server import WorkspaceImageServer
 
@@ -242,17 +242,17 @@ class WorkspaceManager:
 
         return {"structure": build_tree(self.workspace_root)}
 
-    def save_generation_images(self, workspace_name: str, images: list, mask_image: Optional[object] = None, generation_metadata: Optional[dict] = None) -> list[str]:
+    def save_generation_images(self, workspace_name: str, images: list, mask_image: Optional[object] = None, generation_metadata: Optional[dict] = None, destination: str = "candidates") -> list[str]:
         workspace_path = self._resolve_workspace_path(workspace_name)
-        candidates_root = workspace_path / "candidates"
-        candidates_root.mkdir(parents=True, exist_ok=True)
+        destination_root = workspace_path / destination
+        destination_root.mkdir(parents=True, exist_ok=True)
 
         saved_paths = []
         timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         unique_seed = datetime.now().microsecond
         for idx, image in enumerate(images, start=1):
             candidate_id = f"{timestamp}_{unique_seed:06d}_{idx:03d}"
-            candidate_path = candidates_root / candidate_id
+            candidate_path = destination_root / candidate_id
             candidate_path.mkdir(parents=True, exist_ok=False)
 
             # Create a temporary image file to pass to save_image_with_preview_and_meta
@@ -518,6 +518,63 @@ class WorkspaceManager:
         metadata_path = self._metadata_path(workspace_path)
         metadata_path.write_text(json.dumps(metadata, indent=2), encoding="utf-8")
 
+    async def viteapi_img2img(self, request: Request):
+        """ViteUI img2img endpoint that loads images from workspace instead of accepting base64 from client"""
+        import base64
+        import io
+        from fastapi import HTTPException
+        import modules.images as images
+
+        # Get request body as JSON
+        try:
+            request_dict = await request.json()
+        except Exception as e:
+            raise HTTPException(status_code=400, detail="Invalid JSON request")
+
+        # Extract parameters from request
+        genid = request_dict.get('genid')
+        workspace_name = request_dict.get('workspace_name')
+
+        if not genid:
+            raise HTTPException(status_code=422, detail="genid is required")
+        if not workspace_name:
+            raise HTTPException(status_code=422, detail="workspace_name is required")
+
+        # Load image from workspace
+        try:
+            image_path = self.resolve_workspace_file(workspace_name, f"commits/{genid}/full.png")
+            if not image_path.exists():
+                raise HTTPException(status_code=404, detail=f"Image not found for genid {genid}")
+        except Exception as e:
+            raise HTTPException(status_code=404, detail=f"Failed to resolve workspace file: {str(e)}")
+
+        # Convert image to base64
+        try:
+            print(f"VITE-UI-API: Inferring image from latest committed image workspace: {workspace_name}, genid: {genid}")
+            image = images.read(image_path)
+            buffer = io.BytesIO()
+            image.save(buffer, format="PNG")
+            image_base64 = base64.b64encode(buffer.getvalue()).decode('utf-8')
+            image_data_url = f"data:image/png;base64,{image_base64}"
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to process image: {str(e)}")
+
+        # Create a new request dict with init_images instead of genid
+        img2img_request_dict = dict(request_dict)  # Copy the original request
+        img2img_request_dict['init_images'] = [image_data_url]
+        if 'genid' in img2img_request_dict:
+            del img2img_request_dict['genid']
+
+        # Convert back to Pydantic model for the API call
+        import modules.api.models as models
+        try:
+            img2img_request = models.StableDiffusionImg2ImgProcessingAPI(**img2img_request_dict)
+        except Exception as e:
+            raise HTTPException(status_code=422, detail=f"Invalid request parameters: {str(e)}")
+
+        # Call the original img2img API
+        return self.api.img2imgapi(img2img_request)
+
     def register_routes(self, api):
         """Register workspace API routes with the given API instance"""
         # Workspace routes
@@ -538,3 +595,6 @@ class WorkspaceManager:
         api.add_api_route("/workspaces/{name:path}/restore", self.restore_workspace_image, methods=["POST"])
         api.add_api_route("/workspaces/{name:path}/uncommit", self.uncommit_workspace_image, methods=["POST"])
         api.add_api_route("/workspaces/{name:path}/import", self.import_workspace_image, methods=["POST"])
+
+        # ViteUI specific endpoints
+        api.add_api_route("/viteapi/img2img", self.viteapi_img2img, methods=["POST"])

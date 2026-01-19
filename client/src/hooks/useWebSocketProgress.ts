@@ -40,12 +40,12 @@ export class ProgressWebSocketManager {
     }
 
     // If connected with different taskId, disconnect first
-    if (this.ws && this.ws.readyState === WebSocket.OPEN && this.currentTaskId !== taskId) {
+    if (this.ws && (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING) && this.currentTaskId !== taskId) {
       this.disconnect()
     }
 
-    // If connecting, wait for current connection to close
-    if (this.ws && this.ws.readyState === WebSocket.CONNECTING) {
+    // If connecting to a different taskId, wait for current connection to close
+    if (this.ws && this.ws.readyState === WebSocket.CONNECTING && this.currentTaskId === taskId) {
       return
     }
 
@@ -101,6 +101,10 @@ export class ProgressWebSocketManager {
       this.ws.onerror = null
       this.ws.close(1000, 'Client disconnecting')
       this.ws = null
+      this.currentTaskId = null
+      this.reconnectAttempts = 0
+    } else {
+      // Ensure taskId is cleared even if no WebSocket exists
       this.currentTaskId = null
       this.reconnectAttempts = 0
     }
@@ -173,6 +177,7 @@ export const useWebSocketProgress = (taskId: string | null = null): UseWebSocket
               return
             }
             if (progressData.completed) {
+              console.log('Polling: Task completed', taskId)
               completedTasksRef.current.add(taskId)
               setProgress(null)
               setLivePreview(null)
@@ -226,7 +231,9 @@ export const useWebSocketProgress = (taskId: string | null = null): UseWebSocket
 
   // Clear progress and live preview when task ends
   useEffect(() => {
+    console.log('Task ID changed:', taskId)
     if (!taskId) {
+      console.log('Clearing progress and live preview')
       setProgress(null)
       setLivePreview(null)
     }
@@ -261,8 +268,8 @@ export const useWebSocketProgress = (taskId: string | null = null): UseWebSocket
         return
       }
 
-      // Only process messages for the current task
-      if (data.task_id && data.task_id !== taskId) {
+      // Only process messages for the current task, unless it's a completion message for a completed task
+      if (data.task_id && data.task_id !== taskId && !(data.completed && completedTasksRef.current.has(data.task_id))) {
         return
       }
 
@@ -276,6 +283,7 @@ export const useWebSocketProgress = (taskId: string | null = null): UseWebSocket
 
         // Task completed - clear progress and live preview
         if (data.completed) {
+          console.log('WebSocket: Task completed', data.task_id)
           completedTasksRef.current.add(data.task_id)
           setProgress(null)
           setLivePreview(null)

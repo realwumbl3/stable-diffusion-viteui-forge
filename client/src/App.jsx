@@ -3,7 +3,7 @@ import api from "./api";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { useWebSocketProgress } from "./hooks/useWebSocketProgress";
 import Header from "./components/Header.jsx";
-import Sidebar from "./components/Sidebar.jsx";
+import Sidebar from "./components/Sidebar.jsx";     
 import Canvas from "./components/Canvas.jsx";
 import InpaintCanvas from "./components/InpaintCanvas.jsx";
 import PropertiesPanel from "./components/PropertiesPanel.jsx";
@@ -105,6 +105,11 @@ function App() {
         loadInitialData();
         initializeWorkspace();
     }, []);
+
+    // Debug logging for loading state changes
+    useEffect(() => {
+        console.log("Loading state changed:", loading);
+    }, [loading]);
 
     const loadInitialData = async () => {
         try {
@@ -276,8 +281,8 @@ function App() {
 
     const generateImage = async () => {
         if (!prompt.trim()) return;
-        if ((generationMode === "img2img" || generationMode === "inpaint") && !inputImage) {
-            alert("Please upload an input image for img2img/inpaint mode.");
+        if ((generationMode === "img2img" || generationMode === "inpaint") && timeline.committedHistory.length === 0) {
+            alert("No committed images available for img2img/inpainting. Please generate and commit an image first.");
             return;
         }
         if (generationMode === "inpaint" && !inpaintMask) {
@@ -287,6 +292,12 @@ function App() {
 
         if (!currentWorkspace) {
             alert("Workspace not initialized yet. Please wait a moment and try again.");
+            return;
+        }
+
+        // Validate latest commit exists for img2img/inpaint modes
+        if ((generationMode === "img2img" || generationMode === "inpaint") && timeline.committedHistory.length === 0) {
+            alert("No committed images available for img2img/inpainting. Please generate and commit an image first.");
             return;
         }
 
@@ -322,29 +333,17 @@ function App() {
 
             let data;
             if (generationMode === "img2img") {
-                // Extract base64 data from data URL
-                const imageDataUrl = inputImageData || (await getBase64Payload(inputImage));
-                if (!imageDataUrl) {
-                    throw new Error("No input image data available");
-                }
-                const base64Data = imageDataUrl.split(",")[1];
                 const img2imgParams = {
                     ...baseParams,
-                    init_images: [base64Data],
+                    genid: timeline.committedHistory[0].genid,
                     denoising_strength: denoisingStrength,
                 };
                 data = await api.img2img(img2imgParams);
             } else if (generationMode === "inpaint") {
-                // Extract base64 data from data URLs
-                const imageDataUrl = inputImageData || (await getBase64Payload(inputImage));
-                if (!imageDataUrl) {
-                    throw new Error("No input image data available");
-                }
-                const base64Data = imageDataUrl.split(",")[1];
                 const maskBase64Data = inpaintMask.split(",")[1];
                 const inpaintParams = {
                     ...baseParams,
-                    init_images: [base64Data],
+                    genid: timeline.committedHistory[0].genid,
                     mask: maskBase64Data,
                     mask_blur: maskBlur,
                     inpainting_fill: inpaintingFill,
@@ -360,14 +359,40 @@ function App() {
 
             if ((data.filesystem_paths && data.filesystem_paths.length > 0) || (data.images && data.images.length > 0)) {
                 // Reload generations from the backend since they now include proper metadata
+                console.log("Loading workspace generations...");
                 await loadWorkspaceGenerations(currentWorkspace);
+                console.log("Workspace generations loaded");
             }
+
+            // Force clear progress after successful generation
+            console.log("Generation completed successfully, clearing progress");
         } catch (error) {
             console.error("Error generating image:", error);
-            alert("Error generating image. Make sure the API server is running on port 7861.");
+
+            // Check for specific error types
+            if (error.message?.includes("Failed to fetch") || error.message?.includes("NetworkError") || error.message?.includes("404")) {
+                // Check if this is likely a missing input image
+                if (generationMode === "inpaint" || generationMode === "img2img") {
+                    alert("Failed to load input image. The image may no longer be available. Please select a different input image.");
+                    // Clear the invalid input image
+                    setInputImage(null);
+                    setInputImageData(null);
+                } else {
+                    alert("Network error occurred. Please check your connection and try again.");
+                }
+            } else if (error.message?.includes("CORS")) {
+                alert("CORS error occurred. This may be due to browser security restrictions.");
+            } else if (error.message?.includes("interrupted") || error.message?.includes("interrupt")) {
+                alert("Generation was interrupted. Please try again.");
+            } else {
+                alert("Error generating image. Make sure the API server is running on port 7861.");
+            }
+
+            // Ensure state is properly reset on error
+            resetGenerationState();
         } finally {
-            setLoading(false);
-            setCurrentTaskId(null); // Clear task ID when done
+            console.log("Finally block: resetting generation state");
+            resetGenerationState();
         }
     };
 
@@ -399,12 +424,22 @@ function App() {
         }
     };
 
+    const resetGenerationState = () => {
+        console.log("Resetting generation state: loading=false, currentTaskId=null");
+        setLoading(false);
+        setCurrentTaskId(null);
+    };
+
     const handleInterrupt = async () => {
         try {
             await api.interrupt();
             console.log("Generation interrupted");
+            // Force cleanup of task state and WebSocket connection
+            resetGenerationState();
         } catch (error) {
             console.error("Error interrupting generation:", error);
+            // Still cleanup state even if interrupt API call fails
+            resetGenerationState();
         }
     };
 
