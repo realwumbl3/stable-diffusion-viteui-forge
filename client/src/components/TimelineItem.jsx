@@ -56,6 +56,7 @@ const TimelineItem = ({
                 <img
                     ref={imgRef}
                     src={getGenerationImageUrl ? getGenerationImageUrl(item, 'preview') : resolveImageSrc(item.image, "preview")}
+                    crossOrigin="anonymous"
                     alt="Timeline item"
                     className="w-full h-full object-contain"
                 />

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 
 interface UseCanvasStateProps {
     displayImage: string | null;
@@ -38,13 +38,17 @@ export function useCanvasState(props: UseCanvasStateProps) {
     // Drawing state
     const [isDrawing, setIsDrawing] = useState(false);
     const [isPanning, setIsPanning] = useState(false);
-    const [lastDrawPos, setLastDrawPos] = useState(null);
+    const lastDrawPosRef = useRef(null);
     const [viewMode, setViewMode] = useState("edit");
     const [mouseButtonDown, setMouseButtonDown] = useState(false);
     const [drawingStartedOnCanvas, setDrawingStartedOnCanvas] = useState(false);
     const [isRightClickPanning, setIsRightClickPanning] = useState(false);
     const [rightClickStartPos, setRightClickStartPos] = useState({ x: 0, y: 0 });
     const [rightClickStartPan, setRightClickStartPan] = useState({ x: 0, y: 0 });
+
+    const setLastDrawPos = useCallback((pos) => {
+        lastDrawPosRef.current = pos;
+    }, []);
 
     // Mask visibility state
     const [showMask, setShowMask] = useState(true);
@@ -276,7 +280,7 @@ export function useCanvasState(props: UseCanvasStateProps) {
         };
     }, []);
 
-    return {
+    return useMemo(() => ({
         // State
         zoom,
         setZoom,
@@ -289,7 +293,7 @@ export function useCanvasState(props: UseCanvasStateProps) {
         isDrawing,
         setIsDrawing,
         isPanning,
-        lastDrawPos,
+        lastDrawPosRef,
         setLastDrawPos,
         viewMode,
         setViewMode,
@@ -323,5 +327,50 @@ export function useCanvasState(props: UseCanvasStateProps) {
         stopPan,
         setMaskVisibility,
         togglePreviewMode,
-    };
+    }), [
+        zoom,
+        setZoom,
+        showGrid,
+        setShowGrid,
+        fitToScreen,
+        setFitToScreen,
+        panOffset,
+        setPanOffset,
+        isDrawing,
+        setIsDrawing,
+        isPanning,
+        // lastDrawPosRef is a ref, doesn't need to be in dependencies for correctness,
+        // but setLastDrawPos is a stable callback now.
+        setLastDrawPos,
+        viewMode,
+        setViewMode,
+        mouseButtonDown,
+        setMouseButtonDown,
+        drawingStartedOnCanvas,
+        setDrawingStartedOnCanvas,
+        isRightClickPanning,
+        setIsRightClickPanning,
+        rightClickStartPos,
+        setRightClickStartPos,
+        rightClickStartPan,
+        setRightClickStartPan,
+        showMask,
+        showBorder,
+        setShowBorder,
+        lastMaskVisibility,
+        hasRememberedMaskSetting,
+        footerCollapsed,
+        setFooterCollapsed,
+        getDisplayDimensions,
+        calculateFitToScreenScale,
+        calculateCenterOffset,
+        handleZoomIn,
+        handleZoomOut,
+        handleResetZoom,
+        handleFitToScreen,
+        startPan,
+        stopPan,
+        setMaskVisibility,
+        togglePreviewMode,
+    ]);
 }

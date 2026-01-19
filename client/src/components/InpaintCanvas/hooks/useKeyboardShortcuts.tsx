@@ -1,5 +1,16 @@
 import { useEffect } from "react";
 
+interface UseKeyboardShortcutsParams {
+    brushSize: number;
+    setBrushSize: React.Dispatch<React.SetStateAction<number>>;
+    brushHardness: number;
+    setBrushHardness: React.Dispatch<React.SetStateAction<number>>;
+    setDrawingMode: React.Dispatch<React.SetStateAction<string>>;
+    clearMask: () => void;
+    undoMask: () => void;
+    redoMask: () => void;
+}
+
 export function useKeyboardShortcuts({
     brushSize,
     setBrushSize,
@@ -9,10 +20,10 @@ export function useKeyboardShortcuts({
     clearMask,
     undoMask,
     redoMask,
-}) {
+}: UseKeyboardShortcutsParams) {
     useEffect(() => {
-        const handleKeyDown = (e) => {
-            if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
 
             if (e.ctrlKey || e.metaKey) {
                 switch (e.key.toLowerCase()) {

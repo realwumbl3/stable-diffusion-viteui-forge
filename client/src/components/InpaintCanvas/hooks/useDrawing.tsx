@@ -1,4 +1,20 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
+
+interface UseDrawingParams {
+    inputImage: string | null;
+    setInpaintMask: React.Dispatch<React.SetStateAction<string | null>>;
+    inpaintFullRes: boolean;
+    inpaintFullResPadding: number;
+    imageRef: React.RefObject<HTMLImageElement>;
+    maskCanvasRef: React.RefObject<HTMLCanvasElement>;
+    borderCanvasRef: React.RefObject<HTMLCanvasElement>;
+    brushSize: number;
+    drawingMode: string;
+    brushHardness: number;
+    fillTarget: string;
+    fillTolerance: number;
+    fillOverfill: number;
+}
 
 export function useDrawing({
     inputImage,
@@ -14,10 +30,11 @@ export function useDrawing({
     fillTarget,
     fillTolerance,
     fillOverfill,
-}) {
+}: UseDrawingParams) {
     // Undo/Redo system
     const [maskHistory, setMaskHistory] = useState<ImageData[]>([]);
     const [historyIndex, setHistoryIndex] = useState(-1);
+
 
     // Initialize canvases when input image loads (not when result changes)
     useEffect(() => {
@@ -82,7 +99,7 @@ export function useDrawing({
     }, [inputImage]);
 
     // Drawing functions
-    const getCanvasCoordinates = useCallback((e) => {
+    const getCanvasCoordinates = useCallback((e: React.MouseEvent<HTMLImageElement>) => {
         if (!imageRef.current) return { x: 0, y: 0 };
 
         const rect = imageRef.current.getBoundingClientRect();
@@ -98,44 +115,34 @@ export function useDrawing({
         return { x, y };
     }, []);
 
-    const drawBrushPoint = useCallback((x, y) => {
+    const drawBrush = useCallback((x: number, y: number, lastDrawPos: { x: number, y: number }) => {
         if (!maskCanvasRef.current) return;
 
         const ctx = maskCanvasRef.current.getContext("2d");
+        if (!ctx) return;
         ctx.globalCompositeOperation = drawingMode === "erase" ? "destination-out" : "source-over";
-        ctx.fillStyle = `rgba(255, 0, 0, ${brushHardness})`;
 
-        ctx.beginPath();
-        ctx.arc(x, y, brushSize / 2, 0, 2 * Math.PI);
-        ctx.fill();
-    }, [drawingMode, brushHardness, brushSize]);
-
-    const drawBrushLine = useCallback((fromX, fromY, toX, toY) => {
-        if (!maskCanvasRef.current) return;
-
-        const ctx = maskCanvasRef.current.getContext("2d");
-        ctx.globalCompositeOperation = drawingMode === "erase" ? "destination-out" : "source-over";
-        ctx.strokeStyle = `rgba(255, 0, 0, ${brushHardness})`;
-        ctx.lineWidth = brushSize;
-        ctx.lineCap = "round";
-        ctx.lineJoin = "round";
-
-        ctx.beginPath();
-        ctx.moveTo(fromX, fromY);
-        ctx.lineTo(toX, toY);
-        ctx.stroke();
-    }, [drawingMode, brushHardness, brushSize]);
-
-    const drawBrush = useCallback((x, y, lastDrawPos) => {
-        if (!maskCanvasRef.current) return;
         if (lastDrawPos) {
             // Draw a line from last position to current position
-            drawBrushLine(lastDrawPos.x, lastDrawPos.y, x, y);
+            ctx.strokeStyle = `rgba(255, 0, 0, ${brushHardness})`;
+            ctx.lineWidth = brushSize;
+            ctx.lineCap = "round";
+            ctx.lineJoin = "round";
+
+            ctx.beginPath();
+            ctx.moveTo(lastDrawPos.x, lastDrawPos.y);
+            ctx.lineTo(x, y);
+            ctx.stroke();
         } else {
             // First point, draw a circle
-            drawBrushPoint(x, y);
+            ctx.fillStyle = `rgba(255, 0, 0, ${brushHardness})`;
+
+            ctx.beginPath();
+            ctx.arc(x, y, brushSize / 2, 0, 2 * Math.PI);
+            ctx.fill();
         }
-    }, [drawBrushLine, drawBrushPoint]);
+    }, [drawingMode, brushHardness, brushSize]);
+
 
     const getMaskDataUrl = useCallback(() => {
         if (!maskCanvasRef.current) return null;
@@ -178,6 +185,7 @@ export function useDrawing({
         if (canvas.width === 0 || canvas.height === 0) return null;
 
         const ctx = canvas.getContext("2d");
+        if (!ctx) return null;
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         const { data, width, height } = imageData;
 
@@ -220,7 +228,9 @@ export function useDrawing({
         const canvas = maskCanvasRef.current;
         if (canvas.width === 0 || canvas.height === 0) return;
 
-        const imageData = canvas.getContext("2d").getImageData(0, 0, canvas.width, canvas.height);
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
         setMaskHistory((prev) => {
             // Remove any history after current index (for when user drew after undoing)
@@ -241,13 +251,14 @@ export function useDrawing({
     const clearMask = useCallback(() => {
         if (maskCanvasRef.current) {
             const ctx = maskCanvasRef.current.getContext("2d");
+            if (!ctx) return;
             ctx.clearRect(0, 0, maskCanvasRef.current.width, maskCanvasRef.current.height);
             setInpaintMask(null);
             saveMaskState();
         }
     }, [saveMaskState, setInpaintMask]);
 
-    const fillAtPoint = useCallback((x, y) => {
+    const fillAtPoint = useCallback((x: number, y: number) => {
         if (!maskCanvasRef.current || !imageRef.current) return;
 
         const canvas = maskCanvasRef.current;
@@ -258,6 +269,7 @@ export function useDrawing({
         if (startX < 0 || startY < 0 || startX >= canvas.width || startY >= canvas.height) return;
 
         const maskCtx = canvas.getContext("2d");
+        if (!maskCtx) return;
         const maskImageData = maskCtx.getImageData(0, 0, canvas.width, canvas.height);
         const maskData = maskImageData.data;
 
@@ -393,6 +405,7 @@ export function useDrawing({
         if (!borderCanvasRef.current || !inpaintFullRes || inpaintFullResPadding <= 0) {
             if (borderCanvasRef.current) {
                 const ctx = borderCanvasRef.current.getContext("2d");
+                if (!ctx) return;
                 ctx.clearRect(0, 0, borderCanvasRef.current.width, borderCanvasRef.current.height);
             }
             return;
@@ -402,6 +415,7 @@ export function useDrawing({
         const ctx = canvas.getContext("2d");
 
         // Clear canvas
+        if (!ctx) return;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
         // Get mask bounds
@@ -447,6 +461,7 @@ export function useDrawing({
             const canvas = maskCanvasRef.current;
             if (canvas && maskHistory[newIndex]) {
                 const ctx = canvas.getContext("2d");
+                if (!ctx) return;
                 ctx.putImageData(maskHistory[newIndex], 0, 0);
 
                 // Update inpaint mask
@@ -465,6 +480,7 @@ export function useDrawing({
             const canvas = maskCanvasRef.current;
             if (canvas && maskHistory[newIndex]) {
                 const ctx = canvas.getContext("2d");
+                if (!ctx) return;
                 ctx.putImageData(maskHistory[newIndex], 0, 0);
 
                 // Update inpaint mask
@@ -478,7 +494,7 @@ export function useDrawing({
     const canUndo = historyIndex > 0;
     const canRedo = historyIndex < maskHistory.length - 1;
 
-    return {
+    return useMemo(() => ({
         // Functions
         getCanvasCoordinates,
         drawBrush,
@@ -490,5 +506,16 @@ export function useDrawing({
         redoMask,
         canUndo,
         canRedo,
-    };
+    }), [
+        getCanvasCoordinates,
+        drawBrush,
+        getMaskDataUrl,
+        clearMask,
+        fillAtPoint,
+        saveMaskState,
+        undoMask,
+        redoMask,
+        canUndo,
+        canRedo,
+    ]);
 }

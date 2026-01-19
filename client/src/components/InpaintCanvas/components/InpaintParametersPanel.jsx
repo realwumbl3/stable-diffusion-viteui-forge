@@ -1,5 +1,6 @@
 // VITE UI
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
+import { Minus, Plus } from "lucide-react";
 import { cn } from "../../../lib/utils";
 
 const InpaintParametersPanel = ({
@@ -18,9 +19,34 @@ const InpaintParametersPanel = ({
     // Invert mask parameters
     inpaintingMaskInvert,
     setInpaintingMaskInvert,
+    // Full res padding parameters
+    inpaintFullResPadding,
+    setInpaintFullResPadding,
 }) => {
+    const paddingControlRef = useRef(null);
+
+    useEffect(() => {
+        const element = paddingControlRef.current;
+        if (!element) return;
+
+        const handleWheel = (e) => {
+            e.preventDefault();
+            if (e.deltaY > 0) {
+                setInpaintFullResPadding(Math.max(0, inpaintFullResPadding - 64));
+            } else {
+                setInpaintFullResPadding(Math.min(1024, inpaintFullResPadding + 64));
+            }
+        };
+
+        element.addEventListener("wheel", handleWheel, { passive: false });
+
+        return () => {
+            element.removeEventListener("wheel", handleWheel);
+        };
+    }, [inpaintFullResPadding, setInpaintFullResPadding]);
+
     return (
-        <div className="absolute bottom-4 left-4 z-20">
+        <div className="absolute bottom-4 right-4 z-20">
             <div className="studio-panel p-2 w-56">
                 <div className="flex flex-col gap-2">
                     <div className="text-xs font-semibold text-studio-text border-b border-studio-border pb-1">
@@ -107,6 +133,38 @@ const InpaintParametersPanel = ({
                             </button>
                         </div>
                     </div>
+
+                    {/* Full Resolution Padding */}
+                    {inpaintFullRes && (
+                        <div className="flex flex-col gap-1">
+                            <label className="text-xs text-studio-text font-medium">Padding</label>
+                            <div
+                                ref={paddingControlRef}
+                                className="flex items-center gap-1 cursor-pointer"
+                                title="Scroll to adjust padding (64px increments)"
+                            >
+                                <button
+                                    onClick={() => setInpaintFullResPadding(Math.max(0, inpaintFullResPadding - 8))}
+                                    className="studio-btn-ghost p-1"
+                                    title="Decrease Padding"
+                                >
+                                    <Minus size={12} />
+                                </button>
+                                <div className="flex items-center px-2 py-1 bg-studio-surface rounded border border-studio-border min-w-[45px] justify-center">
+                                    <span className="text-xs font-medium text-studio-text">
+                                        {inpaintFullResPadding}
+                                    </span>
+                                </div>
+                                <button
+                                    onClick={() => setInpaintFullResPadding(Math.min(1024, inpaintFullResPadding + 8))}
+                                    className="studio-btn-ghost p-1"
+                                    title="Increase Padding"
+                                >
+                                    <Plus size={12} />
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

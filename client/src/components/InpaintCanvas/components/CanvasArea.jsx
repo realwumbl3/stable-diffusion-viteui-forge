@@ -1,6 +1,6 @@
 import { Upload } from "lucide-react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { cn } from "../../../lib/utils";
-import BrushSettings from "./BrushSettings.jsx";
 import InpaintParametersPanel from "./InpaintParametersPanel.jsx";
 
 const CanvasArea = ({
@@ -26,13 +26,12 @@ const CanvasArea = ({
     showBorder,
     inpaintFullRes,
     inpaintFullResPadding,
+    setInpaintFullResPadding,
     viewMode,
     isDrawing,
     setLastDrawPos,
     brushSize,
     setBrushSize,
-    brushHardness,
-    setBrushHardness,
     isDragOver,
     handleDragOver,
     handleDragLeave,
@@ -41,6 +40,7 @@ const CanvasArea = ({
     handleMouseMove,
     handleMouseUp,
     handleMouseEnter,
+    drawingMode,
     openFileDialog,
     // Inpaint parameters
     maskBlur,
@@ -53,8 +53,107 @@ const CanvasArea = ({
     inpaintingMaskInvert,
     setInpaintingMaskInvert,
     uiVisible = true,
+    scrollWheelZoomIncrement = 4,
 }) => {
     const mainImageSrc = viewMode === "edit" ? livePreview || inputImage || displayImage : displayImage || inputImage;
+
+    // Brush size indicator state
+    const [showBrushIndicator, setShowBrushIndicator] = useState(false);
+    const cursorPointRef = useRef(null);
+    const brushIndicatorRef = useRef(null);
+    const isMouseOverCanvas = useRef(false);
+    const lastMousePos = useRef({ x: 0, y: 0 });
+
+    // Supported tools that show brush indicator
+    const supportedBrushTools = ["brush", "erase"];
+
+    // Show brush indicator when input image is available and drawing mode is supported
+    useEffect(() => {
+        if (inputImage && supportedBrushTools.includes(drawingMode)) {
+            setShowBrushIndicator(true);
+        } else {
+            setShowBrushIndicator(false);
+        }
+    }, [inputImage, drawingMode]);
+
+    // Alt + scroll for brush size adjustment
+    useEffect(() => {
+        const canvasElement = canvasRef.current;
+        if (!canvasElement) return;
+
+        const handleWheel = (e) => {
+            if (e.altKey) {
+                e.preventDefault();
+                setBrushSize(prevSize => Math.max(1, Math.min(200, prevSize + scrollWheelZoomIncrement * (e.deltaY > 0 ? -1 : 1))));
+            }
+        };
+
+        canvasElement.addEventListener('wheel', handleWheel, { passive: false });
+        return () => canvasElement.removeEventListener('wheel', handleWheel);
+    }, [canvasRef, setBrushSize]);
+
+    // Optimized mouse tracking for brush indicator
+    useEffect(() => {
+        const canvasElement = canvasRef.current;
+        if (!canvasElement) return;
+
+        let animationFrameId = null;
+
+        const updateIndicatorPosition = (e) => {
+            if (!isMouseOverCanvas.current) return;
+
+            const cursorPointElement = cursorPointRef.current;
+            if (!cursorPointElement) return;
+
+            const rect = canvasElement.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            // Store last mouse position for zoom updates
+            lastMousePos.current = { x, y };
+
+            // Position the 0x0 cursor point element exactly at mouse position
+            if (animationFrameId === null) {
+                animationFrameId = requestAnimationFrame(() => {
+                    cursorPointElement.style.transform = `translate(${x}px, ${y}px)`;
+                    animationFrameId = null;
+                });
+            }
+        };
+
+        const handleMouseEnter = () => {
+            isMouseOverCanvas.current = true;
+        };
+
+        const handleMouseLeave = () => {
+            isMouseOverCanvas.current = false;
+        };
+
+        canvasElement.addEventListener('mousemove', updateIndicatorPosition);
+        canvasElement.addEventListener('mouseenter', handleMouseEnter);
+        canvasElement.addEventListener('mouseleave', handleMouseLeave);
+
+        return () => {
+            canvasElement.removeEventListener('mousemove', updateIndicatorPosition);
+            canvasElement.removeEventListener('mouseenter', handleMouseEnter);
+            canvasElement.removeEventListener('mouseleave', handleMouseLeave);
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+            }
+        };
+    }, [canvasRef, brushSize, zoom]);
+
+    // Update cursor position after zoom changes to prevent uncentering
+    useEffect(() => {
+        if (!isMouseOverCanvas.current) return;
+
+        const cursorPointElement = cursorPointRef.current;
+        if (!cursorPointElement) return;
+
+        // Update position using stored mouse coordinates (relative to canvas)
+        const { x, y } = lastMousePos.current;
+        cursorPointElement.style.transform = `translate(${x}px, ${y}px)`;
+    }, [zoom]);
 
     // Loading State - Show when generating
     if (loading && !displayImage && !inputImage) {
@@ -106,130 +205,157 @@ const CanvasArea = ({
                             isPanning || isRightClickPanning
                                 ? "grabbing"
                                 : "crosshair"
-                                ? "crosshair"
-                                : isDragOver
-                                ? "copy"
-                                : "default",
+                                    ? "crosshair"
+                                    : isDragOver
+                                        ? "copy"
+                                        : "default",
                     }}
                     onDragOver={handleDragOver}
                     onDragLeave={handleDragLeave}
                     onDrop={handleDrop}
                 >
-                {/* Transformed canvas content */}
-                <div
-                    ref={panTargetRef}
-                    className="relative"
-                    style={{
-                        transform: `translate3d(${panOffset.x}px, ${panOffset.y}px, 0) scale(${zoom})`,
-                        transformOrigin: "center",
-                        transition:
-                            fitToScreen || isPanning || isRightClickPanning
-                                ? "none"
-                                : "transform 0.2s ease-out",
-                    }}
-                    onMouseDown={handleMouseDown}
-                    onMouseMove={handleMouseMove}
-                    onMouseUp={handleMouseUp}
-                    onMouseEnter={handleMouseEnter}
-                    onContextMenu={(e) => e.preventDefault()} // Prevent context menu on right-click
-                    onMouseLeave={() => {
-                        // Reset last draw position when leaving canvas to prevent connecting lines
-                        if (isDrawing) {
-                            setLastDrawPos(null);
-                        }
-                    }}
-                >
-                    {/* Grid Overlay */}
-                    {showGrid && (
-                        <div
-                            className="absolute inset-0 pointer-events-none opacity-20"
-                            style={{
-                                backgroundImage: `
+                    {/* Transformed canvas content */}
+                    <div
+                        ref={panTargetRef}
+                        className="relative"
+                        style={{
+                            transform: `translate3d(${panOffset.x}px, ${panOffset.y}px, 0) scale(${zoom})`,
+                            transformOrigin: "center",
+                            transition:
+                                fitToScreen || isPanning || isRightClickPanning
+                                    ? "none"
+                                    : "transform 0.2s ease-out",
+                        }}
+                        onMouseDown={handleMouseDown}
+                        onMouseMove={handleMouseMove}
+                        onMouseUp={handleMouseUp}
+                        onMouseEnter={handleMouseEnter}
+                        onContextMenu={(e) => e.preventDefault()} // Prevent context menu on right-click
+                        onMouseLeave={() => {
+                            // Reset last draw position when leaving canvas to prevent connecting lines
+                            if (isDrawing) {
+                                setLastDrawPos(null);
+                            }
+                        }}
+                    >
+                        {/* Grid Overlay */}
+                        {showGrid && (
+                            <div
+                                className="absolute inset-0 pointer-events-none opacity-20"
+                                style={{
+                                    backgroundImage: `
                       linear-gradient(to right, var(--studio-border) 1px, transparent 1px),
                       linear-gradient(to bottom, var(--studio-border) 1px, transparent 1px)
                     `,
-                                backgroundSize: "32px 32px",
+                                    backgroundSize: "32px 32px",
+                                    width: "100%",
+                                    height: "100%",
+                                }}
+                            />
+                        )}
+
+                        {/* Main Image */}
+                        <img
+                            key={
+                                viewMode === "edit"
+                                    ? livePreview
+                                        ? "live-preview"
+                                        : inputImage
+                                            ? "input-image"
+                                            : "current-image"
+                                    : "result-image"
+                            }
+                            ref={imageRef}
+                            src={mainImageSrc}
+                            crossOrigin="anonymous"
+                            alt={viewMode === "edit" ? "Image to inpaint" : "Inpainted result"}
+                            className="max-w-none shadow-studio-lg rounded-lg"
+                            style={
+                                livePreview && generationWidth && generationHeight
+                                    ? { width: `${generationWidth}px`, height: `${generationHeight}px` }
+                                    : undefined
+                            }
+                            draggable={false}
+                        />
+
+                        {/* Mask Canvas */}
+                        <canvas
+                            ref={maskCanvasRef}
+                            className="absolute inset-0 pointer-events-none"
+                            style={{
                                 width: "100%",
                                 height: "100%",
+                                imageRendering: "pixelated", // Prevent smoothing
+                                opacity: showMask ? 0.8 : 0,
                             }}
                         />
-                    )}
 
-                    {/* Main Image */}
-                    <img
-                        key={
-                            viewMode === "edit"
-                                ? livePreview
-                                    ? "live-preview"
-                                    : inputImage
-                                    ? "input-image"
-                                    : "current-image"
-                                : "result-image"
-                        }
-                        ref={imageRef}
-                        src={mainImageSrc}
-                        alt={viewMode === "edit" ? "Image to inpaint" : "Inpainted result"}
-                        className="max-w-none shadow-studio-lg rounded-lg"
-                        style={
-                            livePreview && generationWidth && generationHeight
-                                ? { width: `${generationWidth}px`, height: `${generationHeight}px` }
-                                : undefined
-                        }
-                        draggable={false}
-                    />
-
-                    {/* Mask Canvas */}
-                    <canvas
-                        ref={maskCanvasRef}
-                        className="absolute inset-0 pointer-events-none"
-                        style={{
-                            width: "100%",
-                            height: "100%",
-                            imageRendering: "pixelated", // Prevent smoothing
-                            opacity: showMask ? 0.8 : 0,
-                        }}
-                    />
-
-                    {/* Border Canvas - Shows padding visualization */}
-                    <canvas
-                        ref={borderCanvasRef}
-                        className="absolute inset-0 pointer-events-none"
-                        style={{
-                            width: "100%",
-                            height: "100%",
-                            opacity: inpaintFullRes && inpaintFullResPadding > 0 && showBorder ? 1 : 0,
-                        }}
-                    />
-                </div>
-
-                {/* Brush Settings Panel - Outside transformed content */}
-                {(displayImage || inputImage) && !isDrawing && (
-                    <div className={`transition-opacity duration-200 ${uiVisible ? 'opacity-100' : 'opacity-0'}`}>
-                        <BrushSettings
-                            brushSize={brushSize}
-                            setBrushSize={setBrushSize}
-                            brushHardness={brushHardness}
-                            setBrushHardness={setBrushHardness}
-                            zoom={zoom}
+                        {/* Border Canvas - Shows padding visualization */}
+                        <canvas
+                            ref={borderCanvasRef}
+                            className="absolute inset-0 pointer-events-none"
+                            style={{
+                                width: "100%",
+                                height: "100%",
+                                opacity: inpaintFullRes && inpaintFullResPadding > 0 && showBorder ? 1 : 0,
+                            }}
                         />
                     </div>
-                )}
 
-                {/* Inpaint Parameters Panel */}
-                <div className={`transition-opacity duration-200 ${uiVisible ? 'opacity-100' : 'opacity-0'}`}>
-                    <InpaintParametersPanel
-                        maskBlur={maskBlur}
-                        setMaskBlur={setMaskBlur}
-                        inpaintingFill={inpaintingFill}
-                        setInpaintingFill={setInpaintingFill}
-                        denoisingStrength={denoisingStrength}
-                        setDenoisingStrength={setDenoisingStrength}
-                        inpaintFullRes={inpaintFullRes}
-                        setInpaintFullRes={setInpaintFullRes}
-                        inpaintingMaskInvert={inpaintingMaskInvert}
-                        setInpaintingMaskInvert={setInpaintingMaskInvert}
-                    />
-                </div>
+                    {/* Cursor Point (0x0 element for precise positioning) */}
+                    {showBrushIndicator && (
+                        <div
+                            ref={cursorPointRef}
+                            className="absolute pointer-events-none z-20"
+                            style={{
+                                left: 0,
+                                top: 0,
+                                width: 0,
+                                height: 0,
+                                transform: 'translate(-50%, -50%)',
+                                willChange: 'transform',
+                            }}
+                        >
+                            {/* Brush Size Indicator absolutely positioned in center of cursor point */}
+                            <div
+                                ref={brushIndicatorRef}
+                                className={`absolute pointer-events-none border-2 border-opacity-60 rounded-full ${
+                                    drawingMode === 'erase'
+                                        ? 'border-red-500'
+                                        : 'border-studio-accent'
+                                }`}
+                                style={{
+                                    top: `${-(brushSize * zoom) / 2}px`,
+                                    left: `${-(brushSize * zoom) / 2}px`,
+                                    width: `${brushSize * zoom}px`,
+                                    height: `${brushSize * zoom}px`,
+                                    backgroundColor: drawingMode === 'erase'
+                                        ? 'rgba(239, 68, 68, 0.1)' // Red with opacity
+                                        : 'rgba(59, 130, 246, 0.1)', // Light blue with opacity
+                                    opacity: isMouseOverCanvas.current ? 1 : 0.7,
+                                }}
+                            />
+                        </div>
+                    )}
+
+
+                    {/* Inpaint Parameters Panel */}
+                    <div className={`transition-opacity duration-200 ${uiVisible ? 'opacity-100' : 'opacity-0'}`}>
+                        <InpaintParametersPanel
+                            maskBlur={maskBlur}
+                            setMaskBlur={setMaskBlur}
+                            inpaintingFill={inpaintingFill}
+                            setInpaintingFill={setInpaintingFill}
+                            denoisingStrength={denoisingStrength}
+                            setDenoisingStrength={setDenoisingStrength}
+                            inpaintFullRes={inpaintFullRes}
+                            setInpaintFullRes={setInpaintFullRes}
+                            inpaintingMaskInvert={inpaintingMaskInvert}
+                            setInpaintingMaskInvert={setInpaintingMaskInvert}
+                            inpaintFullResPadding={inpaintFullResPadding}
+                            setInpaintFullResPadding={setInpaintFullResPadding}
+                        />
+                    </div>
                 </div>
             </div>
         );

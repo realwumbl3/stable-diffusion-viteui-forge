@@ -252,12 +252,13 @@ const Canvas = ({
                 />
               )}
 
-              {/* Main Image */}
+            {/* Main Image */}
             <img
                 key={livePreview ? 'live-preview' : (generationMode === 'img2img' && inputImage && !displayImage ? 'input-image' : 'current-image')}
                 ref={imageRef}
-            src={livePreview || resolvedDisplayImage || (generationMode === 'img2img' ? resolvedInputImage : null)}
-            alt={generationMode === 'img2img' && inputImage && !displayImage ? "Input image for img2img" : "Generated"}
+                src={livePreview || resolvedDisplayImage || (generationMode === 'img2img' ? resolvedInputImage : null)}
+                crossOrigin="anonymous"
+                alt={generationMode === 'img2img' && inputImage && !displayImage ? "Input image for img2img" : "Generated"}
                 className="max-w-none shadow-studio-lg rounded-lg"
                 style={
                   livePreview && generationWidth && generationHeight

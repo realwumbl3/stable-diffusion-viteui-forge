@@ -97,6 +97,7 @@ const UpscaleDialog = ({
             <img
               ref={imgRef}
               src={sourceImage.image}
+              crossOrigin="anonymous"
               alt="Source"
               className="max-w-full max-h-32 object-contain rounded border border-studio-border"
             />

@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useMemo } from "react";
 
 export function useFileHandling({ onImageUpload }) {
     const [isDragOver, setIsDragOver] = useState(false);
@@ -60,7 +60,7 @@ export function useFileHandling({ onImageUpload }) {
         [handleFileSelect]
     );
 
-    return {
+    return useMemo(() => ({
         isDragOver,
         fileInputRef,
         handleFileInput,
@@ -69,5 +69,14 @@ export function useFileHandling({ onImageUpload }) {
         handleDragOver,
         handleDragLeave,
         handleDrop,
-    };
+    }), [
+        isDragOver,
+        fileInputRef,
+        handleFileInput,
+        handleFileSelect,
+        openFileDialog,
+        handleDragOver,
+        handleDragLeave,
+        handleDrop,
+    ]);
 }

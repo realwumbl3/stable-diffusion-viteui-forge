@@ -158,6 +158,9 @@ const InpaintCanvas = ({
         if (!panElement || !canvasElement || (!displayImage && !inputImage && !livePreview)) return;
 
         const handleWheelEvent = (e) => {
+            // Skip zoom if Alt is held (reserved for brush size adjustment)
+            if (e.altKey) return;
+
             if (!e.defaultPrevented) {
                 e.preventDefault();
             }
@@ -270,7 +273,7 @@ const InpaintCanvas = ({
         canvasState.setDrawingStartedOnCanvas(true);
         const { x, y } = drawing.getCanvasCoordinates(e);
         canvasState.setLastDrawPos(null); // Reset last position for new stroke
-        drawing.drawBrush(x, y);
+        drawing.drawBrush(x, y); // Start new stroke
         canvasState.setLastDrawPos({ x, y });
     };
 
@@ -278,7 +281,7 @@ const InpaintCanvas = ({
         if (!canvasState.isDrawing) return;
 
         const { x, y } = drawing.getCanvasCoordinates(e);
-        drawing.drawBrush(x, y, canvasState.lastDrawPos);
+        drawing.drawBrush(x, y, canvasState.lastDrawPosRef.current);
         canvasState.setLastDrawPos({ x, y });
     };
 
@@ -295,8 +298,8 @@ const InpaintCanvas = ({
             // Only resume if entering over a valid target
             canvasState.setIsDrawing(true);
             const { x, y } = drawing.getCanvasCoordinates(e);
-            canvasState.setLastDrawPos(null); // Reset last position for new stroke
-            drawing.drawBrush(x, y);
+            canvasState.setLastDrawPos(null); // Reset last position for resumed stroke
+            drawing.drawBrush(x, y); // Resume drawing at new position
             canvasState.setLastDrawPos({ x, y });
         }
     };
@@ -343,9 +346,6 @@ const InpaintCanvas = ({
                         setShowMask={canvasState.setMaskVisibility}
                         showBorder={canvasState.showBorder}
                         setShowBorder={canvasState.setShowBorder}
-                        inpaintFullRes={inpaintFullRes}
-                        inpaintFullResPadding={inpaintFullResPadding}
-                        setInpaintFullResPadding={setInpaintFullResPadding}
                         onClear={drawing.clearMask}
                         onUndo={drawing.undoMask}
                         onRedo={drawing.redoMask}
@@ -402,6 +402,7 @@ const InpaintCanvas = ({
                 showBorder={canvasState.showBorder}
                 inpaintFullRes={inpaintFullRes}
                 inpaintFullResPadding={inpaintFullResPadding}
+                setInpaintFullResPadding={setInpaintFullResPadding}
                 viewMode={canvasState.viewMode}
                 isDrawing={canvasState.isDrawing}
                 setLastDrawPos={canvasState.setLastDrawPos}
@@ -417,6 +418,7 @@ const InpaintCanvas = ({
                 setBrushSize={setBrushSize}
                 brushHardness={brushHardness}
                 setBrushHardness={setBrushHardness}
+                drawingMode={drawingMode}
                 openFileDialog={fileHandling.openFileDialog}
                 maskBlur={maskBlur}
                 setMaskBlur={setMaskBlur}

@@ -1,5 +1,4 @@
-import { useState, useRef, useEffect } from "react";
-import { Brush, Eraser, PaintBucket, RotateCcw, Undo, Redo, Eye, EyeOff, Minus, Plus, Square } from "lucide-react";
+import { Brush, Eraser, PaintBucket, RotateCcw, Undo, Redo, Eye, EyeOff, Square } from "lucide-react";
 import { cn } from "../../../lib/utils";
 
 const InpaintToolbar = ({
@@ -9,9 +8,6 @@ const InpaintToolbar = ({
     setShowMask,
     showBorder,
     setShowBorder,
-    inpaintFullRes,
-    inpaintFullResPadding,
-    setInpaintFullResPadding,
     fillTarget,
     setFillTarget,
     fillTolerance,
@@ -24,27 +20,6 @@ const InpaintToolbar = ({
     canUndo = false,
     canRedo = false,
 }) => {
-    const paddingControlRef = useRef(null);
-
-    useEffect(() => {
-        const element = paddingControlRef.current;
-        if (!element) return;
-
-        const handleWheel = (e) => {
-            e.preventDefault();
-            if (e.deltaY > 0) {
-                setInpaintFullResPadding(Math.max(0, inpaintFullResPadding - 64));
-            } else {
-                setInpaintFullResPadding(Math.min(1024, inpaintFullResPadding + 64));
-            }
-        };
-
-        element.addEventListener("wheel", handleWheel, { passive: false });
-
-        return () => {
-            element.removeEventListener("wheel", handleWheel);
-        };
-    }, [inpaintFullResPadding, setInpaintFullResPadding]);
     const tools = [
         {
             id: "brush",
@@ -192,39 +167,6 @@ const InpaintToolbar = ({
                     </button>
                 </div>
 
-                {/* Padding Control */}
-                {inpaintFullRes && (
-                    <div className="flex flex-col gap-1">
-                        <div className="flex flex-col items-center gap-1">
-                            <div
-                                ref={paddingControlRef}
-                                className="flex items-center gap-1 cursor-pointer"
-                                title="Scroll to adjust padding (64px increments)"
-                            >
-                                <button
-                                    onClick={() => setInpaintFullResPadding(Math.max(0, inpaintFullResPadding - 8))}
-                                    className="studio-btn-ghost p-1"
-                                    title="Decrease Padding"
-                                >
-                                    <Minus size={12} />
-                                </button>
-                                <div className="flex items-center px-2 py-1 bg-studio-surface rounded border border-studio-border min-w-[45px] justify-center">
-                                    <span className="text-xs font-medium text-studio-text">
-                                        {inpaintFullResPadding}
-                                    </span>
-                                </div>
-                                <button
-                                    onClick={() => setInpaintFullResPadding(Math.min(1024, inpaintFullResPadding + 8))}
-                                    className="studio-btn-ghost p-1"
-                                    title="Increase Padding"
-                                >
-                                    <Plus size={12} />
-                                </button>
-                            </div>
-                            <span className="text-xs text-studio-textSecondary text-center">Padding</span>
-                        </div>
-                    </div>
-                )}
 
                 {/* Undo/Redo (Optional) */}
                 {(canUndo || canRedo) && (

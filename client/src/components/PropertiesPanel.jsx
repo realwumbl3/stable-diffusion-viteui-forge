@@ -128,6 +128,7 @@ const PropertiesPanel = ({
                                                         <div className="relative">
                                                             <img
                                                                 src={inputImage}
+                                                                crossOrigin="anonymous"
                                                                 alt="Input"
                                                                 className="w-full h-32 object-cover rounded-lg border border-studio-border"
                                                             />

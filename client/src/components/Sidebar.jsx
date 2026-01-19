@@ -197,6 +197,7 @@ const Sidebar = ({
                       <img
                         ref={canvasImgRef}
                         src={resolveImageSrc(currentImage, "full")}
+                        crossOrigin="anonymous"
                         alt="Canvas"
                         className="w-full object-contain"
                       />

@@ -64,28 +64,7 @@ const Header = ({
       {/* Center Section - Main Actions */}
       <div className="flex-1 flex justify-center">
         <div className="flex items-center gap-2">
-          {/* Skip and Interrupt buttons - only show when generating */}
-          {loading && (
-            <div className="flex items-center gap-2">
-              <button
-                onClick={onSkip}
-                className="studio-btn-secondary flex items-center gap-2 px-4 py-2 text-sm hover:bg-studio-accent/20"
-                title="Skip current generation"
-              >
-                <SkipForward size={16} />
-                Skip
-              </button>
-              <button
-                onClick={onInterrupt}
-                className="studio-btn-secondary flex items-center gap-2 px-4 py-2 text-sm hover:bg-studio-accent/20"
-                title="Interrupt all generations"
-              >
-                <Square size={16} />
-                End
-              </button>
-            </div>
-          )}
-
+          {/* Skip and Interrupt buttons moved to right section */}
         </div>
       </div>
 
@@ -139,6 +118,28 @@ const Header = ({
             </>
           )}
         </button>
+
+        {/* Skip and Interrupt buttons - only show when generating */}
+        {loading && (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onSkip}
+              className="studio-btn-secondary flex items-center gap-2 px-4 py-2 text-sm hover:bg-studio-accent/20"
+              title="Skip current generation"
+            >
+              <SkipForward size={16} />
+              Skip
+            </button>
+            <button
+              onClick={onInterrupt}
+              className="studio-btn-secondary flex items-center gap-2 px-4 py-2 text-sm hover:bg-studio-accent/20"
+              title="Interrupt all generations"
+            >
+              <Square size={16} />
+              End
+            </button>
+          </div>
+        )}
 
         {/* Steps and Count controls */}
         <div className="flex items-center gap-3">

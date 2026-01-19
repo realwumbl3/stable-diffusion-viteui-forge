@@ -1,3 +1,4 @@
+# VITE UI
 import mimetypes
 from pathlib import Path
 from typing import Callable
@@ -30,4 +31,8 @@ class WorkspaceImageServer:
         else:
             media_type, _ = mimetypes.guess_type(str(asset_path))
 
-        return FileResponse(asset_path, media_type=media_type or "application/octet-stream")
+        #+ Add CORS header to allow images to be read by canvas without tainting
+        response = FileResponse(asset_path, media_type=media_type or "application/octet-stream")
+        response.headers["Access-Control-Allow-Origin"] = "*"
+        return response
+        #+end
