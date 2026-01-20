@@ -54,6 +54,7 @@ const CanvasArea = ({
     setInpaintingMaskInvert,
     uiVisible = true,
     scrollWheelZoomIncrement = 4,
+    generationMode = "txt2img",
 }) => {
     const mainImageSrc = viewMode === "edit" ? livePreview || inputImage || displayImage : displayImage || inputImage;
 
@@ -161,19 +162,19 @@ const CanvasArea = ({
             <div className="flex-1 overflow-hidden min-h-0" style={{ minHeight: "400px" }}>
                 <div className="w-full h-full flex items-center justify-center p-8">
                     <div className="text-center">
-                        <div className="w-24 h-24 border-4 border-studio-accent border-t-transparent rounded-full animate-spin mx-auto mb-6" />
+                        <div className="w-16 h-16 border-3 border-studio-accent border-t-transparent rounded-full animate-spin mx-auto mb-2" />
                         {progress ? (
                             <>
-                                <p className="text-studio-text text-lg mb-4">
+                                <p className="text-studio-text text-sm mb-2">
                                     {progress.textinfo || "Generating image..."}
                                 </p>
-                                <div className="w-64 h-3 bg-studio-bg/30 rounded-full overflow-hidden mb-2">
+                                <div className="w-64 h-2 bg-studio-bg/30 rounded-full overflow-hidden mb-2">
                                     <div
                                         className="h-full bg-studio-accent transition-all duration-300 ease-out"
                                         style={{ width: `${progress.progress * 100}%` }}
                                     />
                                 </div>
-                                <p className="text-studio-textSecondary text-sm">
+                                <p className="text-studio-textSecondary text-xs">
                                     {Math.round(progress.progress * 100)}%
                                     {progress.total_batches > 1 &&
                                         ` • Batch ${progress.current_batch}/${progress.total_batches}`}
@@ -181,7 +182,7 @@ const CanvasArea = ({
                                 </p>
                             </>
                         ) : (
-                            <p className="text-studio-textSecondary text-lg">Starting generation...</p>
+                            <p className="text-studio-textSecondary text-sm">Starting generation...</p>
                         )}
                     </div>
                 </div>
@@ -340,22 +341,24 @@ const CanvasArea = ({
 
 
                     {/* Inpaint Parameters Panel */}
-                    <div className={`transition-opacity duration-200 ${uiVisible ? 'opacity-100' : 'opacity-0'}`}>
-                        <InpaintParametersPanel
-                            maskBlur={maskBlur}
-                            setMaskBlur={setMaskBlur}
-                            inpaintingFill={inpaintingFill}
-                            setInpaintingFill={setInpaintingFill}
-                            denoisingStrength={denoisingStrength}
-                            setDenoisingStrength={setDenoisingStrength}
-                            inpaintFullRes={inpaintFullRes}
-                            setInpaintFullRes={setInpaintFullRes}
-                            inpaintingMaskInvert={inpaintingMaskInvert}
-                            setInpaintingMaskInvert={setInpaintingMaskInvert}
-                            inpaintFullResPadding={inpaintFullResPadding}
-                            setInpaintFullResPadding={setInpaintFullResPadding}
-                        />
-                    </div>
+                    {generationMode === "inpaint" && (
+                        <div className={`transition-opacity duration-200 ${uiVisible ? 'opacity-100' : 'opacity-0'}`}>
+                            <InpaintParametersPanel
+                                maskBlur={maskBlur}
+                                setMaskBlur={setMaskBlur}
+                                inpaintingFill={inpaintingFill}
+                                setInpaintingFill={setInpaintingFill}
+                                denoisingStrength={denoisingStrength}
+                                setDenoisingStrength={setDenoisingStrength}
+                                inpaintFullRes={inpaintFullRes}
+                                setInpaintFullRes={setInpaintFullRes}
+                                inpaintingMaskInvert={inpaintingMaskInvert}
+                                setInpaintingMaskInvert={setInpaintingMaskInvert}
+                                inpaintFullResPadding={inpaintFullResPadding}
+                                setInpaintFullResPadding={setInpaintFullResPadding}
+                            />
+                        </div>
+                    )}
                 </div>
             </div>
         );

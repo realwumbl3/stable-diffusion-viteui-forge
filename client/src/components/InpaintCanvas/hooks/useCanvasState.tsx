@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 
 interface UseCanvasStateProps {
     displayImage: string | null;
@@ -38,7 +38,8 @@ export function useCanvasState(props: UseCanvasStateProps) {
     // Drawing state
     const [isDrawing, setIsDrawing] = useState(false);
     const [isPanning, setIsPanning] = useState(false);
-    const lastDrawPosRef = useRef(null);
+    const [panType, setPanType] = useState<'shift' | 'right-click' | null>(null);
+    const lastDrawPosRef = useRef<{ x: number; y: number } | null>(null);
     const [viewMode, setViewMode] = useState("edit");
     const [mouseButtonDown, setMouseButtonDown] = useState(false);
     const [drawingStartedOnCanvas, setDrawingStartedOnCanvas] = useState(false);
@@ -46,7 +47,7 @@ export function useCanvasState(props: UseCanvasStateProps) {
     const [rightClickStartPos, setRightClickStartPos] = useState({ x: 0, y: 0 });
     const [rightClickStartPan, setRightClickStartPan] = useState({ x: 0, y: 0 });
 
-    const setLastDrawPos = useCallback((pos) => {
+    const setLastDrawPos = useCallback((pos: { x: number; y: number } | null) => {
         lastDrawPosRef.current = pos;
     }, []);
 
@@ -93,33 +94,11 @@ export function useCanvasState(props: UseCanvasStateProps) {
         return scale;
     }, [getDisplayDimensions, fitToScreenPadding]);
 
-    const calculateCenterOffset = useCallback((scale) => {
+    const calculateCenterOffset = useCallback((scale: number) => {
         // The flexbox centering works for vertical alignment, but horizontal might need adjustment
         // Try offsetting by half the fit-to-screen padding amount to compensate
         return { x: -(fitToScreenPadding / 2), y: 0 };
     }, [fitToScreenPadding]);
-
-    // Auto-fit to screen when image changes
-    useEffect(() => {
-        if ((displayImage || inputImage || livePreview) && fitToScreen) {
-            // Small delay to ensure image is loaded
-            const timer = setTimeout(() => {
-                const scale = calculateFitToScreenScale();
-                setZoom(scale);
-                setPanOffset(calculateCenterOffset(scale));
-            }, 100);
-            return () => clearTimeout(timer);
-        }
-    }, [
-        displayImage,
-        inputImage,
-        livePreview,
-        generationWidth,
-        generationHeight,
-        fitToScreen,
-        calculateFitToScreenScale,
-        calculateCenterOffset,
-    ]);
 
     // Update view mode based on available images
     useEffect(() => {
@@ -147,13 +126,14 @@ export function useCanvasState(props: UseCanvasStateProps) {
             setShowMask(lastMaskVisibility);
             setHasRememberedMaskSetting(false);
         }
-    }, [previewImage]); // Remove showMask from dependencies to avoid cycles
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [previewImage]); // showMask intentionally omitted to avoid cycles
 
     // Zoom functions
     const handleZoomIn = useCallback(() => {
         const zoomFactor = 1.2;
-        setZoom((prev) => {
-            const newZoom = Math.min(prev * zoomFactor, 5);
+        setZoom((prevZoom: number) => {
+            const newZoom = Math.min(prevZoom * zoomFactor, 5);
             setFitToScreen(false);
 
             // Zoom towards center of viewport for button zoom
@@ -161,26 +141,28 @@ export function useCanvasState(props: UseCanvasStateProps) {
             const centerY = 0;
 
             // Calculate the position in the untransformed coordinate system
-            const imageX = (centerX - panOffset.x) / prev;
-            const imageY = (centerY - panOffset.y) / prev;
+            setPanOffset((prevPan: { x: number; y: number }) => {
+                const imageX = (centerX - prevPan.x) / prevZoom;
+                const imageY = (centerY - prevPan.y) / prevZoom;
 
-            // Calculate new pan offset so the center point stays centered
-            const newPanX = centerX - imageX * newZoom;
-            const newPanY = centerY - imageY * newZoom;
+                // Calculate new pan offset so the center point stays centered
+                const newPanX = centerX - imageX * newZoom;
+                const newPanY = centerY - imageY * newZoom;
 
-            setPanOffset({
-                x: newPanX,
-                y: newPanY,
+                return {
+                    x: newPanX,
+                    y: newPanY,
+                };
             });
 
             return newZoom;
         });
-    }, [panOffset.x, panOffset.y]);
+    }, []);
 
     const handleZoomOut = useCallback(() => {
         const zoomFactor = 1.2;
-        setZoom((prev) => {
-            const newZoom = Math.max(prev / zoomFactor, 0.1);
+        setZoom((prevZoom: number) => {
+            const newZoom = Math.max(prevZoom / zoomFactor, 0.1);
             setFitToScreen(false);
 
             // Zoom towards center of viewport for button zoom
@@ -188,21 +170,23 @@ export function useCanvasState(props: UseCanvasStateProps) {
             const centerY = 0;
 
             // Calculate the position in the untransformed coordinate system
-            const imageX = (centerX - panOffset.x) / prev;
-            const imageY = (centerY - panOffset.y) / prev;
+            setPanOffset((prevPan: { x: number; y: number }) => {
+                const imageX = (centerX - prevPan.x) / prevZoom;
+                const imageY = (centerY - prevPan.y) / prevZoom;
 
-            // Calculate new pan offset so the center point stays centered
-            const newPanX = centerX - imageX * newZoom;
-            const newPanY = centerY - imageY * newZoom;
+                // Calculate new pan offset so the center point stays centered
+                const newPanX = centerX - imageX * newZoom;
+                const newPanY = centerY - imageY * newZoom;
 
-            setPanOffset({
-                x: newPanX,
-                y: newPanY,
+                return {
+                    x: newPanX,
+                    y: newPanY,
+                };
             });
 
             return newZoom;
         });
-    }, [panOffset.x, panOffset.y]);
+    }, []);
 
     const handleResetZoom = useCallback(() => {
         setZoom(1);
@@ -220,9 +204,10 @@ export function useCanvasState(props: UseCanvasStateProps) {
     }, [calculateFitToScreenScale, calculateCenterOffset]);
 
     // Pan functions
-    const startPan = useCallback((e) => {
+    const startPan = useCallback((e: React.MouseEvent) => {
         if (!panTargetRef.current) return;
         e.preventDefault();
+        setPanType('shift');
         panTargetRef.current.requestPointerLock();
     }, []);
 
@@ -233,7 +218,7 @@ export function useCanvasState(props: UseCanvasStateProps) {
     }, []);
 
     // Custom mask setter that preserves setting when in canvas mode
-    const setMaskVisibility = useCallback((newVisibility) => {
+    const setMaskVisibility = useCallback((newVisibility: boolean) => {
         setShowMask(newVisibility);
         // Only update remembered setting when not in preview mode
         if (!previewImage) {
@@ -245,7 +230,7 @@ export function useCanvasState(props: UseCanvasStateProps) {
 
     // Toggle preview mode
     const togglePreviewMode = useCallback(() => {
-        setViewMode((prev) => (prev === "edit" ? "result" : "edit"));
+        setViewMode((prev: string) => (prev === "edit" ? "result" : "edit"));
     }, []);
 
     // Mouse and pointer lock event handlers
@@ -253,9 +238,13 @@ export function useCanvasState(props: UseCanvasStateProps) {
         const handlePointerLockChange = () => {
             const locked = document.pointerLockElement === panTargetRef.current;
             setIsPanning(locked);
+            if (!locked) {
+                setPanType(null);
+                setIsRightClickPanning(false);
+            }
         };
 
-        const handleMouseMove = (e) => {
+        const handleMouseMove = (e: MouseEvent) => {
             if (document.pointerLockElement !== panTargetRef.current) return;
             setPanOffset((prev) => ({
                 x: prev.x + e.movementX,
@@ -263,20 +252,12 @@ export function useCanvasState(props: UseCanvasStateProps) {
             }));
         };
 
-        const handleKeyUp = (e) => {
-            if (e.key === "Shift" && document.pointerLockElement) {
-                document.exitPointerLock();
-            }
-        };
-
-        document.addEventListener("pointerlockchange", handlePointerLockChange);
-        document.addEventListener("mousemove", handleMouseMove);
-        window.addEventListener("keyup", handleKeyUp);
+        document.addEventListener('pointerlockchange', handlePointerLockChange);
+        document.addEventListener('mousemove', handleMouseMove);
 
         return () => {
-            document.removeEventListener("pointerlockchange", handlePointerLockChange);
-            document.removeEventListener("mousemove", handleMouseMove);
-            window.removeEventListener("keyup", handleKeyUp);
+            document.removeEventListener('pointerlockchange', handlePointerLockChange);
+            document.removeEventListener('mousemove', handleMouseMove);
         };
     }, []);
 
@@ -293,6 +274,8 @@ export function useCanvasState(props: UseCanvasStateProps) {
         isDrawing,
         setIsDrawing,
         isPanning,
+        panType,
+        setPanType,
         lastDrawPosRef,
         setLastDrawPos,
         viewMode,
@@ -339,6 +322,8 @@ export function useCanvasState(props: UseCanvasStateProps) {
         isDrawing,
         setIsDrawing,
         isPanning,
+        panType,
+        setPanType,
         // lastDrawPosRef is a ref, doesn't need to be in dependencies for correctness,
         // but setLastDrawPos is a stable callback now.
         setLastDrawPos,

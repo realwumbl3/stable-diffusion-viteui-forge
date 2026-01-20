@@ -7,6 +7,19 @@ export type KeyboardShortcuts = Record<string, KeyboardShortcutCallback>
 export const useKeyboardShortcuts = (shortcuts: KeyboardShortcuts): void => {
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent): void => {
+      // Don't trigger shortcuts when text inputs or textareas are focused
+      const activeElement = document.activeElement
+      if (activeElement && (
+        activeElement instanceof HTMLTextAreaElement ||
+        activeElement.hasAttribute('contenteditable') ||
+        activeElement.tagName === 'TEXTAREA' ||
+        (activeElement instanceof HTMLInputElement &&
+         (activeElement.type === 'text' || activeElement.type === 'password' || activeElement.type === 'email' ||
+          activeElement.type === 'url' || activeElement.type === 'search' || activeElement.type === 'tel'))
+      )) {
+        return
+      }
+
       const { ctrlKey, metaKey, shiftKey, altKey, key } = event
       const isCtrlOrCmd = ctrlKey || metaKey
 

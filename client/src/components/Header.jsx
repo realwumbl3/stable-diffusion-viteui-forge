@@ -12,6 +12,7 @@ import {
   Unlock
 } from 'lucide-react'
 import NumberSelector from './NumberSelector.jsx'
+import OptionPicker from './OptionPicker.jsx'
 import { cn } from '../lib/utils'
 import WorkspacePicker from './WorkspacePicker.jsx'
 import ResolutionIndicator from './ResolutionIndicator.jsx'
@@ -83,15 +84,15 @@ const Header = ({
           onClick={onGenerate}
           disabled={!canGenerate || loading}
           className={cn(
-            "studio-btn-primary flex items-center gap-2 px-6 py-2 relative",
+            "studio-btn-primary flex flex-col items-center gap-1 px-4 py-2 relative",
             (!canGenerate || loading) && "opacity-50 cursor-not-allowed"
           )}
         >
           {loading && progress ? (
             <>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-col items-center gap-1">
                 <div className="w-4 h-4 border-2 border-studio-bg border-t-transparent rounded-full animate-spin" />
-                <span>{Math.round(progress.progress * 100)}%</span>
+                <span className="text-sm">{Math.round(progress.progress * 100)}%</span>
                 {progress.total_batches > 1 && (
                   <span className="text-xs text-studio-textSecondary">
                     (Batch {progress.current_batch}/{progress.total_batches})
@@ -109,7 +110,7 @@ const Header = ({
           ) : loading ? (
             <>
               <div className="w-4 h-4 border-2 border-studio-bg border-t-transparent rounded-full animate-spin" />
-              Generating...
+              <span className="text-sm">Generating...</span>
             </>
           ) : (
             <>
@@ -124,7 +125,7 @@ const Header = ({
           <div className="flex items-center gap-2">
             <button
               onClick={onSkip}
-              className="studio-btn-secondary flex items-center gap-2 px-4 py-2 text-sm hover:bg-studio-accent/20"
+              className="studio-btn-secondary flex flex-col items-center gap-1 px-3 py-1 text-sm hover:bg-studio-accent/20"
               title="Skip current generation"
             >
               <SkipForward size={16} />
@@ -132,7 +133,7 @@ const Header = ({
             </button>
             <button
               onClick={onInterrupt}
-              className="studio-btn-secondary flex items-center gap-2 px-4 py-2 text-sm hover:bg-studio-accent/20"
+              className="studio-btn-secondary flex flex-col items-center gap-1 px-3 py-1 text-sm hover:bg-studio-accent/20"
               title="Interrupt all generations"
             >
               <Square size={16} />
@@ -170,33 +171,27 @@ const Header = ({
             {/* Model and Sampler Stack */}
             <div className="flex flex-col gap-1">
               <div className="flex justify-end gap-2">
-                <label className="text-xs text-studio-textSecondary font-medium">Model</label>
-                <select
+                <OptionPicker
+                  options={models.map((model) => ({
+                    value: model.title,
+                    label: model.model_name
+                  }))}
                   value={selectedModel}
-                  onChange={(e) => onModelChange(e.target.value)}
-                  className="px-2 py-1 text-sm bg-studio-surface border border-studio-border rounded focus:outline-none focus:ring-1 focus:ring-studio-accent w-auto"
-                >
-                  {models.map((model) => (
-                    <option key={model.title} value={model.title}>
-                      {model.model_name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={onModelChange}
+                  title="Model"
+                />
               </div>
 
               <div className="flex justify-end gap-2">
-                <label className="text-xs text-studio-textSecondary font-medium">Sampler</label>
-                <select
+                <OptionPicker
+                  options={samplers.map((sampler) => ({
+                    value: sampler.name,
+                    label: sampler.name
+                  }))}
                   value={selectedSampler}
-                  onChange={(e) => setSelectedSampler(e.target.value)}
-                  className="px-2 py-1 text-sm bg-studio-surface border border-studio-border rounded focus:outline-none focus:ring-1 focus:ring-studio-accent w-auto"
-                >
-                  {samplers.map((sampler) => (
-                    <option key={sampler.name} value={sampler.name}>
-                      {sampler.name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={setSelectedSampler}
+                  title="Sampler"
+                />
               </div>
             </div>
 

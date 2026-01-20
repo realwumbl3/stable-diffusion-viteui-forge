@@ -54,7 +54,7 @@ const InpaintParametersPanel = ({
                     </div>
 
                     {/* Mask Blur */}
-                    <div className="flex flex-col gap-1">
+                    <div className="flex flex-col gap-2">
                         <label className="text-xs text-studio-text font-medium">Mask Blur</label>
                         <input
                             type="range"
@@ -88,7 +88,7 @@ const InpaintParametersPanel = ({
                     </div>
 
                     {/* Denoise Strength */}
-                    <div className="flex flex-col gap-1">
+                    <div className="flex flex-col gap-2">
                         <label className="text-xs text-studio-text font-medium">Denoise Strength</label>
                         <input
                             type="range"

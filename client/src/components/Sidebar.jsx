@@ -5,7 +5,8 @@ import {
   Trash2,
   Maximize2,
   Type,
-  Edit
+  Edit,
+  RefreshCw
 } from 'lucide-react'
 import { useState, useRef, useEffect } from 'react'
 import { cn, resolveImageSrc } from '../lib/utils'
@@ -25,7 +26,8 @@ const Sidebar = ({
   onGenerationModeChange,
   generationMode,
   onUpscale,
-  getGenerationImageUrl
+  getGenerationImageUrl,
+  onRefreshTimeline
 }) => {
   const [committedPage, setCommittedPage] = useState(0)
   const [discardedPage, setDiscardedPage] = useState(0)
@@ -147,10 +149,21 @@ const Sidebar = ({
           {/* Sidebar Content */}
           <div className="studio-sidebar-content flex flex-col min-h-0">
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              {/* Generation Queue */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-xs text-studio-textSecondary uppercase tracking-wider">
-                  <span>Generations</span>
+                  <div className="flex items-center gap-2">
+                    <span>Generations</span>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onRefreshTimeline?.();
+                      }}
+                      className="p-1 hover:bg-studio-surface rounded text-studio-textSecondary hover:text-studio-text transition-all duration-200"
+                      title="Refresh Timeline"
+                    >
+                      <RefreshCw size={12} />
+                    </button>
+                  </div>
                   {hasQueueItems && <span>{timeline.generationQueue.length}</span>}
                 </div>
                 {hasQueueItems ? (
@@ -184,11 +197,7 @@ const Sidebar = ({
                 <div className="studio-panel p-2 rounded-lg space-y-2">
                   <div className="relative rounded-md overflow-hidden border border-studio-border cursor-pointer group"
                        onClick={() => {
-                         // Switch to inpainting mode when clicking canvas in sidebar
-                         if (onGenerationModeChange) {
-                           onGenerationModeChange('inpaint')
-                         }
-                         // Clear any selected preview
+                         // Clear any selected preview to navigate to canvas
                          if (timeline.currentPreview) {
                            onPreviewSelect(null)
                          }

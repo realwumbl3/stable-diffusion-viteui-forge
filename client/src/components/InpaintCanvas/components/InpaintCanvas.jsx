@@ -49,6 +49,8 @@ const InpaintCanvas = ({
     inpaintingMaskInvert,
     setInpaintingMaskInvert,
     canvasPadding,
+    // Generation mode
+    generationMode = "txt2img",
 }) => {
     const displayImage = previewImage || currentImage;
     const resolvedDisplayImage = resolveImageSrc(displayImage, "full");
@@ -199,52 +201,6 @@ const InpaintCanvas = ({
         return () => panElement.removeEventListener("wheel", handleWheelEvent);
     }, [canvasState]);
 
-    // Right-click panning event handlers
-    useEffect(() => {
-        const canvasElement = panTargetRef.current;
-        if (!canvasElement) return;
-
-        const handleRightClickDown = (e) => {
-            if (e.button === 2 && inputImage) {
-                e.preventDefault();
-                e.stopPropagation();
-                canvasState.setIsRightClickPanning(true);
-                canvasState.setRightClickStartPos({ x: e.clientX, y: e.clientY });
-                canvasState.setRightClickStartPan({ ...canvasState.panOffset });
-            }
-        };
-
-        const handleRightClickMove = (e) => {
-            if (canvasState.isRightClickPanning) {
-                e.preventDefault();
-                e.stopPropagation();
-                const deltaX = e.clientX - canvasState.rightClickStartPos.x;
-                const deltaY = e.clientY - canvasState.rightClickStartPos.y;
-                canvasState.setPanOffset({
-                    x: canvasState.rightClickStartPan.x + deltaX,
-                    y: canvasState.rightClickStartPan.y + deltaY,
-                });
-            }
-        };
-
-        const handleRightClickUp = (e) => {
-            if (canvasState.isRightClickPanning) {
-                e.preventDefault();
-                e.stopPropagation();
-                canvasState.setIsRightClickPanning(false);
-            }
-        };
-
-        canvasElement.addEventListener("mousedown", handleRightClickDown, true);
-        canvasElement.addEventListener("mousemove", handleRightClickMove, true);
-        canvasElement.addEventListener("mouseup", handleRightClickUp, true);
-
-        return () => {
-            canvasElement.removeEventListener("mousedown", handleRightClickDown, true);
-            canvasElement.removeEventListener("mousemove", handleRightClickMove, true);
-            canvasElement.removeEventListener("mouseup", handleRightClickUp, true);
-        };
-    }, [canvasState, inputImage]);
 
     // File handling functions (delegate to hook)
     const handleFileInput = (e) => {
@@ -256,8 +212,18 @@ const InpaintCanvas = ({
 
     // Mouse event handlers that use the hooks
     const handleMouseDown = (e) => {
-        if (!inputImage) return;
-        // Right-click is handled by capture phase listener, skip here
+        if (!(inputImage || displayImage || livePreview)) return;
+
+        // Handle right-click panning
+        if (e.button === 2) {
+            e.preventDefault();
+            e.stopPropagation();
+            canvasState.setPanType('right-click');
+            panTargetRef.current?.requestPointerLock();
+            canvasState.setIsRightClickPanning(true);
+            return;
+        }
+
         // Only trigger drawing if clicking directly on the image or canvas elements
         if (e.shiftKey) {
             canvasState.startPan(e);
@@ -304,8 +270,17 @@ const InpaintCanvas = ({
         }
     };
 
-    const handleMouseUp = () => {
-        // Right-click panning is handled by capture phase listener, skip here
+    const handleMouseUp = (e) => {
+        // Handle right-click panning release
+        if (canvasState.isRightClickPanning && e?.button === 2) {
+            if (document.pointerLockElement) {
+                document.exitPointerLock();
+            }
+            canvasState.setIsRightClickPanning(false);
+            return;
+        }
+
+        // Handle shift panning release
         if (canvasState.isPanning || document.pointerLockElement === panTargetRef.current) {
             canvasState.stopPan();
             return;
@@ -313,20 +288,12 @@ const InpaintCanvas = ({
         // Drawing logic now handled at document level
     };
 
-    // Helper function to check if we're inside canvas
-    const isInsideCanvas = (e) => {
-        const canvasContainer = canvasRef.current;
-        if (!canvasContainer) return false;
-        return canvasContainer.firstChild.contains(e.target);
-    };
-
-    // Determine main image source
-    const mainImageSrc = canvasState.viewMode === "edit" ? livePreview || inputImage || displayImage : displayImage || inputImage;
+    const isInpaintMode = generationMode === "inpaint";
 
     return (
         <main className="studio-canvas relative flex flex-col min-h-0">
             {/* Left Toolbar - Mask Controls */}
-            {(displayImage || inputImage) && !canvasState.isDrawing && (
+            {isInpaintMode && (displayImage || inputImage) && !canvasState.isDrawing && (
                 <div className={`absolute top-4 left-4 z-10 transition-opacity duration-200 ${uiVisible ? 'opacity-100' : 'opacity-0'}`}>
                     <InpaintToolbar
                         drawingMode={drawingMode}
@@ -430,6 +397,7 @@ const InpaintCanvas = ({
                 inpaintingMaskInvert={inpaintingMaskInvert}
                 setInpaintingMaskInvert={setInpaintingMaskInvert}
                 uiVisible={uiVisible}
+                generationMode={generationMode}
             />
 
             {/* Prompt Footer */}

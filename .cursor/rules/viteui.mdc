@@ -30,8 +30,6 @@ launch_utils.py
 webui*.bat
 webui*.py
 webui*.sh
-
-original-forge/
 viteui does not use these files at runtime.
 ViteUI Fork Rules
 

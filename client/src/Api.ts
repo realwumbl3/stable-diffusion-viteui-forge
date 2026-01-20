@@ -65,6 +65,7 @@ export interface ExtrasSingleImageParams {
   upscaler_2?: string;
   extras_upscaler_2_visibility?: number;
   upscale_first?: boolean;
+  workspace_name?: string;
 }
 
 export interface ProgressInfo {
@@ -102,6 +103,7 @@ export interface GenerationResponse {
 export interface ExtrasResponse {
   image: string;
   html_info: string;
+  generation?: Generation;
   taskId?: string;
 }
 

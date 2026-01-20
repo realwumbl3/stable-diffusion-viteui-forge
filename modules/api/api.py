@@ -674,23 +674,105 @@ class Api:
     def extras_single_image_api(self, req: models.ExtrasSingleImageRequest):
         reqDict = setUpscalers(req)
 
+        workspace_name = reqDict.pop('workspace_name', None)
         reqDict['image'] = decode_base64_to_image(reqDict['image'])
 
         with self.queue_lock:
             result = postprocessing.run_extras(extras_mode=0, image_folder="", input_dir="", output_dir="", save_output=False, **reqDict)
 
-        return models.ExtrasSingleImageResponse(image=encode_pil_to_base64(result[0][0]), html_info=result[1])
+        generation = None
+
+        if workspace_name:
+            # Prepare upscaling metadata
+            upscaling_metadata = {
+                "source": "upscale",
+                "parameters": {
+                    "resize_mode": reqDict.get('resize_mode', 0),
+                    "upscaling_resize": reqDict.get('upscaling_resize', 2),
+                    "upscaling_resize_w": reqDict.get('upscaling_resize_w', 512),
+                    "upscaling_resize_h": reqDict.get('upscaling_resize_h', 512),
+                    "upscaling_crop": reqDict.get('upscaling_crop', True),
+                    "upscaler_1": reqDict.get('extras_upscaler_1', "None"),
+                    "upscaler_2": reqDict.get('extras_upscaler_2', "None"),
+                    "extras_upscaler_2_visibility": reqDict.get('extras_upscaler_2_visibility', 0),
+                    "upscale_first": reqDict.get('upscale_first', False),
+                    "gfpgan_visibility": reqDict.get('gfpgan_visibility', 0),
+                    "codeformer_visibility": reqDict.get('codeformer_visibility', 0),
+                    "codeformer_weight": reqDict.get('codeformer_weight', 0),
+                }
+            }
+
+            # Save upscaled images to workspace and get generation info
+            filesystem_paths = self.viteapi.get_workspace_manager().save_generation_images(workspace_name, result[0], generation_metadata=upscaling_metadata, destination="candidates")
+
+            # Create generation object for frontend timeline
+            if filesystem_paths and len(filesystem_paths) > 0:
+                # Extract genid from the filesystem path (e.g., "candidates/2026-01-19_14-38-51_540263_001/full.png" -> "2026-01-19_14-38-51_540263_001")
+                path_parts = filesystem_paths[0].split('/')
+                genid = path_parts[1] if len(path_parts) > 1 else path_parts[0].split('/')[0]
+
+                generation = {
+                    "genid": genid,
+                    "status": "candidate",
+                    "timestamp": int(datetime.datetime.now().timestamp() * 1000),  # milliseconds
+                    "source": "upscale",
+                    "workspace": workspace_name,
+                    "parameters": upscaling_metadata["parameters"]
+                }
+
+        return models.ExtrasSingleImageResponse(image=encode_pil_to_base64(result[0][0]), html_info=result[1], generation=generation)
 
     def extras_batch_images_api(self, req: models.ExtrasBatchImagesRequest):
         reqDict = setUpscalers(req)
 
+        workspace_name = reqDict.pop('workspace_name', None)
         image_list = reqDict.pop('imageList', [])
         image_folder = [decode_base64_to_image(x.data) for x in image_list]
 
         with self.queue_lock:
             result = postprocessing.run_extras(extras_mode=1, image_folder=image_folder, image="", input_dir="", output_dir="", save_output=False, **reqDict)
 
-        return models.ExtrasBatchImagesResponse(images=list(map(encode_pil_to_base64, result[0])), html_info=result[1])
+        generation = None
+
+        if workspace_name:
+            # Prepare upscaling metadata
+            upscaling_metadata = {
+                "source": "upscale",
+                "parameters": {
+                    "resize_mode": reqDict.get('resize_mode', 0),
+                    "upscaling_resize": reqDict.get('upscaling_resize', 2),
+                    "upscaling_resize_w": reqDict.get('upscaling_resize_w', 512),
+                    "upscaling_resize_h": reqDict.get('upscaling_resize_h', 512),
+                    "upscaling_crop": reqDict.get('upscaling_crop', True),
+                    "upscaler_1": reqDict.get('extras_upscaler_1', "None"),
+                    "upscaler_2": reqDict.get('extras_upscaler_2', "None"),
+                    "extras_upscaler_2_visibility": reqDict.get('extras_upscaler_2_visibility', 0),
+                    "upscale_first": reqDict.get('upscale_first', False),
+                    "gfpgan_visibility": reqDict.get('gfpgan_visibility', 0),
+                    "codeformer_visibility": reqDict.get('codeformer_visibility', 0),
+                    "codeformer_weight": reqDict.get('codeformer_weight', 0),
+                }
+            }
+
+            # Save upscaled images to workspace
+            filesystem_paths = self.viteapi.get_workspace_manager().save_generation_images(workspace_name, result[0], generation_metadata=upscaling_metadata, destination="candidates")
+
+            # Create generation object for frontend timeline (only for first image in batch)
+            if filesystem_paths and len(filesystem_paths) > 0:
+                # Extract genid from the filesystem path (e.g., "candidates/2026-01-19_14-38-51_540263_001/full.png" -> "2026-01-19_14-38-51_540263_001")
+                path_parts = filesystem_paths[0].split('/')
+                genid = path_parts[1] if len(path_parts) > 1 else path_parts[0].split('/')[0]
+
+                generation = {
+                    "genid": genid,
+                    "status": "candidate",
+                    "timestamp": int(datetime.datetime.now().timestamp() * 1000),  # milliseconds
+                    "source": "upscale",
+                    "workspace": workspace_name,
+                    "parameters": upscaling_metadata["parameters"]
+                }
+
+        return models.ExtrasBatchImagesResponse(images=list(map(encode_pil_to_base64, result[0])), html_info=result[1], generation=generation)
 
     def pnginfoapi(self, req: models.PNGInfoRequest):
         image = decode_base64_to_image(req.image.strip())

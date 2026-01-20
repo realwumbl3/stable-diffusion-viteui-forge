@@ -23,7 +23,18 @@ export function useKeyboardShortcuts({
 }: UseKeyboardShortcutsParams) {
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+            // Don't trigger shortcuts when text inputs or textareas are focused
+            const activeElement = document.activeElement
+            if (activeElement && (
+                activeElement instanceof HTMLTextAreaElement ||
+                activeElement.hasAttribute('contenteditable') ||
+                activeElement.tagName === 'TEXTAREA' ||
+                (activeElement instanceof HTMLInputElement &&
+                 (activeElement.type === 'text' || activeElement.type === 'password' || activeElement.type === 'email' ||
+                  activeElement.type === 'url' || activeElement.type === 'search' || activeElement.type === 'tel'))
+            )) {
+                return;
+            }
 
             if (e.ctrlKey || e.metaKey) {
                 switch (e.key.toLowerCase()) {

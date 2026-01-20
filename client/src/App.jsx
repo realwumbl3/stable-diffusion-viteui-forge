@@ -4,7 +4,6 @@ import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { useWebSocketProgress } from "./hooks/useWebSocketProgress";
 import Header from "./components/Header.jsx";
 import Sidebar from "./components/Sidebar.jsx";
-import Canvas from "./components/Canvas.jsx";
 import InpaintCanvas from "./components/InpaintCanvas/components/InpaintCanvas.jsx";
 import PropertiesPanel from "./components/PropertiesPanel.jsx";
 import Welcome from "./components/Welcome.jsx";
@@ -655,6 +654,7 @@ function App() {
                 upscaling_resize: scaleFactor,
                 resize_mode: 0, // Scale by factor
                 show_extras_results: true,
+                workspace_name: currentWorkspace,
             };
 
             const result = await api.extraSingleImage(params);
@@ -667,33 +667,14 @@ function App() {
                 throw new Error("Workspace not initialized");
             }
 
-            const imported = await api.importWorkspaceImage(
-                currentWorkspace,
-                `data:image/png;base64,${result.image}`
-            );
-            const workspaceImage = toWorkspaceImage(currentWorkspace, imported.image_path);
-
-            // Create timeline item for the upscaled result
-            const upscaledItem = {
-                id: `upscale-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-                image: workspaceImage,
-                timestamp: Date.now(),
-                type: "upscale",
-                source: "generation",
-                prompt: `Upscaled ${upscaleDialog.sourceImage.type} image`,
-                parameters: {
-                    source: upscaleDialog.sourceImage.type,
-                    upscaler: upscaler,
-                    scaleFactor: scaleFactor,
-                },
-            };
-
-            // Add to generation queue and set as current preview
-            setTimeline((prev) => ({
-                ...prev,
-                generationQueue: [upscaledItem, ...prev.generationQueue],
-                currentPreview: upscaledItem,
-            }));
+            // Add the upscaled generation directly to the timeline
+            if (result.generation) {
+                setTimeline((prev) => ({
+                    ...prev,
+                    generationQueue: [result.generation, ...prev.generationQueue],
+                    currentPreview: result.generation,
+                }));
+            }
 
             // Close dialog
             handleCloseUpscaleDialog();
@@ -720,6 +701,16 @@ function App() {
             if (prompt.trim() && !loading) {
                 generateImage();
             }
+        },
+        "g": () => {
+            if (loading) {
+                handleInterrupt();
+            } else if (prompt.trim()) {
+                generateImage();
+            }
+        },
+        "h": () => {
+            handleSkip();
         },
         "alt+t": () => handleGenerationModeChange("txt2img"),
         "alt+i": () => handleGenerationModeChange("img2img"),
@@ -843,6 +834,7 @@ function App() {
                     generationMode={generationMode}
                     onUpscale={handleOpenUpscaleDialog}
                     getGenerationImageUrl={getGenerationImageUrl}
+                    onRefreshTimeline={() => loadWorkspaceGenerations(currentWorkspace)}
                 />
 
                 {/* Main Canvas Area */}
@@ -877,9 +869,10 @@ function App() {
                         inpaintingMaskInvert={inpaintingMaskInvert}
                         setInpaintingMaskInvert={setInpaintingMaskInvert}
                         canvasPadding={canvasPadding}
+                        generationMode={generationMode}
                     />
                 ) : (
-                    <Canvas
+                    <InpaintCanvas
                         currentImage={currentImage}
                         previewImage={getGenerationImageUrl(timeline.currentPreview)}
                         livePreview={livePreview}
@@ -891,9 +884,27 @@ function App() {
                         setPrompt={setPrompt}
                         negativePrompt={negativePrompt}
                         setNegativePrompt={setNegativePrompt}
-                        generationMode={generationMode}
+                        // Inpainting specific props - provide defaults for non-inpaint modes
+                        setInpaintMask={() => {}}
+                        forceEditMode={false}
+                        maskBlur={maskBlur}
+                        setMaskBlur={setMaskBlur}
+                        inpaintingFill={inpaintingFill}
+                        setInpaintingFill={setInpaintingFill}
+                        denoisingStrength={denoisingStrength}
+                        setDenoisingStrength={setDenoisingStrength}
+                        setInpaintFullRes={() => {}}
+                        inpaintingMaskInvert={inpaintingMaskInvert}
+                        setInpaintingMaskInvert={setInpaintingMaskInvert}
+                        canvasPadding={canvasPadding}
+                        // Image upload props for img2img mode
                         inputImage={generationMode === "img2img" ? inputImage : null}
                         onImageUpload={generationMode === "img2img" ? handleCanvasImageUpload : null}
+                        // Full resolution inpainting props - defaults for non-inpaint modes
+                        inpaintFullRes={false}
+                        inpaintFullResPadding={0}
+                        setInpaintFullResPadding={() => {}}
+                        generationMode={generationMode}
                     />
                 )}
 

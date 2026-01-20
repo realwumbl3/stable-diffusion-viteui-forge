@@ -32,7 +32,7 @@ const ResolutionPicker = ({
     { ratio: '9:16', name: 'Mobile', width: 9, height: 16 },
   ]
 
-  // Generate resolutions based on aspect ratio from 512 to 2048
+  // Generate resolutions based on aspect ratio
   const getResolutionsForAspectRatio = (aspectRatio) => {
     const { width: wRatio, height: hRatio } = aspectRatio
     const gcd = (a, b) => b === 0 ? a : gcd(b, a % b)
@@ -41,7 +41,7 @@ const ResolutionPicker = ({
     const normalizedHeight = hRatio / divisor
 
     const resolutions = []
-    const baseSizes = [512, 768, 1024, 1280, 1536, 1792, 2048]
+    const baseSizes = [512, 768, 1024, 1280, 1536, 1792, 2048, 2304, 2560, 2816, 3072, 3328, 3584, 3840, 4096]
 
     baseSizes.forEach(base => {
       // For landscape ratios (width > height), use base for width
@@ -61,12 +61,10 @@ const ResolutionPicker = ({
         if (w < 64) w = 64
       }
 
-      // Only add if within 512-2048 range and not duplicate
-      if (w >= 512 && w <= 2048 && h >= 512 && h <= 2048) {
-        const exists = resolutions.some(r => r.w === w && r.h === h)
-        if (!exists) {
-          resolutions.push({ w, h })
-        }
+      // Only add if not duplicate
+      const exists = resolutions.some(r => r.w === w && r.h === h)
+      if (!exists) {
+        resolutions.push({ w, h })
       }
     })
 
@@ -86,12 +84,8 @@ const ResolutionPicker = ({
       const sourceWidth = Math.round(img.width / 64) * 64
       const sourceHeight = Math.round(img.height / 64) * 64
 
-      // Clamp to reasonable ranges
-      const clampedWidth = Math.max(512, Math.min(2048, sourceWidth))
-      const clampedHeight = Math.max(512, Math.min(2048, sourceHeight))
-
-      setWidth(clampedWidth)
-      setHeight(clampedHeight)
+      setWidth(sourceWidth)
+      setHeight(sourceHeight)
     }
     img.src = inputImage
   }
@@ -103,9 +97,11 @@ const ResolutionPicker = ({
       // Calculate height maintaining aspect ratio
       const aspectRatio = height / width
       const newHeight = Math.round(parsedWidth * aspectRatio)
-      // Ensure height is divisible by 64 and within bounds
-      const adjustedHeight = Math.max(512, Math.min(2048, Math.round(newHeight / 64) * 64))
-      setHeight(adjustedHeight)
+      // Ensure height is divisible by 64
+      const adjustedHeight = Math.round(newHeight / 64) * 64
+      if (adjustedHeight >= 64) {
+        setHeight(adjustedHeight)
+      }
     }
     setWidth(parsedWidth)
   }
@@ -117,9 +113,11 @@ const ResolutionPicker = ({
       // Calculate width maintaining aspect ratio
       const aspectRatio = width / height
       const newWidth = Math.round(parsedHeight * aspectRatio)
-      // Ensure width is divisible by 64 and within bounds
-      const adjustedWidth = Math.max(512, Math.min(2048, Math.round(newWidth / 64) * 64))
-      setWidth(adjustedWidth)
+      // Ensure width is divisible by 64
+      const adjustedWidth = Math.round(newWidth / 64) * 64
+      if (adjustedWidth >= 64) {
+        setWidth(adjustedWidth)
+      }
     }
     setHeight(parsedHeight)
   }
@@ -143,8 +141,7 @@ const ResolutionPicker = ({
                 type="number"
                 value={width}
                 onChange={(e) => handleWidthChange(e.target.value)}
-                min="512"
-                max="2048"
+                min="64"
                 step="64"
                 className="studio-input w-full"
                 onClick={(e) => e.stopPropagation()} // Prevent toggling when clicking inputs
@@ -176,8 +173,7 @@ const ResolutionPicker = ({
                 type="number"
                 value={height}
                 onChange={(e) => handleHeightChange(e.target.value)}
-                min="512"
-                max="2048"
+                min="64"
                 step="64"
                 className="studio-input w-full"
                 onClick={(e) => e.stopPropagation()} // Prevent toggling when clicking inputs
@@ -216,8 +212,7 @@ const ResolutionPicker = ({
                 type="number"
                 value={width}
                 onChange={(e) => handleWidthChange(e.target.value)}
-                min="512"
-                max="2048"
+                min="64"
                 step="64"
                 className="studio-input w-full"
                 onClick={(e) => e.stopPropagation()} // Prevent toggling when clicking inputs
@@ -249,8 +244,7 @@ const ResolutionPicker = ({
                 type="number"
                 value={height}
                 onChange={(e) => handleHeightChange(e.target.value)}
-                min="512"
-                max="2048"
+                min="64"
                 step="64"
                 className="studio-input w-full"
                 onClick={(e) => e.stopPropagation()} // Prevent toggling when clicking inputs
