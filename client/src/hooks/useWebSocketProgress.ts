@@ -72,7 +72,7 @@ export class ProgressWebSocketManager {
       }
 
       this.ws.onclose = (event: CloseEvent): void => {
-        console.log('WebSocket disconnected')
+        console.log('WebSocket disconnected, code:', event.code, 'reason:', event.reason, 'wasClean:', event.wasClean)
         this.broadcast({ type: 'disconnected' })
 
         // Attempt to reconnect if not intentionally closed
@@ -87,6 +87,8 @@ export class ProgressWebSocketManager {
 
       this.ws.onerror = (error: Event): void => {
         console.error('WebSocket error:', error)
+        console.error('WebSocket readyState:', this.ws?.readyState)
+        console.error('WebSocket URL:', this.ws?.url)
       }
 
     } catch (error) {

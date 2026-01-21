@@ -24,12 +24,9 @@ const Welcome = ({ onGetStarted }) => {
             <Wand2 size={32} className="text-studio-accent" />
           </div>
           <h1 className="text-4xl font-bold text-studio-text mb-4">
-            Welcome to Stable Diffusion Studio
+            Welcome.
           </h1>
-          <p className="text-xl text-studio-textSecondary max-w-2xl mx-auto">
-            Create professional AI-generated images with our intuitive studio interface.
-            Build your own masterpiece with full control over prompts and parameters.
-          </p>
+
         </div>
 
         {/* Get Started */}
@@ -44,7 +41,7 @@ const Welcome = ({ onGetStarted }) => {
         </div>
 
         {/* Features */}
-        <div className="mb-12">
+        {/* <div className="mb-12">
           <h2 className="text-2xl font-semibold text-studio-text mb-6 text-center">
             Professional Features
           </h2>
@@ -59,7 +56,7 @@ const Welcome = ({ onGetStarted }) => {
               </div>
             ))}
           </div>
-        </div>
+        </div> */}
 
       </div>
     </div>

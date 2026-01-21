@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 
 interface Bounds {
     x: number;
@@ -45,6 +45,9 @@ export function useDrawing({
     const [maskHistory, setMaskHistory] = useState<ImageData[]>([]);
     const [historyIndex, setHistoryIndex] = useState(-1);
 
+    // Track previous image dimensions to properly scale mask on image changes
+    const previousImageDimensions = useRef<{width: number, height: number} | null>(null);
+
 
     // Initialize canvases when input image loads (not when result changes)
     useEffect(() => {
@@ -58,9 +61,12 @@ export function useDrawing({
 
             // Ensure we have valid dimensions
             if (naturalWidth > 0 && naturalHeight > 0) {
-                // Preserve existing mask pixels before resizing (resize clears canvas)
+                // Store current dimensions before resizing (if this is not the first image)
+                const currentDimensions = previousImageDimensions.current;
                 let previousMaskCanvas: HTMLCanvasElement | null = null;
+
                 if (maskCanvasRef.current && maskCanvasRef.current.width > 0 && maskCanvasRef.current.height > 0) {
+                    // Capture the current mask before resizing
                     previousMaskCanvas = document.createElement("canvas");
                     previousMaskCanvas.width = maskCanvasRef.current.width;
                     previousMaskCanvas.height = maskCanvasRef.current.height;
@@ -76,17 +82,40 @@ export function useDrawing({
                     maskCanvasRef.current.height = naturalHeight;
 
                     const ctx = maskCanvasRef.current.getContext("2d");
-                    if (previousMaskCanvas && ctx) {
-                        ctx.drawImage(previousMaskCanvas, 0, 0, naturalWidth, naturalHeight);
+                    if (previousMaskCanvas && currentDimensions && ctx) {
+                        // Scale the previous mask to fit the new canvas dimensions
+                        const scaleX = naturalWidth / currentDimensions.width;
+                        const scaleY = naturalHeight / currentDimensions.height;
+                        const scale = Math.min(scaleX, scaleY); // Use the smaller scale to maintain aspect ratio
+
+                        // Calculate scaled dimensions to fit within new canvas while maintaining aspect ratio
+                        const scaledWidth = currentDimensions.width * scale;
+                        const scaledHeight = currentDimensions.height * scale;
+
+                        // Center the scaled mask on the new canvas
+                        const offsetX = (naturalWidth - scaledWidth) / 2;
+                        const offsetY = (naturalHeight - scaledHeight) / 2;
+
+                        ctx.drawImage(previousMaskCanvas, offsetX, offsetY, scaledWidth, scaledHeight);
+
                         const imageData = ctx.getImageData(0, 0, naturalWidth, naturalHeight);
                         setMaskHistory([imageData]);
                         setHistoryIndex(0);
+
+                        // Update the parent's inpaint mask state with the scaled mask
+                        const scaledMaskDataUrl = getMaskDataUrl();
+                        if (scaledMaskDataUrl) {
+                            setInpaintMask(scaledMaskDataUrl);
+                        }
                     } else if (ctx) {
-                        // Initialize history with empty state (first-time setup)
+                        // Initialize history with empty state (first-time setup or no previous mask)
                         const emptyImageData = ctx.getImageData(0, 0, naturalWidth, naturalHeight);
                         setMaskHistory([emptyImageData]);
                         setHistoryIndex(0);
                     }
+
+                    // Update previous dimensions for next change
+                    previousImageDimensions.current = { width: naturalWidth, height: naturalHeight };
 
                     // Mask is always preserved on image changes unless user clears it explicitly
                 }
@@ -484,34 +513,6 @@ export function useDrawing({
         setFocusBounds(bounds);
 
         // Canvas drawing is no longer used - DOM borders handle visualization
-        return;
-        const ctx = canvas.getContext("2d");
-
-        // Clear canvas
-        if (!ctx) return;
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-        if (!bounds) {
-            return;
-        }
-
-        // Get mask bounds for inner rectangle
-        const maskBounds = getMaskBounds();
-        if (!maskBounds) {
-            return;
-        }
-
-        // Draw border box
-        ctx.strokeStyle = "#10b981"; // Green color for padding visualization
-        ctx.lineWidth = 2;
-        ctx.setLineDash([8, 4]); // Dashed line
-        ctx.strokeRect(bounds.x, bounds.y, bounds.width, bounds.height);
-
-        // Draw inner solid box for the actual mask area
-        ctx.strokeStyle = "#ef4444"; // Red color for mask area
-        ctx.lineWidth = 1;
-        ctx.setLineDash([]); // Solid line
-        ctx.strokeRect(maskBounds.x, maskBounds.y, maskBounds.width, maskBounds.height);
     }, [calculateFocusBounds]);
 
     // Update border visualization

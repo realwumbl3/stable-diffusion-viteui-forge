@@ -46,18 +46,37 @@ class ViteAPI:
         """Check if progress broadcasting should continue"""
         max_duration = 300  # Max 5 minutes
         # Allow sampling_step to be 0 or greater (not just != -1)
+        # For multi-iteration jobs, the job name changes to "Batch X out of Y",
+        # so we check that we're still in an active job rather than exact name match
         should_continue = (
-            shared.state.job == job_type and
+            shared.state.job and  # Any non-empty job indicates active processing
             shared.state.sampling_step >= 0 and
             (time.time() - start_time) < max_duration
         )
         return should_continue
 
     def _calculate_progress(self, job_type):
-        """Calculate current progress percentage"""
-        if shared.state.sampling_steps > 0:
-            return min(shared.state.sampling_step / shared.state.sampling_steps, 1.0)
-        return 0.01
+        """Calculate current progress percentage across all iterations"""
+        job_count, job_no = shared.state.job_count, shared.state.job_no
+        sampling_steps, sampling_step = shared.state.sampling_steps, shared.state.sampling_step
+
+        progress = 0
+
+        # Handle case where job_count hasn't been set yet (still -1)
+        if job_count <= 0:
+            # Fall back to single-batch progress calculation
+            if sampling_steps > 0:
+                progress = min(sampling_step / sampling_steps, 1.0)
+        else:
+            # Multi-batch progress calculation
+            # Add progress for completed batches
+            progress += job_no / job_count
+
+            # Add progress within current batch
+            if sampling_steps > 0:
+                progress += 1 / job_count * sampling_step / sampling_steps
+
+        return min(progress, 1.0)
 
     def _build_progress_data(self, current_progress, task_id=None):
         """Build progress data dictionary for broadcasting"""
@@ -92,6 +111,10 @@ class ViteAPI:
                 live_preview = f"data:image/{opts.live_previews_image_format};base64,{base64_image}"
                 id_live_preview = shared.state.id_live_preview
 
+        # Calculate batch information
+        current_batch = shared.state.job_no + 1 if shared.state.job_count > 0 else 1
+        total_batches = shared.state.job_count if shared.state.job_count > 0 else 1
+
         return {
             "active": True,
             "queued": False,
@@ -103,6 +126,8 @@ class ViteAPI:
             "textinfo": shared.state.textinfo or "Generating...",
             "sampling_step": shared.state.sampling_step,
             "sampling_steps": shared.state.sampling_steps,
+            "current_batch": current_batch,
+            "total_batches": total_batches,
             "timestamp": time.time(),
         }
 
@@ -127,6 +152,8 @@ class ViteAPI:
             "textinfo": "Completed",
             "sampling_step": shared.state.sampling_steps,
             "sampling_steps": shared.state.sampling_steps,
+            "current_batch": shared.state.job_count,
+            "total_batches": shared.state.job_count,
             "timestamp": time.time(),
         }
         websocket_manager.broadcast_task_progress_sync(task_id, completion_data)

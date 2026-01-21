@@ -105,7 +105,13 @@ const Sidebar = ({
             {/* Generation Mode Buttons */}
             <div className="flex items-center bg-studio-surface rounded-lg p-1 border border-studio-border mb-4">
               <button
-                onClick={() => onGenerationModeChange('txt2img')}
+                onClick={() => {
+                  if (generationMode === 'txt2img') {
+                    onToggle();
+                  } else {
+                    onGenerationModeChange('txt2img');
+                  }
+                }}
                 className={cn(
                   "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all duration-200",
                   generationMode === 'txt2img'
@@ -118,7 +124,13 @@ const Sidebar = ({
                 <span className="hidden sm:inline">Text</span>
               </button>
               <button
-                onClick={() => onGenerationModeChange('img2img')}
+                onClick={() => {
+                  if (generationMode === 'img2img') {
+                    onToggle();
+                  } else {
+                    onGenerationModeChange('img2img');
+                  }
+                }}
                 className={cn(
                   "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all duration-200",
                   generationMode === 'img2img'
@@ -131,7 +143,13 @@ const Sidebar = ({
                 <span className="hidden sm:inline">Image</span>
               </button>
               <button
-                onClick={() => onGenerationModeChange('inpaint')}
+                onClick={() => {
+                  if (generationMode === 'inpaint') {
+                    onToggle();
+                  } else {
+                    onGenerationModeChange('inpaint');
+                  }
+                }}
                 className={cn(
                   "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all duration-200",
                   generationMode === 'inpaint'
@@ -364,13 +382,6 @@ const Sidebar = ({
         </div>
       </div>
 
-      {/* Collapse Toggle */}
-      <button
-        onClick={onToggle}
-        className="absolute top-1/2 -left-4 w-8 h-8 bg-studio-panel border border-studio-border rounded-full flex items-center justify-end hover:bg-studio-panelHover transition-all duration-200 shadow-studio"
-      >
-        <ChevronLeft size={16} className="transition-transform duration-200" style={{ transform: collapsed ? 'rotate(180deg)' : 'rotate(0deg)' }} />
-      </button>
     </aside>
   )
 }

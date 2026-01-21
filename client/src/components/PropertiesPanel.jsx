@@ -83,7 +83,13 @@ const PropertiesPanel = ({
                         {sections.map((section) => (
                             <button
                                 key={section.id}
-                                onClick={() => setActiveSection(section.id)}
+                                onClick={() => {
+                                    if (activeSection === section.id) {
+                                        onToggle();
+                                    } else {
+                                        setActiveSection(section.id);
+                                    }
+                                }}
                                 className={cn(
                                     "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors",
                                     activeSection === section.id
@@ -221,17 +227,6 @@ const PropertiesPanel = ({
                 </div>
             </div>
 
-            {/* Collapse Toggle */}
-            <button
-                onClick={onToggle}
-                className="absolute top-1/2 -right-4 w-8 h-8 bg-studio-panel border border-studio-border rounded-full flex items-center justify-start hover:bg-studio-panelHover transition-all duration-200 shadow-studio"
-            >
-                <ChevronRight
-                    size={16}
-                    className="transition-transform duration-200"
-                    style={{ transform: collapsed ? "rotate(180deg)" : "rotate(0deg)" }}
-                />
-            </button>
         </aside>
     );
 };
