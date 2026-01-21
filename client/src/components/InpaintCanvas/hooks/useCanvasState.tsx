@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 
 interface UseCanvasStateProps {
     displayImage: string | null;
@@ -38,7 +38,7 @@ export function useCanvasState(props: UseCanvasStateProps) {
     // Drawing state
     const [isDrawing, setIsDrawing] = useState(false);
     const [isPanning, setIsPanning] = useState(false);
-    const [panType, setPanType] = useState<'shift' | 'right-click' | null>(null);
+    const [panType, setPanType] = useState<'shift' | 'right-click' | null>(null); // 'shift' or 'right-click'
     const lastDrawPosRef = useRef<{ x: number; y: number } | null>(null);
     const [viewMode, setViewMode] = useState("edit");
     const [mouseButtonDown, setMouseButtonDown] = useState(false);
@@ -66,6 +66,15 @@ export function useCanvasState(props: UseCanvasStateProps) {
             return { width: 1, height: 1 };
         }
 
+        // Always use input image dimensions for canvas sizing in edit mode
+        // Live preview should be purely cosmetic and not affect canvas layout
+        if (viewMode === "edit" && inputImage) {
+            return {
+                width: imageRef.current.naturalWidth || 1,
+                height: imageRef.current.naturalHeight || 1,
+            };
+        }
+
         if (livePreview && generationWidth && generationHeight) {
             return { width: generationWidth, height: generationHeight };
         }
@@ -74,7 +83,7 @@ export function useCanvasState(props: UseCanvasStateProps) {
             width: imageRef.current.naturalWidth || 1,
             height: imageRef.current.naturalHeight || 1,
         };
-    }, [livePreview, generationWidth, generationHeight]);
+    }, [viewMode, inputImage, livePreview, generationWidth, generationHeight]);
 
     const calculateFitToScreenScale = useCallback(() => {
         if (!canvasRef.current || !imageRef.current) return 1;
@@ -82,34 +91,97 @@ export function useCanvasState(props: UseCanvasStateProps) {
         const container = canvasRef.current.getBoundingClientRect();
         const { width: imageWidth, height: imageHeight } = getDisplayDimensions();
 
+        // Ensure we have valid image dimensions (minimum 1px to prevent division by zero)
+        if (imageWidth <= 0 || imageHeight <= 0) return 1;
+
         // Get available space (accounting for fit-to-screen padding)
-        const availableWidth = container.width - fitToScreenPadding;
-        const availableHeight = container.height - fitToScreenPadding;
+        const availableWidth = Math.max(container.width - fitToScreenPadding, 1);
+        const availableHeight = Math.max(container.height - fitToScreenPadding, 1);
 
         // Calculate scale to fit the longest side
         const scaleX = availableWidth / imageWidth;
         const scaleY = availableHeight / imageHeight;
         const scale = Math.min(scaleX, scaleY);
 
-        return scale;
+        // Add bounds checking to prevent extreme zoom values
+        // Minimum zoom: 0.01 (1%), Maximum zoom: 5.0 (500%)
+        return Math.max(0.01, Math.min(scale, 5.0));
     }, [getDisplayDimensions, fitToScreenPadding]);
 
-    const calculateCenterOffset = useCallback((scale: number) => {
+    const calculateCenterOffset = useCallback((_scale: number) => {
         // The flexbox centering works for vertical alignment, but horizontal might need adjustment
         // Try offsetting by half the fit-to-screen padding amount to compensate
         return { x: -(fitToScreenPadding / 2), y: 0 };
     }, [fitToScreenPadding]);
 
+    // Auto-fit to screen when image changes
+    useEffect(() => {
+        // Only fit when the actual displayed image changes, not when livePreview appears as overlay
+        const shouldFit = (displayImage || inputImage) && fitToScreen && !livePreview;
+        if (shouldFit) {
+            const attemptFitToScreen = () => {
+                // Check if image is loaded and has valid dimensions
+                if (!imageRef.current) return false;
+
+                const img = imageRef.current;
+                const { width: imageWidth, height: imageHeight } = getDisplayDimensions();
+
+                // Ensure image is loaded and has valid dimensions
+                if (!img.complete || imageWidth <= 0 || imageHeight <= 0) {
+                    return false;
+                }
+
+                const scale = calculateFitToScreenScale();
+                setZoom(scale);
+                setPanOffset(calculateCenterOffset(scale));
+                return true;
+            };
+
+            // Try immediately first
+            if (attemptFitToScreen()) return;
+
+            // If image isn't loaded yet, wait for it to load
+            const handleImageLoad = () => {
+                attemptFitToScreen();
+            };
+
+            const img = imageRef.current;
+            if (img && !img.complete) {
+                img.addEventListener('load', handleImageLoad);
+                return () => {
+                    img.removeEventListener('load', handleImageLoad);
+                };
+            }
+
+            // Fallback: try again after a short delay in case dimensions weren't ready
+            const timer = setTimeout(() => {
+                attemptFitToScreen();
+            }, 200);
+
+            return () => clearTimeout(timer);
+        }
+    }, [
+        displayImage,
+        inputImage,
+        generationWidth,
+        generationHeight,
+        fitToScreen,
+        calculateFitToScreenScale,
+        calculateCenterOffset,
+        livePreview,
+        getDisplayDimensions,
+    ]);
+
     // Update view mode based on available images
     useEffect(() => {
-        if (forceEditMode) {
+        if (forceEditMode || livePreview) {
             setViewMode("edit");
         } else if (displayImage) {
             setViewMode("result");
         } else if (inputImage) {
             setViewMode("edit");
         }
-    }, [displayImage, inputImage, forceEditMode]);
+    }, [displayImage, inputImage, forceEditMode, livePreview]);
 
     // Manage mask visibility during preview mode
     useEffect(() => {
@@ -126,14 +198,13 @@ export function useCanvasState(props: UseCanvasStateProps) {
             setShowMask(lastMaskVisibility);
             setHasRememberedMaskSetting(false);
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [previewImage]); // showMask intentionally omitted to avoid cycles
+    }, [previewImage]); // Remove showMask from dependencies to avoid cycles
 
     // Zoom functions
     const handleZoomIn = useCallback(() => {
         const zoomFactor = 1.2;
-        setZoom((prevZoom: number) => {
-            const newZoom = Math.min(prevZoom * zoomFactor, 5);
+        setZoom((prev) => {
+            const newZoom = Math.min(prev * zoomFactor, 5.0); // Cap at 500%
             setFitToScreen(false);
 
             // Zoom towards center of viewport for button zoom
@@ -141,28 +212,26 @@ export function useCanvasState(props: UseCanvasStateProps) {
             const centerY = 0;
 
             // Calculate the position in the untransformed coordinate system
-            setPanOffset((prevPan: { x: number; y: number }) => {
-                const imageX = (centerX - prevPan.x) / prevZoom;
-                const imageY = (centerY - prevPan.y) / prevZoom;
+            const imageX = (centerX - panOffset.x) / prev;
+            const imageY = (centerY - panOffset.y) / prev;
 
-                // Calculate new pan offset so the center point stays centered
-                const newPanX = centerX - imageX * newZoom;
-                const newPanY = centerY - imageY * newZoom;
+            // Calculate new pan offset so the center point stays centered
+            const newPanX = centerX - imageX * newZoom;
+            const newPanY = centerY - imageY * newZoom;
 
-                return {
-                    x: newPanX,
-                    y: newPanY,
-                };
+            setPanOffset({
+                x: newPanX,
+                y: newPanY,
             });
 
             return newZoom;
         });
-    }, []);
+    }, [panOffset.x, panOffset.y]);
 
     const handleZoomOut = useCallback(() => {
         const zoomFactor = 1.2;
-        setZoom((prevZoom: number) => {
-            const newZoom = Math.max(prevZoom / zoomFactor, 0.1);
+        setZoom((prev) => {
+            const newZoom = Math.max(prev / zoomFactor, 0.01); // Minimum 1%
             setFitToScreen(false);
 
             // Zoom towards center of viewport for button zoom
@@ -170,23 +239,21 @@ export function useCanvasState(props: UseCanvasStateProps) {
             const centerY = 0;
 
             // Calculate the position in the untransformed coordinate system
-            setPanOffset((prevPan: { x: number; y: number }) => {
-                const imageX = (centerX - prevPan.x) / prevZoom;
-                const imageY = (centerY - prevPan.y) / prevZoom;
+            const imageX = (centerX - panOffset.x) / prev;
+            const imageY = (centerY - panOffset.y) / prev;
 
-                // Calculate new pan offset so the center point stays centered
-                const newPanX = centerX - imageX * newZoom;
-                const newPanY = centerY - imageY * newZoom;
+            // Calculate new pan offset so the center point stays centered
+            const newPanX = centerX - imageX * newZoom;
+            const newPanY = centerY - imageY * newZoom;
 
-                return {
-                    x: newPanX,
-                    y: newPanY,
-                };
+            setPanOffset({
+                x: newPanX,
+                y: newPanY,
             });
 
             return newZoom;
         });
-    }, []);
+    }, [panOffset.x, panOffset.y]);
 
     const handleResetZoom = useCallback(() => {
         setZoom(1);
@@ -230,7 +297,7 @@ export function useCanvasState(props: UseCanvasStateProps) {
 
     // Toggle preview mode
     const togglePreviewMode = useCallback(() => {
-        setViewMode((prev: string) => (prev === "edit" ? "result" : "edit"));
+        setViewMode((prev) => (prev === "edit" ? "result" : "edit"));
     }, []);
 
     // Mouse and pointer lock event handlers
@@ -252,14 +319,22 @@ export function useCanvasState(props: UseCanvasStateProps) {
             }));
         };
 
-        document.addEventListener('pointerlockchange', handlePointerLockChange);
-        document.addEventListener('mousemove', handleMouseMove);
+        const handleKeyUp = (e: KeyboardEvent) => {
+            if (e.key === "Shift" && document.pointerLockElement && panType === 'shift') {
+                document.exitPointerLock();
+            }
+        };
+
+        document.addEventListener("pointerlockchange", handlePointerLockChange);
+        document.addEventListener("mousemove", handleMouseMove);
+        window.addEventListener("keyup", handleKeyUp);
 
         return () => {
-            document.removeEventListener('pointerlockchange', handlePointerLockChange);
-            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener("pointerlockchange", handlePointerLockChange);
+            document.removeEventListener("mousemove", handleMouseMove);
+            window.removeEventListener("keyup", handleKeyUp);
         };
-    }, []);
+    }, [panType]);
 
     return useMemo(() => ({
         // State

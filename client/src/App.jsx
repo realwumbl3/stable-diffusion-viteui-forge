@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import api from "./Api";
+import { useState, useEffect, useRef } from "react";
+import api from "./api";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { useWebSocketProgress } from "./hooks/useWebSocketProgress";
 import Header from "./components/Header.jsx";
@@ -309,9 +309,15 @@ function App() {
 
         setLoading(true);
         setCurrentTaskId(null); // Clear previous task ID
+        sessionStorage.removeItem('currentTaskId'); // Clear stored task ID
 
-        // Generate task ID first
-        const taskId = `task(${generationMode}-${Date.now()}-${Math.random().toString(36).substr(2, 9)})`;
+        // Generate task ID first (use sessionStorage to ensure consistency across requests)
+        let taskId = sessionStorage.getItem('currentTaskId');
+        if (!taskId) {
+            taskId = `task(${generationMode}-${Date.now()}-${Math.random().toString(36).substr(2, 9)})`;
+            sessionStorage.setItem('currentTaskId', taskId);
+        }
+
 
         // Establish WebSocket connection first and wait for it to be ready
         setCurrentTaskId(taskId);
@@ -336,6 +342,7 @@ function App() {
                 workspace_name: currentWorkspace,
             };
 
+
             let data;
             if (generationMode === "img2img") {
                 const img2imgParams = {
@@ -359,8 +366,7 @@ function App() {
                 };
                 data = await api.img2img(inpaintParams);
             } else {
-                console.warn("Unsupported generation mode:", generationMode);
-                return;
+                data = await api.txt2img(baseParams);
             }
 
             if ((data.filesystem_paths && data.filesystem_paths.length > 0) || (data.images && data.images.length > 0)) {
@@ -434,18 +440,19 @@ function App() {
         console.log("Resetting generation state: loading=false, currentTaskId=null");
         setLoading(false);
         setCurrentTaskId(null);
+        sessionStorage.removeItem('currentTaskId'); // Clear stored task ID
     };
 
     const handleInterrupt = async () => {
         try {
             await api.interrupt();
-            console.log("Generation interrupted");
-            // Force cleanup of task state and WebSocket connection
-            resetGenerationState();
+            console.log("Generation interrupt signal sent - waiting for API response");
+            // Don't immediately reset state - wait for the original API request to finish
+            // The UI state will be updated when the generation API call completes
         } catch (error) {
-            console.error("Error interrupting generation:", error);
-            // Still cleanup state even if interrupt API call fails
-            resetGenerationState();
+            console.error("Error sending interrupt signal:", error);
+            // If interrupt API fails, still don't reset state immediately
+            // Let the original API request handle state cleanup
         }
     };
 
@@ -565,11 +572,11 @@ function App() {
 
     const handleDiscardGeneration = async (generation) => {
         try {
-            await api.rejectWorkspaceImage(generation.workspace, `${generation.status === 'candidate' ? 'candidates' : generation.status === 'commit' ? 'commits' : 'rejects'}/${generation.genid}/full.png`);
+            await api.deleteWorkspaceImage(generation.workspace, `${generation.status === 'candidate' ? 'candidates' : generation.status === 'commit' ? 'commits' : 'rejects'}/${generation.genid}/full.png`);
             // Reload generations to get updated status
             await loadWorkspaceGenerations(currentWorkspace);
         } catch (error) {
-            console.error("Failed to discard generation:", error);
+            console.error("Failed to delete generation:", error);
         }
     };
 
@@ -885,7 +892,7 @@ function App() {
                         negativePrompt={negativePrompt}
                         setNegativePrompt={setNegativePrompt}
                         // Inpainting specific props - provide defaults for non-inpaint modes
-                        setInpaintMask={() => {}}
+                        setInpaintMask={() => { }}
                         forceEditMode={false}
                         maskBlur={maskBlur}
                         setMaskBlur={setMaskBlur}
@@ -893,7 +900,7 @@ function App() {
                         setInpaintingFill={setInpaintingFill}
                         denoisingStrength={denoisingStrength}
                         setDenoisingStrength={setDenoisingStrength}
-                        setInpaintFullRes={() => {}}
+                        setInpaintFullRes={() => { }}
                         inpaintingMaskInvert={inpaintingMaskInvert}
                         setInpaintingMaskInvert={setInpaintingMaskInvert}
                         canvasPadding={canvasPadding}
@@ -903,7 +910,7 @@ function App() {
                         // Full resolution inpainting props - defaults for non-inpaint modes
                         inpaintFullRes={false}
                         inpaintFullResPadding={0}
-                        setInpaintFullResPadding={() => {}}
+                        setInpaintFullResPadding={() => { }}
                         generationMode={generationMode}
                     />
                 )}

@@ -7,13 +7,10 @@ const CanvasArea = ({
     canvasRef,
     panTargetRef,
     maskCanvasRef,
-    borderCanvasRef,
     imageRef,
     displayImage,
     inputImage,
     livePreview,
-    generationWidth,
-    generationHeight,
     loading,
     progress,
     zoom,
@@ -55,8 +52,34 @@ const CanvasArea = ({
     uiVisible = true,
     scrollWheelZoomIncrement = 4,
     generationMode = "txt2img",
+    focusBounds = null,
+    maskBounds = null,
 }) => {
-    const mainImageSrc = viewMode === "edit" ? livePreview || inputImage || displayImage : displayImage || inputImage;
+    // Always use input image for canvas layout in edit mode - livePreview is purely cosmetic
+    const mainImageSrc = viewMode === "edit" ? inputImage || displayImage : displayImage || inputImage;
+
+    const previewOverlay = livePreview ? (
+        <div
+            alt="Live preview"
+            className="absolute pointer-events-none"
+            style={{
+                top: showBorder && inpaintFullRes && inpaintFullResPadding > 0 && focusBounds ? `${focusBounds.y || 0}px` : '0px',
+                left: showBorder && inpaintFullRes && inpaintFullResPadding > 0 && focusBounds ? `${focusBounds.x || 0}px` : '0px',
+                width: showBorder && inpaintFullRes && inpaintFullResPadding > 0 && focusBounds ? `${focusBounds.width || 0}px` : '100%',
+                height: showBorder && inpaintFullRes && inpaintFullResPadding > 0 && focusBounds ? `${focusBounds.height || 0}px` : '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+            }}
+        >
+            <img
+                src={livePreview}
+                alt="Live preview"
+                className="w-full h-full object-contain shadow-studio-border rounded-lg"
+                draggable={false}
+            />
+        </div>
+    ) : null;
 
     // Brush size indicator state
     const [showBrushIndicator, setShowBrushIndicator] = useState(false);
@@ -68,14 +91,14 @@ const CanvasArea = ({
     // Supported tools that show brush indicator
     const supportedBrushTools = ["brush", "erase"];
 
-    // Show brush indicator when input image is available and drawing mode is supported
+    // Show brush indicator when input image is available, drawing mode is supported, and we're in inpaint mode
     useEffect(() => {
-        if (inputImage && supportedBrushTools.includes(drawingMode)) {
+        if (inputImage && supportedBrushTools.includes(drawingMode) && generationMode === "inpaint") {
             setShowBrushIndicator(true);
         } else {
             setShowBrushIndicator(false);
         }
-    }, [inputImage, drawingMode]);
+    }, [inputImage, drawingMode, generationMode]);
 
     // Alt + scroll for brush size adjustment
     useEffect(() => {
@@ -160,8 +183,9 @@ const CanvasArea = ({
     if (loading && !displayImage && !inputImage) {
         return (
             <div className="flex-1 overflow-hidden min-h-0" style={{ minHeight: "400px" }}>
-                <div className="w-full h-full flex items-center justify-center p-8">
-                    <div className="text-center">
+                <div className="relative w-full h-full flex items-center justify-center p-8">
+                    {previewOverlay}
+                    <div className="text-center z-10">
                         <div className="w-16 h-16 border-3 border-studio-accent border-t-transparent rounded-full animate-spin mx-auto mb-2" />
                         {progress ? (
                             <>
@@ -171,11 +195,11 @@ const CanvasArea = ({
                                 <div className="w-64 h-2 bg-studio-bg/30 rounded-full overflow-hidden mb-2">
                                     <div
                                         className="h-full bg-studio-accent transition-all duration-300 ease-out"
-                                        style={{ width: `${progress.progress * 100}%` }}
+                                        style={{ width: `${(progress.progress ?? 0) * 100}%` }}
                                     />
                                 </div>
                                 <p className="text-studio-textSecondary text-xs">
-                                    {Math.round(progress.progress * 100)}%
+                                    {Math.round((progress.progress ?? 0) * 100)}%
                                     {progress.total_batches > 1 &&
                                         ` • Batch ${progress.current_batch}/${progress.total_batches}`}
                                     {progress.eta && ` • ETA: ${Math.round(progress.eta)}s`}
@@ -205,7 +229,7 @@ const CanvasArea = ({
                         cursor:
                             isPanning || isRightClickPanning
                                 ? "grabbing"
-                                : "crosshair"
+                                : generationMode === "inpaint"
                                     ? "crosshair"
                                     : isDragOver
                                         ? "copy"
@@ -259,11 +283,9 @@ const CanvasArea = ({
                         <img
                             key={
                                 viewMode === "edit"
-                                    ? livePreview
-                                        ? "live-preview"
-                                        : inputImage
-                                            ? "input-image"
-                                            : "current-image"
+                                    ? inputImage
+                                        ? "input-image"
+                                        : "current-image"
                                     : "result-image"
                             }
                             ref={imageRef}
@@ -271,11 +293,6 @@ const CanvasArea = ({
                             crossOrigin="anonymous"
                             alt={viewMode === "edit" ? "Image to inpaint" : "Inpainted result"}
                             className="max-w-none shadow-studio-lg rounded-lg"
-                            style={
-                                livePreview && generationWidth && generationHeight
-                                    ? { width: `${generationWidth}px`, height: `${generationHeight}px` }
-                                    : undefined
-                            }
                             draggable={false}
                         />
 
@@ -291,16 +308,41 @@ const CanvasArea = ({
                             }}
                         />
 
-                        {/* Border Canvas - Shows padding visualization */}
-                        <canvas
-                            ref={borderCanvasRef}
-                            className="absolute inset-0 pointer-events-none"
-                            style={{
-                                width: "100%",
-                                height: "100%",
-                                opacity: inpaintFullRes && inpaintFullResPadding > 0 && showBorder ? 1 : 0,
-                            }}
-                        />
+                        {previewOverlay}
+
+                        {/* DOM Border Implementation - Green dotted borders with red outline */}
+                        {inpaintFullRes && inpaintFullResPadding > 0 && showBorder && focusBounds && (
+                                    <div
+                                        key={`borders-${focusBounds?.x}-${focusBounds?.y}-${focusBounds?.width}-${focusBounds?.height}`}
+                                        className="absolute inset-0 pointer-events-none"
+                                    >
+                                {/* Green dotted border - represents padding area */}
+                                <div
+                                    className="absolute border-dotted border-green-500"
+                                    style={{
+                                        top: `${focusBounds.y || 0}px`,
+                                        left: `${focusBounds.x || 0}px`,
+                                        width: `${focusBounds.width || 0}px`,
+                                        height: `${focusBounds.height || 0}px`,
+                                        borderWidth: '6px',
+                                    }}
+                                />
+                                {/* Red outline border - represents the inner mask area */}
+                                {maskBounds && (
+                                    <div
+                                        className="absolute border-red-500"
+                                        style={{
+                                            top: `${maskBounds.y || 0}px`,
+                                            left: `${maskBounds.x || 0}px`,
+                                            width: `${maskBounds.width || 0}px`,
+                                            height: `${maskBounds.height || 0}px`,
+                                            borderWidth: '6px',
+                                        }}
+                                    />
+                                )}
+                            </div>
+                        )}
+
                     </div>
 
                     {/* Cursor Point (0x0 element for precise positioning) */}
@@ -320,11 +362,10 @@ const CanvasArea = ({
                             {/* Brush Size Indicator absolutely positioned in center of cursor point */}
                             <div
                                 ref={brushIndicatorRef}
-                                className={`absolute pointer-events-none border-2 border-opacity-60 rounded-full ${
-                                    drawingMode === 'erase'
-                                        ? 'border-red-500'
-                                        : 'border-studio-accent'
-                                }`}
+                                className={`absolute pointer-events-none border-2 border-opacity-60 rounded-full ${drawingMode === 'erase'
+                                    ? 'border-red-500'
+                                    : 'border-studio-accent'
+                                    }`}
                                 style={{
                                     top: `${-(brushSize * zoom) / 2}px`,
                                     left: `${-(brushSize * zoom) / 2}px`,

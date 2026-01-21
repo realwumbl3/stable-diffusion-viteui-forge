@@ -62,7 +62,6 @@ const InpaintCanvas = ({
     const canvasRef = useRef(null);
     const maskCanvasRef = useRef(null);
     const overlayCanvasRef = useRef(null);
-    const borderCanvasRef = useRef(null);
     const imageRef = useRef(null);
     const panTargetRef = useRef(null);
 
@@ -99,13 +98,14 @@ const InpaintCanvas = ({
         inpaintFullResPadding,
         imageRef,
         maskCanvasRef,
-        borderCanvasRef,
         brushSize,
         drawingMode,
         brushHardness,
         fillTarget,
         fillTolerance,
         fillOverfill,
+        generationWidth,
+        generationHeight,
     });
 
     const fileHandling = useFileHandling({ onImageUpload });
@@ -176,7 +176,7 @@ const InpaintCanvas = ({
             const mouseY = e.clientY - rect.top - rect.height / 2;
 
             canvasState.setZoom((prev) => {
-                const newZoom = Math.max(0.1, Math.min(5, prev * delta));
+                const newZoom = Math.max(0.01, Math.min(5.0, prev * delta));
                 canvasState.setFitToScreen(false);
 
                 // Calculate the position in the untransformed coordinate system
@@ -224,27 +224,29 @@ const InpaintCanvas = ({
             return;
         }
 
-        // Only trigger drawing if clicking directly on the image or canvas elements
+        // Only trigger drawing if clicking directly on the image or canvas elements and we're in inpaint mode
         if (e.shiftKey) {
             canvasState.startPan(e);
             return;
         }
-        if (drawingMode === "fill") {
+        if (generationMode === "inpaint") {
+            if (drawingMode === "fill") {
+                const { x, y } = drawing.getCanvasCoordinates(e);
+                drawing.fillAtPoint(x, y);
+                return;
+            }
+            canvasState.setIsDrawing(true);
+            canvasState.setMouseButtonDown(true);
+            canvasState.setDrawingStartedOnCanvas(true);
             const { x, y } = drawing.getCanvasCoordinates(e);
-            drawing.fillAtPoint(x, y);
-            return;
+            canvasState.setLastDrawPos(null); // Reset last position for new stroke
+            drawing.drawBrush(x, y); // Start new stroke
+            canvasState.setLastDrawPos({ x, y });
         }
-        canvasState.setIsDrawing(true);
-        canvasState.setMouseButtonDown(true);
-        canvasState.setDrawingStartedOnCanvas(true);
-        const { x, y } = drawing.getCanvasCoordinates(e);
-        canvasState.setLastDrawPos(null); // Reset last position for new stroke
-        drawing.drawBrush(x, y); // Start new stroke
-        canvasState.setLastDrawPos({ x, y });
     };
 
     const handleMouseMove = (e) => {
-        if (!canvasState.isDrawing) return;
+        if (!canvasState.isDrawing || generationMode !== "inpaint") return;
 
         const { x, y } = drawing.getCanvasCoordinates(e);
         drawing.drawBrush(x, y, canvasState.lastDrawPosRef.current);
@@ -253,13 +255,14 @@ const InpaintCanvas = ({
 
     const handleMouseEnter = (e) => {
         // Resume drawing only if mouse button is held down, we're not currently drawing,
-        // drawing was started on canvas, and we're entering over a valid target
+        // drawing was started on canvas, we're in inpaint mode, and we're entering over a valid target
         if (
             drawingMode !== "fill" &&
             canvasState.mouseButtonDown &&
             !canvasState.isDrawing &&
             canvasState.drawingStartedOnCanvas &&
-            inputImage
+            inputImage &&
+            generationMode === "inpaint"
         ) {
             // Only resume if entering over a valid target
             canvasState.setIsDrawing(true);
@@ -347,7 +350,6 @@ const InpaintCanvas = ({
                 canvasRef={canvasRef}
                 panTargetRef={panTargetRef}
                 maskCanvasRef={maskCanvasRef}
-                borderCanvasRef={borderCanvasRef}
                 overlayCanvasRef={overlayCanvasRef}
                 imageRef={imageRef}
                 displayImage={resolvedDisplayImage}
@@ -398,6 +400,8 @@ const InpaintCanvas = ({
                 setInpaintingMaskInvert={setInpaintingMaskInvert}
                 uiVisible={uiVisible}
                 generationMode={generationMode}
+                focusBounds={drawing.focusBounds}
+                maskBounds={drawing.maskBounds}
             />
 
             {/* Prompt Footer */}

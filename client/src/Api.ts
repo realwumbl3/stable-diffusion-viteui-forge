@@ -118,10 +118,10 @@ export interface Generation {
   workspace: string;
 }
 
-const API_BASE_URL = 'http://localhost:7861/api';
+import { API_BASE_URL as BASE_URL } from './lib/utils';
 
 class StableDiffusionAPI {
-  constructor(private baseUrl: string = API_BASE_URL) {}
+  constructor(private baseUrl: string = `${BASE_URL}/api`) {}
 
   async request<T = any>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
@@ -149,8 +149,8 @@ class StableDiffusionAPI {
 
   // Text to Image (legacy - generates its own task ID)
   async txt2img(params: Txt2ImgParams): Promise<GenerationResponse> {
-    // Add a task ID to track progress
-    const taskId = `task(txt2img-${Date.now()}-${Math.random().toString(36).substr(2, 9)})`
+    // Respect provided task ID when available (e.g. generated inside App)
+    const taskId = params.force_task_id ?? `task(txt2img-${Date.now()}-${Math.random().toString(36).substr(2, 9)})`
     const paramsWithTaskId = { ...params, force_task_id: taskId }
 
     const result = await this.request<GenerationResponse>('/viteapi/txt2img', {
@@ -166,8 +166,8 @@ class StableDiffusionAPI {
 
   // Image to Image
   async img2img(params: Img2ImgParams): Promise<GenerationResponse> {
-    // Add a task ID to track progress
-    const taskId = `task(img2img-${Date.now()}-${Math.random().toString(36).substr(2, 9)})`
+    // Respect provided task ID when available (e.g. generated inside App)
+    const taskId = params.force_task_id ?? `task(img2img-${Date.now()}-${Math.random().toString(36).substr(2, 9)})`
     const paramsWithTaskId = { ...params, force_task_id: taskId }
 
     const result = await this.request<GenerationResponse>('/viteapi/img2img', {
@@ -329,6 +329,13 @@ class StableDiffusionAPI {
 
   async uncommitWorkspaceImage(workspaceName: string, imagePath: string): Promise<{ success: boolean; uncommit_path: string }> {
     return this.request(`/workspaces/${encodeURIComponent(workspaceName)}/uncommit`, {
+      method: 'POST',
+      body: JSON.stringify({ image_path: imagePath }),
+    });
+  }
+
+  async deleteWorkspaceImage(workspaceName: string, imagePath: string): Promise<{ success: boolean; delete_path: string }> {
+    return this.request(`/workspaces/${encodeURIComponent(workspaceName)}/delete`, {
       method: 'POST',
       body: JSON.stringify({ image_path: imagePath }),
     });

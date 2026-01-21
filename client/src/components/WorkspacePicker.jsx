@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Folder, Plus, FolderOpen } from "lucide-react";
+import OptionPicker from "./OptionPicker.jsx";
 import api from "../Api";
 
 const WorkspacePicker = ({ currentWorkspace, onWorkspaceChange, onOpenWorkspace }) => {
@@ -47,17 +48,16 @@ const WorkspacePicker = ({ currentWorkspace, onWorkspaceChange, onOpenWorkspace 
     return (
         <div className="relative flex items-center gap-2">
             <Folder className="w-4 h-4 text-studio-textSecondary" />
-            <select
+            <OptionPicker
+                options={workspaces.map((workspace) => ({
+                    value: workspace.name,
+                    label: workspace.name
+                }))}
                 value={currentWorkspace || ""}
-                onChange={(e) => onWorkspaceChange?.(e.target.value)}
-                className="bg-studio-panel border border-studio-border rounded px-2 py-1 text-sm"
-            >
-                {workspaces.map((workspace) => (
-                    <option key={workspace.name} value={workspace.name}>
-                        {workspace.name}
-                    </option>
-                ))}
-            </select>
+                onChange={(value) => onWorkspaceChange?.(value)}
+                placeholder="Select workspace..."
+                title="Workspace"
+            />
             <button
                 onClick={() => setShowCreate(true)}
                 className="p-1 hover:bg-studio-surface rounded"
@@ -76,7 +76,7 @@ const WorkspacePicker = ({ currentWorkspace, onWorkspaceChange, onOpenWorkspace 
             </button>
 
             {showCreate && (
-                <div className="absolute right-0 top-full mt-2 w-64 bg-studio-panel border border-studio-border rounded p-3 shadow-lg z-20">
+                <div className="absolute left-0 top-full mt-2 w-64 bg-studio-panel border border-studio-border rounded p-3 shadow-lg z-20">
                     <input
                         type="text"
                         placeholder="Workspace name"

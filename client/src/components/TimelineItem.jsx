@@ -20,6 +20,7 @@ const TimelineItem = ({
 }) => {
     const [aspectRatio, setAspectRatio] = useState(1);
     const [imageDimensions, setImageDimensions] = useState({ width: 0, height: 0 });
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const imgRef = useRef(null);
 
     useEffect(() => {
@@ -89,18 +90,45 @@ const TimelineItem = ({
                                 <Maximize2 size={12} />
                             </button>
                         )}
-                        {showDiscard && (
+                        {showDiscard && !showDeleteConfirm && (
                             <button
                                 onClick={(event) => {
                                     event.stopPropagation();
-                                    onDiscard?.();
+                                    setShowDeleteConfirm(true);
                                 }}
                                 className="rounded bg-studio-panel/80 text-studio-textSecondary p-1 hover:bg-studio-surface transition-colors"
-                                title="Discard"
+                                title="Delete"
                                 type="button"
                             >
                                 <X size={12} />
                             </button>
+                        )}
+                        {showDeleteConfirm && (
+                            <div className="flex gap-1">
+                                <button
+                                    onClick={(event) => {
+                                        event.stopPropagation();
+                                        onDiscard?.();
+                                        setShowDeleteConfirm(false);
+                                    }}
+                                    className="px-2 py-1 bg-red-500 text-white text-xs rounded hover:bg-red-600 transition-colors"
+                                    title="Confirm Delete"
+                                    type="button"
+                                >
+                                    Delete
+                                </button>
+                                <button
+                                    onClick={(event) => {
+                                        event.stopPropagation();
+                                        setShowDeleteConfirm(false);
+                                    }}
+                                    className="px-2 py-1 bg-studio-panel text-studio-textSecondary text-xs rounded hover:bg-studio-surface transition-colors"
+                                    title="Cancel"
+                                    type="button"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
                         )}
                         {badge && (
                             <div className="rounded bg-studio-panel/80 text-studio-textSecondary p-1">

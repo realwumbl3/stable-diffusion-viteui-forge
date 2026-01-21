@@ -13,12 +13,13 @@ const NumberSelector = ({
   disabled = false
 }) => {
   const [isFocused, setIsFocused] = useState(false);
+  const containerRef = useRef(null);
   const inputRef = useRef(null);
 
   // Handle scroll wheel
   useEffect(() => {
-    const input = inputRef.current;
-    if (!input) return;
+    const container = containerRef.current;
+    if (!container) return;
 
     const handleWheel = (e) => {
       e.preventDefault();
@@ -29,9 +30,9 @@ const NumberSelector = ({
       }
     };
 
-    input.addEventListener('wheel', handleWheel, { passive: false });
-    return () => input.removeEventListener('wheel', handleWheel);
-  }, [value, min, max, step, onChange, isFocused]);
+    container.addEventListener('wheel', handleWheel, { passive: false });
+    return () => container.removeEventListener('wheel', handleWheel);
+  }, [value, min, max, step, onChange]);
 
   const increment = () => {
     const newValue = Math.min(max, value + step);
@@ -51,22 +52,82 @@ const NumberSelector = ({
     }
   };
 
+  const handleKeyDown = (e) => {
+    if (disabled) return;
+
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      increment();
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      decrement();
+    } else if (e.key === 'Home') {
+      e.preventDefault();
+      onChange(min);
+    } else if (e.key === 'End') {
+      e.preventDefault();
+      onChange(max);
+    } else if (/^[0-9]$/.test(e.key)) {
+      // Allow number input - focus the input element for typing
+      e.preventDefault();
+      inputRef.current?.focus();
+      // If input is empty or has selection, replace it; otherwise append
+      if (inputRef.current) {
+        const input = inputRef.current;
+        const start = input.selectionStart || 0;
+        const end = input.selectionEnd || 0;
+        const currentValue = input.value;
+        const newValue = currentValue.slice(0, start) + e.key + currentValue.slice(end);
+        input.value = newValue;
+        input.setSelectionRange(start + 1, start + 1);
+        handleInputChange({ target: input });
+      }
+    } else if (e.key === 'Enter' || e.key === ' ') {
+      // Allow Enter/Space to work normally
+      return;
+    }
+  };
+
   return (
-    <div className={cn("flex items-center", className)}>
+    <div
+      ref={containerRef}
+      role="spinbutton"
+      aria-valuemin={min}
+      aria-valuemax={max}
+      aria-valuenow={value}
+      aria-disabled={disabled}
+      tabIndex={disabled ? -1 : 0}
+      onKeyDown={handleKeyDown}
+      onFocus={() => setIsFocused(true)}
+      onBlur={() => setIsFocused(false)}
+      className={cn(
+        "flex items-center outline-none transition-all duration-200",
+        "focus:ring-2 focus:ring-studio-accent focus:ring-offset-2 focus:ring-offset-studio-surface rounded-lg",
+        isFocused && "ring-2 ring-studio-accent ring-offset-2 ring-offset-studio-surface",
+        className
+      )}
+    >
       <input
         ref={inputRef}
         type="number"
         value={value}
         onChange={handleInputChange}
         onFocus={() => setIsFocused(true)}
-        onBlur={() => setIsFocused(false)}
+        onBlur={(e) => {
+          // Don't blur if focus is moving to container
+          if (!containerRef.current?.contains(e.relatedTarget)) {
+            setIsFocused(false);
+          }
+        }}
         min={min}
         max={max}
         step={step}
         disabled={disabled}
+        tabIndex={-1}
+        aria-hidden="true"
         className={cn(
           "w-10 h-10 px-0 bg-studio-surface border-2 border-studio-border rounded-l-lg text-white text-base font-bold text-center appearance-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
-          "focus:outline-none focus:ring-2 focus:ring-studio-accent focus:border-studio-accent transition-all duration-200",
+          "focus:outline-none focus:ring-0 focus:border-studio-accent transition-all duration-200",
           "placeholder:text-studio-textMuted",
           inputClassName
         )}
@@ -78,6 +139,7 @@ const NumberSelector = ({
           type="button"
           onClick={increment}
           disabled={disabled || value >= max}
+          tabIndex={-1}
           className={cn(
             "flex-1 flex items-center justify-center transition-all duration-150",
             "hover:bg-studio-accent/20 active:bg-studio-accent/40",
@@ -95,6 +157,7 @@ const NumberSelector = ({
           type="button"
           onClick={decrement}
           disabled={disabled || value <= min}
+          tabIndex={-1}
           className={cn(
             "flex-1 flex items-center justify-center transition-all duration-150",
             "hover:bg-studio-accent/20 active:bg-studio-accent/40",

@@ -245,11 +245,6 @@ class Api:
         self.add_api_route("/sdapi/v1/script-info", self.get_script_info, methods=["GET"], response_model=list[models.ScriptInfo])
         self.add_api_route("/sdapi/v1/extensions", self.get_extensions_list, methods=["GET"], response_model=list[models.ExtensionItem])
 
-        #+ workspace manager routes
-        # Register workspace routes
-        self.viteapi.register_routes(self)
-        #end+
-
         if shared.cmd_opts.api_server_stop:
             self.add_api_route("/sdapi/v1/server-kill", self.kill_webui, methods=["POST"])
             self.add_api_route("/sdapi/v1/server-restart", self.restart_webui, methods=["POST"])

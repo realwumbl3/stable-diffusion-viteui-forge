@@ -1,5 +1,13 @@
 import { useState, useCallback, useEffect, useMemo } from "react";
 
+interface Bounds {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+}
+
+
 interface UseDrawingParams {
     inputImage: string | null;
     setInpaintMask: React.Dispatch<React.SetStateAction<string | null>>;
@@ -7,13 +15,14 @@ interface UseDrawingParams {
     inpaintFullResPadding: number;
     imageRef: React.RefObject<HTMLImageElement>;
     maskCanvasRef: React.RefObject<HTMLCanvasElement>;
-    borderCanvasRef: React.RefObject<HTMLCanvasElement>;
     brushSize: number;
     drawingMode: string;
     brushHardness: number;
     fillTarget: string;
     fillTolerance: number;
     fillOverfill: number;
+    generationWidth: number | null;
+    generationHeight: number | null;
 }
 
 export function useDrawing({
@@ -23,13 +32,14 @@ export function useDrawing({
     inpaintFullResPadding,
     imageRef,
     maskCanvasRef,
-    borderCanvasRef,
     brushSize,
     drawingMode,
     brushHardness,
     fillTarget,
     fillTolerance,
     fillOverfill,
+    generationWidth,
+    generationHeight,
 }: UseDrawingParams) {
     // Undo/Redo system
     const [maskHistory, setMaskHistory] = useState<ImageData[]>([]);
@@ -79,10 +89,6 @@ export function useDrawing({
                     }
 
                     // Mask is always preserved on image changes unless user clears it explicitly
-                }
-                if (borderCanvasRef.current) {
-                    borderCanvasRef.current.width = naturalWidth;
-                    borderCanvasRef.current.height = naturalHeight;
                 }
             }
         };
@@ -401,26 +407,29 @@ export function useDrawing({
         saveMaskState();
     }, [fillTarget, fillTolerance, fillOverfill, getMaskDataUrl, imageRef, maskCanvasRef, saveMaskState, setInpaintMask]);
 
-    const updateBorderVisualization = useCallback(() => {
-        if (!borderCanvasRef.current || !inpaintFullRes || inpaintFullResPadding <= 0) {
-            if (borderCanvasRef.current) {
-                const ctx = borderCanvasRef.current.getContext("2d");
-                if (!ctx) return;
-                ctx.clearRect(0, 0, borderCanvasRef.current.width, borderCanvasRef.current.height);
-            }
-            return;
+    const [focusBounds, setFocusBounds] = useState<Bounds | null>(null);
+    const [maskBounds, setMaskBounds] = useState<Bounds | null>(null);
+
+    // Calculate focus bounds (independent of canvas)
+    const calculateFocusBounds = useCallback(() => {
+        if (!inpaintFullRes) {
+            return null;
         }
-
-        const canvas = borderCanvasRef.current;
-        const ctx = canvas.getContext("2d");
-
-        // Clear canvas
-        if (!ctx) return;
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
 
         // Get mask bounds
         const bounds = getMaskBounds();
-        if (!bounds) return;
+        if (!bounds) {
+            setMaskBounds(null);
+            return null;
+        }
+
+        setMaskBounds(bounds);
+
+        // Get canvas dimensions from mask canvas
+        const canvas = maskCanvasRef.current;
+        if (!canvas) {
+            return null;
+        }
 
         // Calculate padded bounds
         const paddedX = Math.max(0, bounds.x - inpaintFullResPadding);
@@ -428,18 +437,82 @@ export function useDrawing({
         const paddedWidth = Math.min(canvas.width - paddedX, bounds.width + inpaintFullResPadding * 2);
         const paddedHeight = Math.min(canvas.height - paddedY, bounds.height + inpaintFullResPadding * 2);
 
+        // Calculate focused area based on generation dimensions
+        const targetRatio =
+            generationWidth && generationHeight && generationHeight > 0
+                ? generationWidth / generationHeight
+                : paddedHeight > 0
+                    ? paddedWidth / paddedHeight
+                    : 1;
+
+        let focusedWidth = paddedWidth;
+        let focusedHeight = paddedHeight;
+        const currentRatio = paddedWidth / (paddedHeight || 1);
+
+        if (targetRatio > 0) {
+            if (currentRatio > targetRatio) {
+                focusedHeight = paddedWidth / targetRatio;
+            } else {
+                focusedWidth = paddedHeight * targetRatio;
+            }
+        }
+
+        focusedWidth = Math.max(focusedWidth, paddedWidth);
+        focusedHeight = Math.max(focusedHeight, paddedHeight);
+
+        const centerX = paddedX + paddedWidth / 2;
+        const centerY = paddedY + paddedHeight / 2;
+        let focusX = centerX - focusedWidth / 2;
+        let focusY = centerY - focusedHeight / 2;
+
+        focusedWidth = Math.min(focusedWidth, canvas.width);
+        focusedHeight = Math.min(focusedHeight, canvas.height);
+        focusX = Math.max(0, Math.min(focusX, Math.max(0, canvas.width - focusedWidth)));
+        focusY = Math.max(0, Math.min(focusY, Math.max(0, canvas.height - focusedHeight)));
+
+        return {
+            x: focusX,
+            y: focusY,
+            width: focusedWidth,
+            height: focusedHeight,
+        };
+    }, [inpaintFullRes, inpaintFullResPadding, getMaskBounds, generationWidth, generationHeight]);
+
+    const updateBorderVisualization = useCallback(() => {
+        // Calculate bounds (DOM implementation doesn't need canvas)
+        const bounds = calculateFocusBounds();
+        setFocusBounds(bounds);
+
+        // Canvas drawing is no longer used - DOM borders handle visualization
+        return;
+        const ctx = canvas.getContext("2d");
+
+        // Clear canvas
+        if (!ctx) return;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        if (!bounds) {
+            return;
+        }
+
+        // Get mask bounds for inner rectangle
+        const maskBounds = getMaskBounds();
+        if (!maskBounds) {
+            return;
+        }
+
         // Draw border box
         ctx.strokeStyle = "#10b981"; // Green color for padding visualization
         ctx.lineWidth = 2;
         ctx.setLineDash([8, 4]); // Dashed line
-        ctx.strokeRect(paddedX, paddedY, paddedWidth, paddedHeight);
+        ctx.strokeRect(bounds.x, bounds.y, bounds.width, bounds.height);
 
         // Draw inner solid box for the actual mask area
         ctx.strokeStyle = "#ef4444"; // Red color for mask area
         ctx.lineWidth = 1;
         ctx.setLineDash([]); // Solid line
-        ctx.strokeRect(bounds.x, bounds.y, bounds.width, bounds.height);
-    }, [inpaintFullRes, inpaintFullResPadding, getMaskBounds]);
+        ctx.strokeRect(maskBounds.x, maskBounds.y, maskBounds.width, maskBounds.height);
+    }, [calculateFocusBounds]);
 
     // Update border visualization
     useEffect(() => {
@@ -506,6 +579,9 @@ export function useDrawing({
         redoMask,
         canUndo,
         canRedo,
+        focusBounds,
+        maskBounds,
+        getMaskBounds,
     }), [
         getCanvasCoordinates,
         drawBrush,
@@ -516,6 +592,9 @@ export function useDrawing({
         undoMask,
         redoMask,
         canUndo,
+        focusBounds,
+        maskBounds,
         canRedo,
+        getMaskBounds,
     ]);
 }

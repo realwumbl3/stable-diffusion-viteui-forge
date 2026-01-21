@@ -2,88 +2,13 @@ import json
 import shutil
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Optional
 import time
 from pathlib import Path
 from PIL import Image
-from fastapi import HTTPException, Request
+from fastapi import HTTPException
 from modules.shared import opts
 from modules.viteapi.workspace_image_server import WorkspaceImageServer
-
-
-class WorkspaceImageManager:
-    def __init__(self, workspace_root: str = "workspaces", preview_max_size: int = 512):
-        self.workspace_root = Path(workspace_root).resolve()
-        self.preview_max_size = preview_max_size
-
-    def resize_for_preview(self, image_path: Path, max_size: Optional[int] = None) -> Image.Image:
-        max_size = max_size or self.preview_max_size
-        if max_size <= 0:
-            max_size = self.preview_max_size
-
-        with Image.open(image_path) as image:
-            width, height = image.size
-            long_side = max(width, height)
-            if long_side <= max_size:
-                return image.copy()
-
-            scale = max_size / float(long_side)
-            new_size = (max(1, int(width * scale)), max(1, int(height * scale)))
-            return image.resize(new_size, Image.Resampling.LANCZOS)
-
-    def save_preview(self, image_path: Path, output_path: Path, max_size: Optional[int] = None) -> Path:
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        preview_image = self.resize_for_preview(image_path, max_size=max_size)
-        preview_image.save(output_path, format="PNG")
-        return output_path
-
-    def save_image_with_preview_and_meta(self, image_path: Path, output_dir: Path, max_size: Optional[int] = None) -> dict:
-        """Save an image with preview and metadata files in the new format.
-
-        Creates:
-        - full.png: The original full-size image
-        - {width}|{height}.png: Preview image resized to max_size
-        - meta.json: Metadata including dimensions
-
-        Returns dict with paths and metadata.
-        """
-        max_size = max_size or self.preview_max_size
-        output_dir.mkdir(parents=True, exist_ok=True)
-
-        # Load the original image to get dimensions
-        with Image.open(image_path) as image:
-            width, height = image.size
-
-            # Save full image
-            full_path = output_dir / "full.png"
-            image.save(full_path, format="PNG")
-
-            # Save preview image as 512.png
-            preview_image = self.resize_for_preview(image_path, max_size=max_size)
-            preview_width, preview_height = preview_image.size
-            preview_path = output_dir / "512.png"
-            preview_image.save(preview_path, format="PNG")
-
-            # Create metadata
-            metadata = {
-                "full_width": width,
-                "full_height": height,
-                "preview_width": preview_width,
-                "preview_height": preview_height,
-                "preview_max_size": max_size,
-            }
-
-            # Save metadata
-            meta_path = output_dir / "meta.json"
-            meta_path.write_text(json.dumps(metadata, indent=2), encoding="utf-8")
-
-            return {
-                "full_path": full_path,
-                "preview_path": preview_path,
-                "meta_path": meta_path,
-                "metadata": metadata,
-            }
-
 
 class WorkspaceManager:
     def __init__(self, api, workspace_root: str = "workspaces", preview_max_size: int = 512):
@@ -92,6 +17,7 @@ class WorkspaceManager:
         self.workspace_images = WorkspaceImageManager(workspace_root=str(workspace_root), preview_max_size=preview_max_size)
         self.image_server = WorkspaceImageServer(self.resolve_workspace_file, self.workspace_images)
         self.api = api
+        self.register_routes(api)
 
     def list_workspaces(self) -> dict:
         workspaces = []
@@ -135,6 +61,7 @@ class WorkspaceManager:
         workspace_path.mkdir(parents=True, exist_ok=False)
         (workspace_path / "commits").mkdir()
         (workspace_path / "rejects").mkdir()
+        (workspace_path / "deleted").mkdir()
         (workspace_path / "candidates").mkdir()
 
         metadata = {
@@ -291,6 +218,9 @@ class WorkspaceManager:
     def reject_candidate(self, workspace_name: str, image_relative_path: str) -> dict:
         return self._move_candidate(workspace_name, image_relative_path, destination="rejects")
 
+    def delete_candidate(self, workspace_name: str, image_relative_path: str) -> dict:
+        return self._move_candidate(workspace_name, image_relative_path, destination="deleted")
+
     def restore_candidate(self, workspace_name: str, image_relative_path: str) -> dict:
         return self._move_candidate(workspace_name, image_relative_path, destination="candidates")
 
@@ -364,6 +294,16 @@ class WorkspaceManager:
         except FileNotFoundError as e:
             raise HTTPException(status_code=404, detail=str(e)) from e
         return {"success": True, "uncommit_path": result["path"]}
+
+    def delete_workspace_image(self, name: str, payload: dict):
+        image_path = payload.get("image_path") if isinstance(payload, dict) else None
+        if not image_path:
+            raise HTTPException(status_code=422, detail="image_path is required")
+        try:
+            result = self.delete_candidate(name, image_path)
+        except FileNotFoundError as e:
+            raise HTTPException(status_code=404, detail=str(e)) from e
+        return {"success": True, "delete_path": result["path"]}
 
     def import_workspace_image(self, name: str, payload: dict):
         from modules.api.api import decode_base64_to_image
@@ -518,83 +458,6 @@ class WorkspaceManager:
         metadata_path = self._metadata_path(workspace_path)
         metadata_path.write_text(json.dumps(metadata, indent=2), encoding="utf-8")
 
-    async def viteapi_txt2img(self, request: Request):
-        """ViteUI txt2img endpoint that loads images from workspace instead of accepting base64 from client"""
-
-        # Get request body as JSON
-        try:
-            request_dict = await request.json()
-        except Exception as e:
-            raise HTTPException(status_code=400, detail="Invalid JSON request")
-
-        # Extract parameters from request
-        genid = request_dict.get('genid')
-        workspace_name = request_dict.get('workspace_name')
-
-        if not genid:
-            raise HTTPException(status_code=422, detail="genid is required")
-        if not workspace_name:
-            raise HTTPException(status_code=422, detail="workspace_name is required")
-
-        return await self.api.text2imgapi(request)
-
-    async def viteapi_img2img(self, request: Request):
-        """ViteUI img2img endpoint that loads images from workspace instead of accepting base64 from client"""
-        import base64
-        import io
-        from fastapi import HTTPException
-        import modules.images as images
-
-        # Get request body as JSON
-        try:
-            request_dict = await request.json()
-        except Exception as e:
-            raise HTTPException(status_code=400, detail="Invalid JSON request")
-
-        # Extract parameters from request
-        genid = request_dict.get('genid')
-        workspace_name = request_dict.get('workspace_name')
-
-        if not genid:
-            raise HTTPException(status_code=422, detail="genid is required")
-        if not workspace_name:
-            raise HTTPException(status_code=422, detail="workspace_name is required")
-
-        # Load image from workspace
-        try:
-            image_path = self.resolve_workspace_file(workspace_name, f"commits/{genid}/full.png")
-            if not image_path.exists():
-                raise HTTPException(status_code=404, detail=f"Image not found for genid {genid}")
-        except Exception as e:
-            raise HTTPException(status_code=404, detail=f"Failed to resolve workspace file: {str(e)}")
-
-        # Convert image to base64
-        try:
-            print(f"VITE-UI-API: Inferring image from latest committed image workspace: {workspace_name}, genid: {genid}")
-            image = images.read(image_path)
-            buffer = io.BytesIO()
-            image.save(buffer, format="PNG")
-            image_base64 = base64.b64encode(buffer.getvalue()).decode('utf-8')
-            image_data_url = f"data:image/png;base64,{image_base64}"
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Failed to process image: {str(e)}")
-
-        # Create a new request dict with init_images instead of genid
-        img2img_request_dict = dict[Any, Any](request_dict)  # Copy the original request
-        img2img_request_dict['init_images'] = [image_data_url]
-        if 'genid' in img2img_request_dict:
-            del img2img_request_dict['genid']
-
-        # Convert back to Pydantic model for the API call
-        import modules.api.models as models
-        try:
-            img2img_request = models.StableDiffusionImg2ImgProcessingAPI(**img2img_request_dict)
-        except Exception as e:
-            raise HTTPException(status_code=422, detail=f"Invalid request parameters: {str(e)}")
-
-        # Call the async img2img API wrapper
-        return await self.api.viteapi.img2imgapi_async(img2img_request)
-
     def register_routes(self, api):
         """Register workspace API routes with the given API instance"""
         # Workspace routes
@@ -612,10 +475,82 @@ class WorkspaceManager:
         # Action routes
         api.add_api_route("/workspaces/{name:path}/commit", self.commit_workspace_image, methods=["POST"])
         api.add_api_route("/workspaces/{name:path}/reject", self.reject_workspace_image, methods=["POST"])
+        api.add_api_route("/workspaces/{name:path}/delete", self.delete_workspace_image, methods=["POST"])
         api.add_api_route("/workspaces/{name:path}/restore", self.restore_workspace_image, methods=["POST"])
         api.add_api_route("/workspaces/{name:path}/uncommit", self.uncommit_workspace_image, methods=["POST"])
         api.add_api_route("/workspaces/{name:path}/import", self.import_workspace_image, methods=["POST"])
 
-        # ViteUI specific endpoints
-        api.add_api_route("/viteapi/img2img", self.viteapi_img2img, methods=["POST"])
-        api.add_api_route("/viteapi/txt2img", self.viteapi_txt2img, methods=["POST"])
+
+class WorkspaceImageManager:
+    def __init__(self, workspace_root: str = "workspaces", preview_max_size: int = 512):
+        self.workspace_root = Path(workspace_root).resolve()
+        self.preview_max_size = preview_max_size
+
+    def resize_for_preview(self, image_path: Path, max_size: Optional[int] = None) -> Image.Image:
+        max_size = max_size or self.preview_max_size
+        if max_size <= 0:
+            max_size = self.preview_max_size
+
+        with Image.open(image_path) as image:
+            width, height = image.size
+            long_side = max(width, height)
+            if long_side <= max_size:
+                return image.copy()
+
+            scale = max_size / float(long_side)
+            new_size = (max(1, int(width * scale)), max(1, int(height * scale)))
+            return image.resize(new_size, Image.Resampling.LANCZOS)
+
+    def save_preview(self, image_path: Path, output_path: Path, max_size: Optional[int] = None) -> Path:
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        preview_image = self.resize_for_preview(image_path, max_size=max_size)
+        preview_image.save(output_path, format="PNG")
+        return output_path
+
+    def save_image_with_preview_and_meta(self, image_path: Path, output_dir: Path, max_size: Optional[int] = None) -> dict:
+        """Save an image with preview and metadata files in the new format.
+
+        Creates:
+        - full.png: The original full-size image
+        - {width}|{height}.png: Preview image resized to max_size
+        - meta.json: Metadata including dimensions
+
+        Returns dict with paths and metadata.
+        """
+        max_size = max_size or self.preview_max_size
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        # Load the original image to get dimensions
+        with Image.open(image_path) as image:
+            width, height = image.size
+
+            # Save full image
+            full_path = output_dir / "full.png"
+            image.save(full_path, format="PNG")
+
+            # Save preview image as 512.png
+            preview_image = self.resize_for_preview(image_path, max_size=max_size)
+            preview_width, preview_height = preview_image.size
+            preview_path = output_dir / "512.png"
+            preview_image.save(preview_path, format="PNG")
+
+            # Create metadata
+            metadata = {
+                "full_width": width,
+                "full_height": height,
+                "preview_width": preview_width,
+                "preview_height": preview_height,
+                "preview_max_size": max_size,
+            }
+
+            # Save metadata
+            meta_path = output_dir / "meta.json"
+            meta_path.write_text(json.dumps(metadata, indent=2), encoding="utf-8")
+
+            return {
+                "full_path": full_path,
+                "preview_path": preview_path,
+                "meta_path": meta_path,
+                "metadata": metadata,
+            }
+

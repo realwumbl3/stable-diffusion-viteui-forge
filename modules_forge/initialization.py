@@ -1,6 +1,12 @@
 import os
 import sys
 
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass  # python-dotenv not installed, skip loading .env file
+
 
 INITIALIZED = False
 MONITOR_MODEL_MOVING = False

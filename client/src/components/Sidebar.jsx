@@ -169,7 +169,7 @@ const Sidebar = ({
                 {hasQueueItems ? (
                   <div className="grid grid-cols-1 gap-2">
                     {timeline.generationQueue.map(generation => (
-                      <TimelineItem
+                      <TimelineItem 
                         key={generation.genid}
                         item={generation}
                         isActive={timeline.currentPreview?.genid === generation.genid}
@@ -349,7 +349,8 @@ const Sidebar = ({
                         item={generation}
                         isActive={false}
                         onSelect={() => onRestoreGeneration(generation)}
-                        badge={<Trash2 size={12} />}
+                        onDiscard={() => onDiscardGeneration(generation)}
+                        showDiscard
                         getGenerationImageUrl={getGenerationImageUrl}
                       />
                     ))}

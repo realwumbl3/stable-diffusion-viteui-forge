@@ -4,20 +4,20 @@ import time
 import threading
 import asyncio
 from .workspace_manager import WorkspaceManager
-from modules.progress import websocket_manager, current_task
+from modules.progress import websocket_manager
 import modules.shared as shared
 from modules.shared import opts
+from fastapi import Request, HTTPException
+from typing import Any
+
+import modules.api.models as models
 
 
 class ViteAPI:
     def __init__(self, api):
         self.api = api
         self.workspace_manager = WorkspaceManager(self.api)
-
-    def register_routes(self, api):
-        """Register all viteapi routes with the API instance"""
-        # Register workspace routes
-        self.workspace_manager.register_routes(api)
+        self.register_routes(api)
 
     def get_workspace_manager(self):
         """Get the workspace manager instance"""
@@ -28,25 +28,30 @@ class ViteAPI:
         try:
             start_time = time.time()
             last_progress = -1
+
+            # Give a small delay to ensure current_task is set
+            time.sleep(0.1)
+
             while self._should_continue_broadcasting(task_id, job_type, start_time):
                 current_progress = self._calculate_progress(job_type)
                 if current_progress != last_progress:
                     progress_data = self._build_progress_data(current_progress, task_id)
                     websocket_manager.broadcast_task_progress_sync(task_id, progress_data)
                     last_progress = current_progress
-                time.sleep(0.5)  # Update every 0.5 seconds
+                time.sleep(0.5)  # Update every 0.5 seconds)
         except Exception as e:
             print(f"Progress broadcaster error: {e}")
 
     def _should_continue_broadcasting(self, task_id, job_type, start_time):
         """Check if progress broadcasting should continue"""
         max_duration = 300  # Max 5 minutes
-        return (
+        # Allow sampling_step to be 0 or greater (not just != -1)
+        should_continue = (
             shared.state.job == job_type and
-            current_task == task_id and
-            shared.state.sampling_step != -1 and
+            shared.state.sampling_step >= 0 and
             (time.time() - start_time) < max_duration
         )
+        return should_continue
 
     def _calculate_progress(self, job_type):
         """Calculate current progress percentage"""
@@ -54,7 +59,7 @@ class ViteAPI:
             return min(shared.state.sampling_step / shared.state.sampling_steps, 1.0)
         return 0.01
 
-    def _build_progress_data(self, current_progress):
+    def _build_progress_data(self, current_progress, task_id=None):
         """Build progress data dictionary for broadcasting"""
         import io
         import base64
@@ -134,6 +139,99 @@ class ViteAPI:
 
         # Wait for progress thread to finish
         progress_thread.join(timeout=2)
+
+    def register_routes(self, api):
+        # ViteUI specific endpoints
+        api.add_api_route("/viteapi/txt2img", self.viteapi_txt2img, methods=["POST"])
+        api.add_api_route("/viteapi/img2img", self.viteapi_img2img, methods=["POST"])
+
+
+    async def viteapi_txt2img(self, request: Request):
+        """ViteUI txt2img endpoint that loads images from workspace instead of accepting base64 from client"""
+
+        # Get request body as JSON
+        try:
+            request_dict = await request.json()
+        except Exception as e:
+            raise HTTPException(status_code=400, detail="Invalid JSON request")
+
+
+        workspace_name = request_dict.get('workspace_name')
+
+        if not workspace_name:
+            raise HTTPException(status_code=422, detail="workspace_name is required")
+
+        # Create the StableDiffusionTxt2ImgProcessingAPI object from the request dict
+        txt2img_request = models.StableDiffusionTxt2ImgProcessingAPI(**request_dict)
+        
+        return await self.txt2imgapi_async(txt2img_request)
+        # return self.api.text2imgapi(txt2img_request)
+
+    async def txt2imgapi_async(self, txt2imgreq):
+        """Async wrapper for txt2imgapi that prevents blocking the event loop"""
+        # Run the synchronous API call in a thread pool
+        return await asyncio.to_thread(self.api.text2imgapi, txt2imgreq)
+
+    async def viteapi_img2img(self, request: Request):
+        """ViteUI img2img endpoint that loads images from workspace instead of accepting base64 from client"""
+        import base64
+        import io
+        from fastapi import HTTPException
+        import modules.images as images
+
+        # Get request body as JSON
+        try:
+            request_dict = await request.json()
+        except Exception as e:
+            print(f"VITE-UI-API: Failed to get request body: {str(e)}")
+            raise HTTPException(status_code=400, detail="Invalid JSON request")
+
+        # Extract parameters from request
+        genid = request_dict.get('genid')
+        workspace_name = request_dict.get('workspace_name')
+
+        if not genid:
+            raise HTTPException(status_code=422, detail="genid is required")
+        if not workspace_name:
+            raise HTTPException(status_code=422, detail="workspace_name is required")
+
+        # Load image from workspace
+        try:
+            image_path = self.workspace_manager.resolve_workspace_file(workspace_name, f"commits/{genid}/full.png")
+            if not image_path.exists():
+                raise HTTPException(status_code=404, detail=f"Image not found for genid {genid}")
+        except Exception as e:
+            print(f"VITE-UI-API: Failed to resolve workspace file: {str(e)}")
+            raise HTTPException(status_code=404, detail=f"Failed to resolve workspace file: {str(e)}")
+
+        # Convert image to base64
+        try:
+            print(f"VITE-UI-API: Inferring image from latest committed image workspace: {workspace_name}, genid: {genid}")
+            image = images.read(image_path)
+            buffer = io.BytesIO()
+            image.save(buffer, format="PNG")
+            image_base64 = base64.b64encode(buffer.getvalue()).decode('utf-8')
+            image_data_url = f"data:image/png;base64,{image_base64}"
+        except Exception as e:
+            print(f"VITE-UI-API: Failed to process image: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Failed to process image: {str(e)}")
+
+        # Create a new request dict with init_images instead of genid
+        img2img_request_dict = dict[Any, Any](request_dict)  # Copy the original request
+        img2img_request_dict['init_images'] = [image_data_url]
+        if 'genid' in img2img_request_dict:
+            del img2img_request_dict['genid']
+
+        # Convert back to Pydantic model for the API call
+        import modules.api.models as models
+        try:
+            img2img_request = models.StableDiffusionImg2ImgProcessingAPI(**img2img_request_dict)
+        except Exception as e:
+            print(f"VITE-UI-API: Failed to create img2img request: {str(e)}")
+            raise HTTPException(status_code=422, detail=f"Invalid request parameters: {str(e)}")
+
+        # Call the async img2img API wrapper
+        return await self.img2imgapi_async(img2img_request)
 
     async def img2imgapi_async(self, img2imgreq):
         """Async wrapper for img2imgapi that prevents blocking the event loop"""

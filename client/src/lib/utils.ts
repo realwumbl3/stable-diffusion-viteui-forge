@@ -9,7 +9,7 @@ export function cn(...inputs: ClassValue[]): string {
 export const WORKSPACE_PREFIX = "workspace://"
 
 // API base URL for constructing absolute URLs
-export const API_BASE_URL = 'http://localhost:7861'
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:7861'
 
 function isWorkspaceImage(value?: string | null): boolean {
   return typeof value === "string" && value.startsWith(WORKSPACE_PREFIX)

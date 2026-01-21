@@ -142,9 +142,10 @@ curl -X POST http://localhost:7861/sdapi/v1/txt2img \
 Create `client/.env` for frontend configuration:
 
 ```env
-VITE_API_BASE_URL=http://localhost:7861
-VITE_WS_URL=ws://localhost:7861/ws
+VITE_API_BASE_URL=http://localhost:7861/api
 ```
+
+The frontend will use this environment variable to connect to the API. The Vite dev server proxy will automatically forward requests to the correct backend server.
 
 ## 🚀 Deployment
 

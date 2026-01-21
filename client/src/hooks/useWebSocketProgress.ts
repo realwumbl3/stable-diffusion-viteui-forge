@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import api from '../api'
 
 export interface ProgressData {
   progress?: number
@@ -7,6 +6,7 @@ export interface ProgressData {
   task_id?: string
   textinfo?: string
   sampling_step?: number
+  sampling_steps?: number
   live_preview?: string | null
   timestamp?: number
   [key: string]: any
@@ -51,13 +51,13 @@ export class ProgressWebSocketManager {
 
     this.currentTaskId = taskId
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-    const wsUrl = `${protocol}//${window.location.host}/internal/progress-ws/${taskId}`
+    const encodedTaskId = encodeURIComponent(taskId)
+    const wsUrl = `${protocol}//${window.location.host}/internal/progress-ws?task_id=${encodedTaskId}`
 
     try {
       this.ws = new WebSocket(wsUrl)
 
       this.ws.onopen = (): void => {
-        console.log('WebSocket connected for progress updates')
         this.reconnectAttempts = 0
         this.broadcast({ type: 'connected' })
       }
@@ -147,7 +147,6 @@ export const useWebSocketProgress = (taskId: string | null = null): UseWebSocket
   const [isConnected, setIsConnected] = useState<boolean>(false)
   const [livePreview, setLivePreview] = useState<string | null>(null)
   const pingIntervalRef = useRef<NodeJS.Timeout | null>(null)
-  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const completedTasksRef = useRef<Set<string>>(new Set())
 
   // Handle connection and ping interval
@@ -160,52 +159,12 @@ export const useWebSocketProgress = (taskId: string | null = null): UseWebSocket
       pingIntervalRef.current = setInterval(() => {
         progressManager.ping()
       }, 30000) // Every 30 seconds
-
-      // Start polling interval as fallback
-      pollIntervalRef.current = setInterval(async () => {
-        try {
-          const progressData = await api.request('/internal/progress', {
-            method: 'POST',
-            body: JSON.stringify({
-              id_task: taskId,
-              live_preview: true
-            })
-          })
-          if (progressData && typeof progressData.progress === 'number') {
-            // Process the same way as WebSocket messages
-            if (completedTasksRef.current.has(taskId)) {
-              return
-            }
-            if (progressData.completed) {
-              console.log('Polling: Task completed', taskId)
-              completedTasksRef.current.add(taskId)
-              setProgress(null)
-              setLivePreview(null)
-              return
-            }
-            setProgress(progressData)
-            if (progressData.live_preview !== undefined) {
-              if (progressData.live_preview) {
-                setLivePreview(progressData.live_preview)
-              } else {
-                setLivePreview(null)
-              }
-            }
-          }
-        } catch (error) {
-          // Ignore polling errors
-        }
-      }, 2000) // Poll every 2 seconds
     } else {
       // Disconnect if no taskId
       progressManager.disconnect()
       if (pingIntervalRef.current) {
         clearInterval(pingIntervalRef.current)
         pingIntervalRef.current = null
-      }
-      if (pollIntervalRef.current) {
-        clearInterval(pollIntervalRef.current)
-        pollIntervalRef.current = null
       }
     }
 
@@ -214,10 +173,6 @@ export const useWebSocketProgress = (taskId: string | null = null): UseWebSocket
       if (pingIntervalRef.current) {
         clearInterval(pingIntervalRef.current)
         pingIntervalRef.current = null
-      }
-      if (pollIntervalRef.current) {
-        clearInterval(pollIntervalRef.current)
-        pollIntervalRef.current = null
       }
       // Note: We don't disconnect here because the manager is shared
       // The manager will handle reconnection when taskId changes
@@ -277,12 +232,12 @@ export const useWebSocketProgress = (taskId: string | null = null): UseWebSocket
       // Progress updates should have a numeric progress value (0-1)
       if (data.progress !== undefined && typeof data.progress === 'number') {
         // Check if this task has already been completed - if so, ignore further updates
-        if (completedTasksRef.current.has(data.task_id)) {
+        if (data.task_id && completedTasksRef.current.has(data.task_id)) {
           return
         }
 
         // Task completed - clear progress and live preview
-        if (data.completed) {
+        if (data.completed && data.task_id) {
           console.log('WebSocket: Task completed', data.task_id)
           completedTasksRef.current.add(data.task_id)
           setProgress(null)
@@ -322,7 +277,7 @@ export const useWebSocketProgress = (taskId: string | null = null): UseWebSocket
     })
 
     return unsubscribe
-  }, [])
+  }, [taskId])
 
   const disconnect = useCallback(() => {
     progressManager.disconnect()

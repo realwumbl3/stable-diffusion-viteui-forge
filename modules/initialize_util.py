@@ -213,7 +213,11 @@ def configure_cors_middleware(app):
     # Default allowed origins for development
     default_origins = ["http://localhost:5173", "http://127.0.0.1:5173"]  # Vite dev server
 
-    if cmd_opts.cors_allow_origins:
+    # Check for CORS_DOMAINS environment variable first
+    cors_domains_env = os.environ.get('CORS_DOMAINS')
+    if cors_domains_env:
+        cors_options["allow_origins"] = [origin.strip() for origin in cors_domains_env.split(',') if origin.strip()]
+    elif cmd_opts.cors_allow_origins:
         cors_options["allow_origins"] = cmd_opts.cors_allow_origins.split(',')
     else:
         cors_options["allow_origins"] = default_origins
