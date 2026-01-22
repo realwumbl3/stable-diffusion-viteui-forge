@@ -1,14 +1,14 @@
+# VITE UI
 import json
 import shutil
 from datetime import datetime
-from pathlib import Path
 from typing import Optional
 import time
 from pathlib import Path
 from PIL import Image
 from fastapi import HTTPException
 from modules.shared import opts
-from modules.viteapi.workspace_image_server import WorkspaceImageServer
+from modules_viteapi.workspace_image_server import WorkspaceImageServer
 
 class WorkspaceManager:
     def __init__(self, api, workspace_root: str = "workspaces", preview_max_size: int = 512):
@@ -168,6 +168,30 @@ class WorkspaceManager:
             }
 
         return {"structure": build_tree(self.workspace_root)}
+
+    def get_workspace_prompt(self, name: str) -> dict:
+        workspace_path = self._resolve_workspace_path(name)
+        prompt_path = self._prompt_file_path(workspace_path)
+        if prompt_path.exists():
+            try:
+                data = json.loads(prompt_path.read_text(encoding="utf-8"))
+            except Exception:
+                data = {}
+        else:
+            data = {}
+        return {
+            "nodes": data.get("nodes", []),
+        }
+
+    def save_workspace_prompt(self, name: str, payload: dict) -> dict:
+        workspace_path = self._resolve_workspace_path(name)
+        prompt_path = self._prompt_file_path(workspace_path)
+        prompt_path.parent.mkdir(parents=True, exist_ok=True)
+        prompt_data = {
+            "nodes": payload.get("nodes", []),
+        }
+        prompt_path.write_text(json.dumps(prompt_data, indent=2), encoding="utf-8")
+        return prompt_data
 
     def save_generation_images(self, workspace_name: str, images: list, mask_image: Optional[object] = None, generation_metadata: Optional[dict] = None, destination: str = "candidates") -> list[str]:
         workspace_path = self._resolve_workspace_path(workspace_name)
@@ -458,6 +482,9 @@ class WorkspaceManager:
         metadata_path = self._metadata_path(workspace_path)
         metadata_path.write_text(json.dumps(metadata, indent=2), encoding="utf-8")
 
+    def _prompt_file_path(self, workspace_path: Path) -> Path:
+        return workspace_path / "prompt.json"
+
     def register_routes(self, api):
         """Register workspace API routes with the given API instance"""
         # Workspace routes
@@ -465,6 +492,8 @@ class WorkspaceManager:
         api.add_api_route("/workspaces", self.create_workspace, methods=["POST"])
         api.add_api_route("/workspaces/structure", self.get_workspace_structure, methods=["GET"])
         api.add_api_route("/workspaces/folders", self.create_workspace_folder, methods=["POST"])
+        api.add_api_route("/workspaces/{name:path}/prompt", self.get_workspace_prompt, methods=["GET"])
+        api.add_api_route("/workspaces/{name:path}/prompt", self.save_workspace_prompt, methods=["POST"])
 
         # Unified asset endpoint: /workspaces/{name}/{category}/{genid}/{asset}
         api.add_api_route("/workspaces/{name:path}/{category}/{genid}/{asset}", self.image_server.serve_generation_asset, methods=["GET"])

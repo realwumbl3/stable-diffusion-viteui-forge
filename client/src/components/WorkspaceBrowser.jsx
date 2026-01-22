@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Folder, FolderPlus, ChevronRight, ChevronDown } from "lucide-react";
-import api from "../Api";
+import api from "../api";
 
 const WorkspaceBrowser = ({ currentWorkspace, onSelectWorkspace, onClose }) => {
     const [structure, setStructure] = useState(null);

@@ -21,10 +21,8 @@ const InpaintCanvas = ({
     progress,
     generationWidth,
     generationHeight,
-    prompt,
-    setPrompt,
-    negativePrompt,
-    setNegativePrompt,
+    composerNodes,
+    onComposerNodesChange,
     // Inpainting specific props
     setInpaintMask,
     brushSize: initialBrushSize = 16,
@@ -409,12 +407,8 @@ const InpaintCanvas = ({
 
             {/* Prompt Footer */}
             <PromptComposer
-                prompt={prompt}
-                setPrompt={setPrompt}
-                negativePrompt={negativePrompt}
-                setNegativePrompt={setNegativePrompt}
-                onPromptChange={setPrompt}
-                onNegativePromptChange={setNegativePrompt}
+                initialData={composerNodes}
+                onNodesChange={onComposerNodesChange}
                 collapsed={canvasState.footerCollapsed}
                 onToggle={() => canvasState.setFooterCollapsed(!canvasState.footerCollapsed)}
             />

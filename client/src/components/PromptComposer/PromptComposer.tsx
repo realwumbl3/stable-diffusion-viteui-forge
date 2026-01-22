@@ -11,10 +11,10 @@ import "./PromptComposer.css";
 import type {
     PromptComposerProps,
     PromptNode,
-    TextNode
+    TextNode,
+    TagsNode
 } from "./types";
 import {
-    composePromptsFromNodes,
     generateId,
     removeNode,
     insertNode,
@@ -32,20 +32,49 @@ import {
     ChevronUp
 } from "lucide-react";
 
+const createSimplePositiveNode = (value: string): TextNode => ({
+    id: generateId(),
+    type: 'text',
+    name: 'Positive Prompt',
+    hidden: false,
+    weight: 1,
+    value,
+    mode: 'simple-positive'
+});
+
+const createSimpleNegativeNode = (value: string): TextNode => ({
+    id: generateId(),
+    type: 'text',
+    name: 'Negative Prompt',
+    hidden: false,
+    weight: -1,
+    value,
+    mode: 'simple-negative'
+});
+
 function PromptComposer({
     className,
-    onPromptChange,
-    onNegativePromptChange,
     onNodesChange,
     initialData = [],
-    prompt = "",
-    setPrompt,
-    negativePrompt = "",
-    setNegativePrompt,
     collapsed = false,
     onToggle,
 }: PromptComposerProps) {
     const { nodes, setNodes } = usePromptComposerStore(initialData);
+    // Initialize with default nodes if none provided and no initial data was given
+    useEffect(() => {
+        if (nodes.length === 0 && (!initialData || initialData.length === 0)) {
+            const defaultTagNode: TagsNode = {
+                id: generateId(),
+                type: 'tags',
+                name: 'Tags',
+                hidden: false,
+                weight: 1,
+                value: [{ value: '', weight: 1 }]
+            };
+            setNodes([defaultTagNode]);
+        }
+    }, [nodes.length, setNodes, initialData]);
+
     // Simple drag state like vanilla JS
     const dragStateRef = useRef<{
         lastDragged: HTMLElement | null;
@@ -61,24 +90,57 @@ function PromptComposer({
 
     const handleSimplePromptChange = useCallback(
         (value: string) => {
-            if (setPrompt) {
-                setPrompt(value);
-            } else {
-                onPromptChange?.(value);
+            if (mode !== "simple") return;
+            const simplePositiveNode = nodes.find(
+                (node) => node.type === 'text' && (node as TextNode).mode === 'simple-positive'
+            ) as TextNode | undefined;
+
+            if (!simplePositiveNode) {
+                setNodes([createSimplePositiveNode(value), ...nodes]);
+                return;
             }
+
+            const updatedNodes = nodes.map(node => {
+                if (node.type === 'text' && (node as TextNode).mode === 'simple-positive') {
+                    return { ...node, value } as TextNode;
+                }
+                return node;
+            });
+            setNodes(updatedNodes);
         },
-        [onPromptChange, setPrompt]
+        [mode, nodes, setNodes]
     );
 
     const handleSimpleNegativePromptChange = useCallback(
         (value: string) => {
-            if (setNegativePrompt) {
-                setNegativePrompt(value);
-            } else {
-                onNegativePromptChange?.(value);
+            if (mode !== "simple") return;
+            const simpleNegativeNode = nodes.find(
+                (node) => node.type === 'text' && (node as TextNode).mode === 'simple-negative'
+            ) as TextNode | undefined;
+
+            if (!simpleNegativeNode) {
+                const simplePositiveIndex = nodes.findIndex(
+                    (node) => node.type === 'text' && (node as TextNode).mode === 'simple-positive'
+                );
+                const insertionIndex = simplePositiveIndex >= 0 ? simplePositiveIndex + 1 : nodes.length;
+                const newNodes = [
+                    ...nodes.slice(0, insertionIndex),
+                    createSimpleNegativeNode(value),
+                    ...nodes.slice(insertionIndex),
+                ];
+                setNodes(newNodes);
+                return;
             }
+
+            const updatedNodes = nodes.map(node => {
+                if (node.type === 'text' && (node as TextNode).mode === 'simple-negative') {
+                    return { ...node, value } as TextNode;
+                }
+                return node;
+            });
+            setNodes(updatedNodes);
         },
-        [onNegativePromptChange, setNegativePrompt]
+        [mode, nodes, setNodes]
     );
 
     const handleModeButtonClick = useCallback(
@@ -109,14 +171,13 @@ function PromptComposer({
             setNodes(newNodes);
             onNodesChange?.(newNodes);
         },
-        [onNodesChange]
+        [onNodesChange, setNodes]
     );
 
+    // Call onNodesChange whenever nodes change
     useEffect(() => {
-        const { positive, negative } = composePromptsFromNodes(nodes, true);
-        handleSimplePromptChange(positive);
-        handleSimpleNegativePromptChange(negative);
-    }, [nodes, handleSimplePromptChange, handleSimpleNegativePromptChange]);
+        onNodesChange?.(nodes);
+    }, [nodes, onNodesChange]);
 
     // Drag reorder function (simplified like vanilla JS)
     const dragReorder = useCallback(
@@ -259,12 +320,6 @@ function PromptComposer({
         setJsonImportText("");
     }, []);
 
-    const composePrompt = useCallback(() => {
-        const { positive, negative } = composePromptsFromNodes(nodes, true);
-        handleSimplePromptChange(positive);
-        handleSimpleNegativePromptChange(negative);
-    }, [nodes, handleSimplePromptChange, handleSimpleNegativePromptChange]);
-
     const handleJsonImport = useCallback(() => {
         if (!jsonImportText.trim()) {
             console.error("Please enter JSON data");
@@ -302,17 +357,10 @@ function PromptComposer({
     // Keyboard shortcuts
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
-            // Ctrl+Enter to compose
-            if (e.ctrlKey && e.key === "Enter") {
-                e.preventDefault();
-                composePrompt();
-            }
-            // Ctrl+E to export
             if (e.ctrlKey && e.key === "e") {
                 e.preventDefault();
                 exportToJson();
             }
-            // Ctrl+I to import
             if (e.ctrlKey && e.key === "i") {
                 e.preventDefault();
                 importFromJson();
@@ -321,7 +369,7 @@ function PromptComposer({
 
         document.addEventListener("keydown", handleKeyDown);
         return () => document.removeEventListener("keydown", handleKeyDown);
-    }, [composePrompt, exportToJson, importFromJson]);
+    }, [exportToJson, importFromJson]);
 
     const clearNodes = useCallback(() => {
         setNodes([]);
@@ -569,6 +617,15 @@ function PromptComposer({
         input.click();
     }, [generateId, loadFromPrompt]);
 
+    const simplePositiveNode = nodes.find(
+        (node) => node.type === 'text' && (node as TextNode).mode === 'simple-positive'
+    ) as TextNode | undefined;
+    const simpleNegativeNode = nodes.find(
+        (node) => node.type === 'text' && (node as TextNode).mode === 'simple-negative'
+    ) as TextNode | undefined;
+    const simplePositiveValue = simplePositiveNode?.value ?? "";
+    const simpleNegativeValue = simpleNegativeNode?.value ?? "";
+
     return (
         <footer className="studio-panel border-t border-studio-border">
             <div className="p-2">
@@ -632,7 +689,7 @@ function PromptComposer({
                                         Positive Prompt
                                     </label>
                                     <textarea
-                                        value={prompt}
+                                        value={simplePositiveValue}
                                         onChange={(e) =>
                                             handleSimplePromptChange(e.target.value)
                                         }
@@ -647,7 +704,7 @@ function PromptComposer({
                                         Negative Prompt
                                     </label>
                                     <textarea
-                                        value={negativePrompt}
+                                        value={simpleNegativeValue}
                                         onChange={(e) =>
                                             handleSimpleNegativePromptChange(e.target.value)
                                         }

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import api from "./api";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { useWebSocketProgress } from "./hooks/useWebSocketProgress";
@@ -9,15 +9,47 @@ import PropertiesPanel from "./components/PropertiesPanel.jsx";
 import Welcome from "./components/Welcome.jsx";
 import UpscaleDialog from "./components/UpscaleDialog.jsx";
 import WorkspaceBrowser from "./components/WorkspaceBrowser.jsx";
+import { useTitleIconAnimation } from "./hooks/useTitleIconAnimation";
 import { WORKSPACE_PREFIX, parseWorkspaceImage, resolveImageSrc, API_BASE_URL } from "./lib/utils";
+import { composePromptsFromNodes, generateId } from "./components/PromptComposer/utils/promptUtils";
+import { encodeLegacy } from "./components/PromptComposer/utils/legacyEncoding";
 
 function App() {
-    const [prompt, setPrompt] = useState("");
-    const [negativePrompt, setNegativePrompt] = useState("");
+    const [composerNodes, setComposerNodes] = useState([]);
+    const composerPrompts = useMemo(
+        () => composePromptsFromNodes(composerNodes),
+        [composerNodes]
+    );
+    const composerPrompt = composerPrompts.positive;
+    const composerNegativePrompt = composerPrompts.negative;
+    const [workspacePromptLoaded, setWorkspacePromptLoaded] = useState(false);
+    const programmaticComposerUpdateRef = useRef(false);
     const [loading, setLoading] = useState(false);
     const [currentImage, setCurrentImage] = useState(null);
     const [currentTaskId, setCurrentTaskId] = useState(null);
     const [canvasRefreshKey, setCanvasRefreshKey] = useState(0);
+    const [pendingRestart, setPendingRestart] = useState(false);
+
+    const createSimpleTextNodes = (positiveText = "", negativeText = "") => [
+        {
+            id: generateId(),
+            type: "text",
+            name: "Positive Prompt",
+            hidden: false,
+            weight: 1,
+            value: positiveText,
+            mode: "simple-positive",
+        },
+        {
+            id: generateId(),
+            type: "text",
+            name: "Negative Prompt",
+            hidden: false,
+            weight: -1,
+            value: negativeText,
+            mode: "simple-negative",
+        },
+    ];
 
     // WebSocket progress tracking
     const { progress, isConnected, livePreview } = useWebSocketProgress(currentTaskId);
@@ -106,6 +138,8 @@ function App() {
         error: null,
     });
 
+    useTitleIconAnimation(loading);
+
     useEffect(() => {
         loadInitialData();
         initializeWorkspace();
@@ -139,6 +173,19 @@ function App() {
     useEffect(() => {
         setCanvasRefreshKey(0);
     }, [currentImage]);
+
+    useEffect(() => {
+        if (!loading && pendingRestart) {
+            if (!composerPrompt.trim()) {
+                console.warn("Pending restart aborted because prompt is empty.");
+                setPendingRestart(false);
+                return;
+            }
+
+            setPendingRestart(false);
+            generateImage();
+        }
+    }, [loading, pendingRestart, composerPrompt]);
 
     const loadInitialData = async () => {
         try {
@@ -205,6 +252,7 @@ function App() {
                 });
                 setCurrentWorkspace(sorted[0].name);
                 await loadWorkspaceGenerations(sorted[0].name);
+                await loadWorkspacePrompt(sorted[0].name);
                 return;
             }
 
@@ -212,6 +260,7 @@ function App() {
             if (created?.name) {
                 setCurrentWorkspace(created.name);
                 await loadWorkspaceGenerations(created.name);
+                await loadWorkspacePrompt(created.name);
             }
         } catch (error) {
             console.error("Failed to initialize workspace:", error);
@@ -252,14 +301,57 @@ function App() {
         }
     };
 
-    const handleWorkspaceChange = (workspaceName) => {
+    async function loadWorkspacePrompt(workspaceName) {
+        if (!workspaceName) {
+            setWorkspacePromptLoaded(true);
+            return;
+        }
+
+        setWorkspacePromptLoaded(false);
+        try {
+            const workspacePrompt = await api.getWorkspacePrompt(workspaceName);
+            const nodes = workspacePrompt.nodes || [];
+            programmaticComposerUpdateRef.current = true;
+            setComposerNodes(nodes);
+        } catch (error) {
+            console.error("Failed to load workspace prompt:", error);
+        } finally {
+            setWorkspacePromptLoaded(true);
+        }
+    }
+
+    const handleWorkspaceChange = async (workspaceName) => {
         if (!workspaceName) return;
         setCurrentWorkspace(workspaceName);
         setCurrentImage(null);
         setInputImage(null);
         setInputImageData(null);
-        loadWorkspaceGenerations(workspaceName);
+        setWorkspacePromptLoaded(false);
+        setComposerNodes([]);
+        await loadWorkspaceGenerations(workspaceName);
+        await loadWorkspacePrompt(workspaceName);
     };
+
+    const handleComposerNodesChange = (nodes) => {
+        setComposerNodes(nodes);
+    };
+
+    useEffect(() => {
+        if (!currentWorkspace || !workspacePromptLoaded) return;
+        if (programmaticComposerUpdateRef.current) {
+            programmaticComposerUpdateRef.current = false;
+            return;
+        }
+        const payload = {
+            nodes: composerNodes,
+        };
+        const timer = setTimeout(() => {
+            api.saveWorkspacePrompt(currentWorkspace, payload).catch((error) => {
+                console.error("Failed to save workspace prompt:", error);
+            });
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [composerNodes, currentWorkspace, workspacePromptLoaded]);
 
     const toWorkspaceImage = (workspaceName, relativePath) =>
         `${WORKSPACE_PREFIX}${encodeURIComponent(workspaceName)}/${relativePath}`;
@@ -296,7 +388,8 @@ function App() {
     };
 
     const generateImage = async () => {
-        if (!prompt.trim()) return;
+        setPendingRestart(false);
+        if (!composerPrompt.trim()) return;
         if ((generationMode === "img2img" || generationMode === "inpaint") && timeline.committedHistory.length === 0) {
             alert("No committed images available for img2img/inpainting. Please generate and commit an image first.");
             return;
@@ -336,9 +429,20 @@ function App() {
         await new Promise((resolve) => setTimeout(resolve, 100));
 
         try {
+            // Inject prompt composer metadata for generation data preservation
+            let promptWithMetadata = composerPrompt;
+            if (composerNodes.length > 0) {
+                try {
+                    const encodedData = encodeLegacy(composerNodes);
+                    promptWithMetadata += `\n\n\n\n\n<betterpromptexport:${encodedData}>`;
+                } catch (e) {
+                    console.warn('Failed to encode prompt metadata for generation:', e);
+                }
+            }
+
             const baseParams = {
-                prompt: prompt,
-                negative_prompt: negativePrompt,
+                prompt: promptWithMetadata,
+                negative_prompt: composerNegativePrompt,
                 steps: steps,
                 width: width,
                 height: height,
@@ -464,6 +568,19 @@ function App() {
             // If interrupt API fails, still don't reset state immediately
             // Let the original API request handle state cleanup
         }
+    };
+
+    const handleRestart = () => {
+        if (!loading) return;
+        setPendingRestart(true);
+        handleInterrupt();
+    };
+
+    const handleEnd = () => {
+        if (pendingRestart) {
+            setPendingRestart(false);
+        }
+        handleInterrupt();
     };
 
     const handleCanvasImageUpload = async (imageSrc) => {
@@ -752,7 +869,7 @@ function App() {
 
     const handleGetStarted = (templatePrompt = "") => {
         if (templatePrompt) {
-            setPrompt(templatePrompt);
+            setComposerNodes(createSimpleTextNodes(templatePrompt));
         }
         setShowWelcome(false);
     };
@@ -760,14 +877,14 @@ function App() {
     // Keyboard shortcuts
     useKeyboardShortcuts({
         "ctrl+g": () => {
-            if (prompt.trim() && !loading) {
+            if (composerPrompt.trim() && !loading) {
                 generateImage();
             }
         },
         "g": () => {
             if (loading) {
                 handleInterrupt();
-            } else if (prompt.trim()) {
+            } else if (composerPrompt.trim()) {
                 generateImage();
             }
         },
@@ -798,9 +915,10 @@ function App() {
                     loading={loading}
                     progress={progress}
                     onGenerate={generateImage}
-                    canGenerate={!!prompt.trim()}
+                    canGenerate={!!composerPrompt.trim()}
                     onSkip={handleSkip}
-                    onInterrupt={handleInterrupt}
+                    onRestart={handleRestart}
+                    onInterrupt={handleEnd}
                     currentWorkspace={currentWorkspace}
                     onWorkspaceChange={handleWorkspaceChange}
                     onOpenWorkspace={() => setWorkspaceBrowserOpen(true)}
@@ -850,9 +968,10 @@ function App() {
                 loading={loading}
                 progress={progress}
                 onGenerate={generateImage}
-                canGenerate={!!prompt.trim()}
+                    canGenerate={!!composerPrompt.trim()}
                 onSkip={handleSkip}
-                onInterrupt={handleInterrupt}
+                onRestart={handleRestart}
+                onInterrupt={handleEnd}
                 currentWorkspace={currentWorkspace}
                 onWorkspaceChange={handleWorkspaceChange}
                 onOpenWorkspace={() => setWorkspaceBrowserOpen(true)}
@@ -912,10 +1031,8 @@ function App() {
                         progress={progress}
                         generationWidth={width}
                         generationHeight={height}
-                        prompt={prompt}
-                        setPrompt={setPrompt}
-                        negativePrompt={negativePrompt}
-                        setNegativePrompt={setNegativePrompt}
+                        composerNodes={composerNodes}
+                        onComposerNodesChange={handleComposerNodesChange}
                         inpaintMask={inpaintMask}
                         setInpaintMask={setInpaintMask}
                         onImageUpload={handleCanvasImageUpload}
@@ -945,10 +1062,8 @@ function App() {
                         progress={progress}
                         generationWidth={width}
                         generationHeight={height}
-                        prompt={prompt}
-                        setPrompt={setPrompt}
-                        negativePrompt={negativePrompt}
-                        setNegativePrompt={setNegativePrompt}
+                        composerNodes={composerNodes}
+                        onComposerNodesChange={handleComposerNodesChange}
                         // Inpainting specific props - provide defaults for non-inpaint modes
                         setInpaintMask={() => { }}
                         forceEditMode={false}

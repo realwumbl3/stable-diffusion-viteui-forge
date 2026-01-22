@@ -32,7 +32,7 @@ import piexif
 import piexif.helper
 from contextlib import closing
 from modules.progress import create_task_id, add_task_to_queue, start_task, finish_task, current_task, websocket_progress_endpoint
-from modules.viteapi.viteapi import ViteAPI
+from modules_viteapi.viteapi import ViteAPI
 
 def script_name_to_index(name, scripts):
     try:

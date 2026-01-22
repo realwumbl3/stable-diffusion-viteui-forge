@@ -22,6 +22,7 @@ export interface Tag {
 export interface TextNode extends BaseNode {
   type: 'text'
   value: string
+  mode?: 'simple-positive' | 'simple-negative'
 }
 
 export interface GroupNode extends BaseNode {
@@ -38,16 +39,10 @@ export type PromptNode = TagsNode | TextNode | GroupNode | BreakNode
 
 export interface PromptComposerProps {
   className?: string
-  onPromptChange?: (prompt: string) => void
-  onNegativePromptChange?: (negativePrompt: string) => void
   onNodesChange?: (nodes: PromptNode[]) => void
   initialData?: PromptNode[]
   showDemoButton?: boolean
   showKeyboardHints?: boolean
-  prompt?: string
-  setPrompt?: (prompt: string) => void
-  negativePrompt?: string
-  setNegativePrompt?: (negativePrompt: string) => void
   collapsed?: boolean
   onToggle?: () => void
 }

@@ -92,6 +92,10 @@ export interface WorkspaceInfo {
   folders?: string[];
 }
 
+export interface WorkspacePrompt {
+  nodes: any[];
+}
+
 export interface GenerationResponse {
   images: string[];
   filesystem_paths?: string[];
@@ -302,6 +306,17 @@ class StableDiffusionAPI {
     return this.request('/workspaces/folders', {
       method: 'POST',
       body: JSON.stringify({ path }),
+    });
+  }
+
+  async getWorkspacePrompt(workspaceName: string): Promise<WorkspacePrompt> {
+    return this.request<WorkspacePrompt>(`/workspaces/${encodeURIComponent(workspaceName)}/prompt`);
+  }
+
+  async saveWorkspacePrompt(workspaceName: string, promptData: WorkspacePrompt): Promise<WorkspacePrompt> {
+    return this.request<WorkspacePrompt>(`/workspaces/${encodeURIComponent(workspaceName)}/prompt`, {
+      method: 'POST',
+      body: JSON.stringify(promptData),
     });
   }
 

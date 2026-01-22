@@ -7,6 +7,7 @@ import {
   Type,
   SkipForward,
   Square,
+  RotateCw,
   Edit,
   Lock,
   Unlock
@@ -23,6 +24,7 @@ const Header = ({
   onGenerate,
   canGenerate,
   onSkip,
+  onRestart,
   onInterrupt,
   currentWorkspace,
   onWorkspaceChange,
@@ -130,6 +132,14 @@ const Header = ({
             >
               <SkipForward size={16} />
               Skip
+            </button>
+            <button
+              onClick={onRestart}
+              className="studio-btn-secondary flex flex-col items-center gap-1 px-3 py-1 text-sm hover:bg-studio-accent/20"
+              title="Restart generation after interrupting current work"
+            >
+              <RotateCw size={16} />
+              Restart
             </button>
             <button
               onClick={onInterrupt}
