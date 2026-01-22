@@ -44,6 +44,12 @@ export interface PromptComposerProps {
   initialData?: PromptNode[]
   showDemoButton?: boolean
   showKeyboardHints?: boolean
+  prompt?: string
+  setPrompt?: (prompt: string) => void
+  negativePrompt?: string
+  setNegativePrompt?: (negativePrompt: string) => void
+  collapsed?: boolean
+  onToggle?: () => void
 }
 
 export interface NodeFieldProps {

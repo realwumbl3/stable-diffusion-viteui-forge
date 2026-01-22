@@ -1,6 +1,6 @@
 // VITE UI
 import { useState, useRef, useEffect, useCallback } from "react";
-import PromptFooter from "../../PromptFooter.jsx";
+import PromptComposer from "../../PromptComposer";
 import InpaintToolbar from "./InpaintToolbar.jsx";
 import { resolveImageSrc } from "../../../lib/utils";
 
@@ -51,6 +51,8 @@ const InpaintCanvas = ({
     canvasPadding,
     // Generation mode
     generationMode = "txt2img",
+    // Canvas refresh key
+    canvasRefreshKey = 0,
 }) => {
     const displayImage = previewImage || currentImage;
     const resolvedDisplayImage = resolveImageSrc(displayImage, "full");
@@ -372,6 +374,7 @@ const InpaintCanvas = ({
                 inpaintFullRes={inpaintFullRes}
                 inpaintFullResPadding={inpaintFullResPadding}
                 setInpaintFullResPadding={setInpaintFullResPadding}
+                canvasRefreshKey={canvasRefreshKey}
                 viewMode={canvasState.viewMode}
                 isDrawing={canvasState.isDrawing}
                 setLastDrawPos={canvasState.setLastDrawPos}
@@ -405,11 +408,13 @@ const InpaintCanvas = ({
             />
 
             {/* Prompt Footer */}
-            <PromptFooter
+            <PromptComposer
                 prompt={prompt}
                 setPrompt={setPrompt}
                 negativePrompt={negativePrompt}
                 setNegativePrompt={setNegativePrompt}
+                onPromptChange={setPrompt}
+                onNegativePromptChange={setNegativePrompt}
                 collapsed={canvasState.footerCollapsed}
                 onToggle={() => canvasState.setFooterCollapsed(!canvasState.footerCollapsed)}
             />

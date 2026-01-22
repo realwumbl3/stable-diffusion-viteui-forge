@@ -1,12 +1,36 @@
-import React, { useState, useRef, useCallback, useEffect, memo } from "react";
+// # VITE UI
+import React, {
+    useState,
+    useRef,
+    useCallback,
+    useEffect,
+    memo
+} from "react";
 import { cn } from "../../lib/utils";
 import "./PromptComposer.css";
-import type { PromptComposerProps, PromptNode, GroupNode, TextNode } from "./types";
-import { composePromptsFromNodes, generateId, removeNode, insertNode, findNodeById } from "./utils/promptUtils";
+import type {
+    PromptComposerProps,
+    PromptNode,
+    TextNode
+} from "./types";
+import {
+    composePromptsFromNodes,
+    generateId,
+    removeNode,
+    insertNode,
+    findNodeById
+} from "./utils/promptUtils";
 import { decodeLegacy } from "./utils/legacyEncoding";
 import NodeField from "./components/NodeField";
 import ClearPromptButton from "./components/ClearPromptButton";
 import { usePromptComposerStore } from "./store";
+import {
+    Type,
+    Edit,
+    Wrench,
+    ChevronDown,
+    ChevronUp
+} from "lucide-react";
 
 function PromptComposer({
     className,
@@ -14,6 +38,12 @@ function PromptComposer({
     onNegativePromptChange,
     onNodesChange,
     initialData = [],
+    prompt = "",
+    setPrompt,
+    negativePrompt = "",
+    setNegativePrompt,
+    collapsed = false,
+    onToggle,
 }: PromptComposerProps) {
     const { nodes, setNodes } = usePromptComposerStore(initialData);
     // Simple drag state like vanilla JS
@@ -24,10 +54,47 @@ function PromptComposer({
         lastDragged: null,
         dragTarget: null,
     });
-    const [modified, setModified] = useState(false);
     const [showJsonImport, setShowJsonImport] = useState(false);
     const [jsonImportText, setJsonImportText] = useState("");
+    const [mode, setMode] = useState<"simple" | "composer">("simple");
     const editorRef = useRef<HTMLDivElement>(null);
+
+    const handleSimplePromptChange = useCallback(
+        (value: string) => {
+            if (setPrompt) {
+                setPrompt(value);
+            } else {
+                onPromptChange?.(value);
+            }
+        },
+        [onPromptChange, setPrompt]
+    );
+
+    const handleSimpleNegativePromptChange = useCallback(
+        (value: string) => {
+            if (setNegativePrompt) {
+                setNegativePrompt(value);
+            } else {
+                onNegativePromptChange?.(value);
+            }
+        },
+        [onNegativePromptChange, setNegativePrompt]
+    );
+
+    const handleModeButtonClick = useCallback(
+        (targetMode: "simple" | "composer") => {
+            if (mode === targetMode) {
+                onToggle?.();
+                return;
+            }
+
+            setMode(targetMode);
+            if (collapsed) {
+                onToggle?.();
+            }
+        },
+        [collapsed, mode, onToggle]
+    );
 
     // Helper to get node ID from DOM element
     const getNodeIdFromElement = (element: HTMLElement | null): string | null => {
@@ -40,11 +107,16 @@ function PromptComposer({
     const handleNodesChange = useCallback(
         (newNodes: PromptNode[]) => {
             setNodes(newNodes);
-            setModified(true);
             onNodesChange?.(newNodes);
         },
         [onNodesChange]
     );
+
+    useEffect(() => {
+        const { positive, negative } = composePromptsFromNodes(nodes, true);
+        handleSimplePromptChange(positive);
+        handleSimpleNegativePromptChange(negative);
+    }, [nodes, handleSimplePromptChange, handleSimpleNegativePromptChange]);
 
     // Drag reorder function (simplified like vanilla JS)
     const dragReorder = useCallback(
@@ -189,10 +261,9 @@ function PromptComposer({
 
     const composePrompt = useCallback(() => {
         const { positive, negative } = composePromptsFromNodes(nodes, true);
-        onPromptChange?.(positive);
-        onNegativePromptChange?.(negative);
-        setModified(false);
-    }, [nodes, onPromptChange, onNegativePromptChange]);
+        handleSimplePromptChange(positive);
+        handleSimpleNegativePromptChange(negative);
+    }, [nodes, handleSimplePromptChange, handleSimpleNegativePromptChange]);
 
     const handleJsonImport = useCallback(() => {
         if (!jsonImportText.trim()) {
@@ -204,7 +275,6 @@ function PromptComposer({
             const data = JSON.parse(jsonImportText.trim());
             if (Array.isArray(data)) {
                 setNodes(data as PromptNode[]);
-                setModified(true);
                 setShowJsonImport(false);
             } else {
                 console.error("Invalid JSON format - expected array", data);
@@ -223,7 +293,6 @@ function PromptComposer({
             const legacyData = decodeLegacy(encodedData);
             if (legacyData && Array.isArray(legacyData)) {
                 setNodes(legacyData);
-                setModified(true);
                 return true;
             }
         }
@@ -256,7 +325,6 @@ function PromptComposer({
 
     const clearNodes = useCallback(() => {
         setNodes([]);
-        setModified(true);
     }, []);
 
     // Extract text chunks from PNG files
@@ -335,7 +403,6 @@ function PromptComposer({
 
                     for (let i = 0; i < numEntries; i++) {
                         const tag = dataView.getUint16(tiffOffset, isLittleEndian);
-                        const type = dataView.getUint16(tiffOffset + 2, isLittleEndian);
                         const count = dataView.getUint32(tiffOffset + 4, isLittleEndian);
                         const valueOffset = dataView.getUint32(tiffOffset + 8, isLittleEndian);
 
@@ -412,7 +479,6 @@ function PromptComposer({
                             const data = JSON.parse(metadata);
                             if (Array.isArray(data)) {
                                 setNodes(data);
-                                setModified(true);
                                 return;
                             }
                         } catch {
@@ -429,7 +495,6 @@ function PromptComposer({
                             value: metadata || "No metadata found in image",
                         };
                         setNodes([textNode]);
-                        setModified(true);
                     };
                     reader.readAsArrayBuffer(file);
                 } else if (fileExtension === "jpg" || fileExtension === "jpeg") {
@@ -449,7 +514,6 @@ function PromptComposer({
                             const data = JSON.parse(metadata);
                             if (Array.isArray(data)) {
                                 setNodes(data);
-                                setModified(true);
                                 return;
                             }
                         } catch {
@@ -466,7 +530,6 @@ function PromptComposer({
                             value: metadata || "No metadata found in image",
                         };
                         setNodes([textNode]);
-                        setModified(true);
                     };
                     reader.readAsArrayBuffer(file);
                 } else {
@@ -485,7 +548,6 @@ function PromptComposer({
                             const data = JSON.parse(content);
                             if (Array.isArray(data)) {
                                 setNodes(data);
-                                setModified(true);
                             }
                         } catch {
                             // If not JSON, treat as plain text and create a text node
@@ -498,7 +560,6 @@ function PromptComposer({
                                 value: content,
                             };
                             setNodes([textNode]);
-                            setModified(true);
                         }
                     };
                     reader.readAsText(file);
@@ -509,47 +570,149 @@ function PromptComposer({
     }, [generateId, loadFromPrompt]);
 
     return (
-        <div className={cn("prompt-composer", className)}>
-            <div className="better-prompt-container">
-                <div className="better-prompt">
-                    {/* Footer */}
-                    <div className="editor-footer">
-                        <div className="left-side"></div>
-                        <div className="right-side">
-                            <div className="column">
-                                <div className="row manage">
-                                    <ClearPromptButton onClear={clearNodes} />
-                                    <button className="button" onClick={exportToJson}>
-                                        export
-                                    </button>
-                                    <button className="button" onClick={importFromJson}>
-                                        import
-                                    </button>
-                                    <button className="button" onClick={loadFromFile}>
-                                        load file
-                                    </button>
-                                </div>
-                            </div>
-                            <button className={cn("compose", { modified })} onClick={composePrompt}>
-                                COMPOSE
-                            </button>
-                        </div>
-                    </div>
-                    {/* Main Editor */}
+        <footer className="studio-panel border-t border-studio-border">
+            <div className="p-2">
+                <div className="flex items-center justify-between mb-2">
                     <div
-                        className="main-editor"
-                        ref={editorRef}
-                        onDragStart={handleDragStart}
-                        onDragEnter={handleDragEnter}
-                        onDragOver={handleDragOver}
-                        onDragEnd={handleDragEnd}
+                        className="flex items-center gap-2 cursor-pointer"
+                        onClick={() => onToggle?.()}
                     >
-                        <NodeField nodes={nodes} onChange={handleNodesChange} generateId={generateId} />
+                        <Type size={16} className="text-studio-textSecondary" />
+                        <h3 className="text-studio-text font-medium text-sm">Prompt Editor</h3>
+                    </div>
+                    <div className="flex items-center gap-2">
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleModeButtonClick("simple")
+                                }}
+                                className={`flex items-center gap-1 px-2 py-1 text-xs rounded transition-colors ${
+                                    mode === "simple"
+                                        ? "bg-studio-accent text-white"
+                                        : "text-studio-textSecondary hover:text-studio-text hover:bg-studio-surface"
+                                }`}
+                                title="Simple text input mode"
+                            >
+                                <Edit size={12} />
+                                Simple
+                            </button>
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleModeButtonClick("composer")
+                                }}
+                                className={`flex items-center gap-1 px-2 py-1 text-xs rounded transition-colors ${
+                                    mode === "composer"
+                                        ? "bg-studio-accent text-white"
+                                        : "text-studio-textSecondary hover:text-studio-text hover:bg-studio-surface"
+                                }`}
+                                title="Advanced composer mode"
+                            >
+                                <Wrench size={12} />
+                                Composer
+                            </button>
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation()
+                                onToggle?.()
+                            }}
+                            className="text-studio-textSecondary hover:text-studio-text transition-colors"
+                        >
+                            {collapsed ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                        </button>
                     </div>
                 </div>
+
+                {!collapsed && (
+                    <div className="space-y-3">
+                        {mode === "simple" ? (
+                            <>
+                                <div>
+                                    <label className="studio-label text-xs mb-1 block">
+                                        Positive Prompt
+                                    </label>
+                                    <textarea
+                                        value={prompt}
+                                        onChange={(e) =>
+                                            handleSimplePromptChange(e.target.value)
+                                        }
+                                        placeholder="Describe what you want to generate... (e.g., 'a beautiful landscape, sunset, mountains')"
+                                        className="studio-textarea w-full resize-none text-sm"
+                                        rows={3}
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="studio-label text-xs mb-1 block">
+                                        Negative Prompt
+                                    </label>
+                                    <textarea
+                                        value={negativePrompt}
+                                        onChange={(e) =>
+                                            handleSimpleNegativePromptChange(e.target.value)
+                                        }
+                                        placeholder="Describe what you don't want... (e.g., 'blurry, low quality, distorted')"
+                                        className="studio-textarea w-full resize-none text-sm"
+                                        rows={2}
+                                    />
+                                </div>
+                            </>
+                        ) : (
+                            <div className="composer-container">
+                                <div className={cn("prompt-composer", className)}>
+                                    <div className="better-prompt-container">
+                                        <div className="better-prompt">
+                                            <div className="editor-footer">
+                                                <div className="left-side"></div>
+                                                <div className="right-side">
+                                                    <div className="column">
+                                                        <div className="row manage">
+                                                            <ClearPromptButton onClear={clearNodes} />
+                                                            <button
+                                                                className="button"
+                                                                onClick={exportToJson}
+                                                            >
+                                                                export
+                                                            </button>
+                                                            <button
+                                                                className="button"
+                                                                onClick={importFromJson}
+                                                            >
+                                                                import
+                                                            </button>
+                                                            <button
+                                                                className="button"
+                                                                onClick={loadFromFile}
+                                                            >
+                                                                load file
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div
+                                                className="main-editor"
+                                                ref={editorRef}
+                                                onDragStart={handleDragStart}
+                                                onDragEnter={handleDragEnter}
+                                                onDragOver={handleDragOver}
+                                                onDragEnd={handleDragEnd}
+                                            >
+                                                <NodeField
+                                                    nodes={nodes}
+                                                    onChange={handleNodesChange}
+                                                    generateId={generateId}
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
 
-            {/* JSON Import Dialog */}
             {showJsonImport && (
                 <div className="json-import-overlay" onClick={() => setShowJsonImport(false)}>
                     <div className="json-import-dialog" onClick={(e) => e.stopPropagation()}>
@@ -572,7 +735,7 @@ function PromptComposer({
                     </div>
                 </div>
             )}
-        </div>
+        </footer>
     );
 }
 

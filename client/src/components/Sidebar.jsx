@@ -27,7 +27,9 @@ const Sidebar = ({
   generationMode,
   onUpscale,
   getGenerationImageUrl,
-  onRefreshTimeline
+  onRefreshTimeline,
+  onRefreshCanvas,
+  canvasRefreshKey
 }) => {
   const [committedPage, setCommittedPage] = useState(0)
   const [discardedPage, setDiscardedPage] = useState(0)
@@ -223,7 +225,7 @@ const Sidebar = ({
                     {currentImage ? (
                       <img
                         ref={canvasImgRef}
-                        src={resolveImageSrc(currentImage, "full")}
+                        src={`${resolveImageSrc(currentImage, "full")}${canvasRefreshKey > 0 ? `?refresh=${canvasRefreshKey}` : ''}`}
                         crossOrigin="anonymous"
                         alt="Canvas"
                         className="w-full object-contain"
@@ -235,6 +237,21 @@ const Sidebar = ({
                     )}
                     {previewImage && (
                       <div className="absolute inset-0 bg-studio-accent/10 border border-studio-accent/40" />
+                    )}
+
+                    {/* Refresh Button - Bottom Right */}
+                    {currentImage && (
+                      <button
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          onRefreshCanvas?.()
+                        }}
+                        className="absolute bottom-2 right-2 rounded bg-studio-panel/90 text-studio-textSecondary p-1.5 hover:bg-studio-surface hover:text-studio-text transition-all duration-200 shadow-sm opacity-0 group-hover:opacity-100"
+                        title="Refresh Canvas"
+                        type="button"
+                      >
+                        <RefreshCw size={14} />
+                      </button>
                     )}
 
                     {/* Canvas Header Container */}

@@ -171,6 +171,7 @@ class ViteAPI:
         # ViteUI specific endpoints
         api.add_api_route("/viteapi/txt2img", self.viteapi_txt2img, methods=["POST"])
         api.add_api_route("/viteapi/img2img", self.viteapi_img2img, methods=["POST"])
+        api.add_api_route("/viteapi/extras", self.viteapi_extras, methods=["POST"])
 
 
     async def viteapi_txt2img(self, request: Request):
@@ -199,13 +200,55 @@ class ViteAPI:
         # Run the synchronous API call in a thread pool
         return await asyncio.to_thread(self.api.text2imgapi, txt2imgreq)
 
-    async def viteapi_img2img(self, request: Request):
-        """ViteUI img2img endpoint that loads images from workspace instead of accepting base64 from client"""
+    def _load_image_from_workspace(self, workspace_name: str, workspace_image_path: str) -> str:
+        """Generalized helper to load an image from workspace and convert to base64 data URL.
+        
+        Args:
+            workspace_name: Name of the workspace
+            workspace_image_path: Relative path within workspace (e.g., "commits/genid/full.png")
+            
+        Returns:
+            Base64 data URL string (e.g., "data:image/png;base64,...")
+            
+        Raises:
+            HTTPException: If workspace_name or workspace_image_path is missing, or if image cannot be loaded
+        """
         import base64
         import io
         from fastapi import HTTPException
         import modules.images as images
 
+        if not workspace_name:
+            raise HTTPException(status_code=422, detail="workspace_name is required")
+        if not workspace_image_path:
+            raise HTTPException(status_code=422, detail="workspace_image_path is required")
+
+        # Load image from workspace
+        try:
+            image_path = self.workspace_manager.resolve_workspace_file(workspace_name, workspace_image_path)
+            if not image_path.exists():
+                raise HTTPException(status_code=404, detail=f"Image not found at {workspace_image_path} in workspace {workspace_name}")
+        except HTTPException:
+            raise
+        except Exception as e:
+            print(f"VITE-UI-API: Failed to resolve workspace file: {str(e)}")
+            raise HTTPException(status_code=404, detail=f"Failed to resolve workspace file: {str(e)}")
+
+        # Convert image to base64
+        try:
+            print(f"VITE-UI-API: Loading image from workspace: {workspace_name}, path: {workspace_image_path}")
+            image = images.read(image_path)
+            buffer = io.BytesIO()
+            image.save(buffer, format="PNG")
+            image_base64 = base64.b64encode(buffer.getvalue()).decode('utf-8')
+            image_data_url = f"data:image/png;base64,{image_base64}"
+            return image_data_url
+        except Exception as e:
+            print(f"VITE-UI-API: Failed to process image: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Failed to process image: {str(e)}")
+
+    async def viteapi_img2img(self, request: Request):
+        """ViteUI img2img endpoint that loads images from workspace instead of accepting base64 from client"""
         # Get request body as JSON
         try:
             request_dict = await request.json()
@@ -222,26 +265,9 @@ class ViteAPI:
         if not workspace_name:
             raise HTTPException(status_code=422, detail="workspace_name is required")
 
-        # Load image from workspace
-        try:
-            image_path = self.workspace_manager.resolve_workspace_file(workspace_name, f"commits/{genid}/full.png")
-            if not image_path.exists():
-                raise HTTPException(status_code=404, detail=f"Image not found for genid {genid}")
-        except Exception as e:
-            print(f"VITE-UI-API: Failed to resolve workspace file: {str(e)}")
-            raise HTTPException(status_code=404, detail=f"Failed to resolve workspace file: {str(e)}")
-
-        # Convert image to base64
-        try:
-            print(f"VITE-UI-API: Inferring image from latest committed image workspace: {workspace_name}, genid: {genid}")
-            image = images.read(image_path)
-            buffer = io.BytesIO()
-            image.save(buffer, format="PNG")
-            image_base64 = base64.b64encode(buffer.getvalue()).decode('utf-8')
-            image_data_url = f"data:image/png;base64,{image_base64}"
-        except Exception as e:
-            print(f"VITE-UI-API: Failed to process image: {str(e)}")
-            raise HTTPException(status_code=500, detail=f"Failed to process image: {str(e)}")
+        # Load image from workspace using generalized helper
+        workspace_image_path = f"commits/{genid}/full.png"
+        image_data_url = self._load_image_from_workspace(workspace_name, workspace_image_path)
 
         # Create a new request dict with init_images instead of genid
         img2img_request_dict = dict[Any, Any](request_dict)  # Copy the original request
@@ -264,3 +290,48 @@ class ViteAPI:
         """Async wrapper for img2imgapi that prevents blocking the event loop"""
         # Run the synchronous API call in a thread pool
         return await asyncio.to_thread(self.api.img2imgapi, img2imgreq)
+
+    async def viteapi_extras(self, request: Request):
+        """ViteUI extras endpoint that loads images from workspace instead of accepting base64 from client"""
+        # Get request body as JSON
+        try:
+            request_dict = await request.json()
+        except Exception as e:
+            print(f"VITE-UI-API: Failed to get request body: {str(e)}")
+            raise HTTPException(status_code=400, detail="Invalid JSON request")
+
+        # Extract parameters from request
+        workspace_name = request_dict.get('workspace_name')
+        workspace_image_path = request_dict.get('workspace_image_path')
+
+        # If workspace_image_path is provided, load from workspace; otherwise fall back to base64 image
+        if workspace_image_path and workspace_name:
+            # Load image from workspace using generalized helper
+            image_data_url = self._load_image_from_workspace(workspace_name, workspace_image_path)
+            
+            # Create a new request dict with image instead of workspace_image_path
+            extras_request_dict = dict[Any, Any](request_dict)  # Copy the original request
+            extras_request_dict['image'] = image_data_url
+            if 'workspace_image_path' in extras_request_dict:
+                del extras_request_dict['workspace_image_path']
+        else:
+            # Fall back to using image from request (base64)
+            extras_request_dict = request_dict
+            if not extras_request_dict.get('image'):
+                raise HTTPException(status_code=422, detail="Either workspace_image_path+workspace_name or image (base64) is required")
+
+        # Convert to Pydantic model for the API call
+        import modules.api.models as models
+        try:
+            extras_request = models.ExtrasSingleImageRequest(**extras_request_dict)
+        except Exception as e:
+            print(f"VITE-UI-API: Failed to create extras request: {str(e)}")
+            raise HTTPException(status_code=422, detail=f"Invalid request parameters: {str(e)}")
+
+        # Call the async extras API wrapper
+        return await self.extrasapi_async(extras_request)
+
+    async def extrasapi_async(self, extrasreq):
+        """Async wrapper for extras_single_image_api that prevents blocking the event loop"""
+        # Run the synchronous API call in a thread pool
+        return await asyncio.to_thread(self.api.extras_single_image_api, extrasreq)

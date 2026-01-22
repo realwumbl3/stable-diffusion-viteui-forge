@@ -51,7 +51,8 @@ export interface UpscalerInfo {
 }
 
 export interface ExtrasSingleImageParams {
-  image: string;
+  image?: string; // Base64 image (fallback if workspace_image_path not provided)
+  workspace_image_path?: string; // Workspace-relative path (e.g., "commits/genid/full.png")
   upscaler_1: string;
   upscaling_resize: number;
   resize_mode: number;
@@ -224,7 +225,12 @@ class StableDiffusionAPI {
     const taskId = `task(extra-single-image-${Date.now()}-${Math.random().toString(36).substr(2, 9)})`
     const paramsWithTaskId = { ...params, force_task_id: taskId }
 
-    const result = await this.request<ExtrasResponse>('/sdapi/v1/extra-single-image', {
+    // Use viteapi endpoint if workspace_image_path is provided, otherwise use standard endpoint
+    const endpoint = params.workspace_image_path && params.workspace_name 
+      ? '/viteapi/extras' 
+      : '/sdapi/v1/extra-single-image'
+
+    const result = await this.request<ExtrasResponse>(endpoint, {
       method: 'POST',
       body: JSON.stringify(paramsWithTaskId),
     });

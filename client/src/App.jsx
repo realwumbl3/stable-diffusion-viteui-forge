@@ -17,6 +17,7 @@ function App() {
     const [loading, setLoading] = useState(false);
     const [currentImage, setCurrentImage] = useState(null);
     const [currentTaskId, setCurrentTaskId] = useState(null);
+    const [canvasRefreshKey, setCanvasRefreshKey] = useState(0);
 
     // WebSocket progress tracking
     const { progress, isConnected, livePreview } = useWebSocketProgress(currentTaskId);
@@ -48,6 +49,10 @@ function App() {
             setForceInpaintEditMode(false);
             setPreserveInpaintMask(false); // Don't preserve mask when not in inpaint mode
         }
+    };
+
+    const handleRefreshCanvas = () => {
+        setCanvasRefreshKey(prev => prev + 1);
     };
 
     // Inpainting parameters
@@ -129,6 +134,11 @@ function App() {
             window.removeEventListener('beforeunload', handleBeforeUnload);
         };
     }, [pageLocked]);
+
+    // Reset refresh key when currentImage changes
+    useEffect(() => {
+        setCanvasRefreshKey(0);
+    }, [currentImage]);
 
     const loadInitialData = async () => {
         try {
@@ -640,6 +650,41 @@ function App() {
         }));
     };
 
+    const getWorkspaceImagePath = (sourceImage) => {
+        // If sourceImage is a generation object (from timeline), build path from genid and status
+        if (sourceImage && sourceImage.genid && sourceImage.workspace) {
+            const category = sourceImage.status === 'commit' ? 'commits' 
+                : sourceImage.status === 'reject' ? 'rejects' 
+                : 'candidates';
+            return `${category}/${sourceImage.genid}/full.png`;
+        }
+        
+        // If sourceImage is from canvas, try to extract from currentImage URL or use latest committed
+        if (sourceImage && sourceImage.type === 'canvas') {
+            // Try to extract workspace path from currentImage URL
+            if (currentImage) {
+                const workspaceInfo = parseWorkspaceImage(currentImage);
+                if (workspaceInfo) {
+                    // Extract category and genid from the URL path
+                    const pathParts = workspaceInfo.path.split('/');
+                    if (pathParts.length >= 2 && ['candidates', 'commits', 'rejects'].includes(pathParts[0])) {
+                        const category = pathParts[0];
+                        const genid = pathParts[1];
+                        return `${category}/${genid}/full.png`;
+                    }
+                }
+            }
+            
+            // Fallback: use latest committed generation if available
+            if (timeline.committedHistory.length > 0) {
+                const latestCommit = timeline.committedHistory[0];
+                return `commits/${latestCommit.genid}/full.png`;
+            }
+        }
+        
+        return null;
+    };
+
     const handleUpscale = async (upscaler, scaleFactor) => {
         if (!upscaleDialog.sourceImage) return;
 
@@ -651,12 +696,14 @@ function App() {
         }));
 
         try {
-            const sourceImageData = await getBase64Payload(upscaleDialog.sourceImage.image);
-            if (!sourceImageData) {
-                throw new Error("No source image data available for upscaling");
+            if (!currentWorkspace) {
+                throw new Error("Workspace not initialized");
             }
+
+            // Try to get workspace_image_path first
+            const workspaceImagePath = getWorkspaceImagePath(upscaleDialog.sourceImage);
+            
             const params = {
-                image: sourceImageData,
                 upscaler_1: upscaler,
                 upscaling_resize: scaleFactor,
                 resize_mode: 0, // Scale by factor
@@ -664,14 +711,22 @@ function App() {
                 workspace_name: currentWorkspace,
             };
 
+            // Use workspace path if available, otherwise fall back to base64
+            if (workspaceImagePath) {
+                params.workspace_image_path = workspaceImagePath;
+            } else {
+                // Fallback to base64 for non-workspace images
+                const sourceImageData = await getBase64Payload(upscaleDialog.sourceImage.image);
+                if (!sourceImageData) {
+                    throw new Error("No source image data available for upscaling");
+                }
+                params.image = sourceImageData;
+            }
+
             const result = await api.extraSingleImage(params);
 
             if (!result.image) {
                 throw new Error("Upscale failed. No images returned.");
-            }
-
-            if (!currentWorkspace) {
-                throw new Error("Workspace not initialized");
             }
 
             // Add the upscaled generation directly to the timeline
@@ -842,6 +897,8 @@ function App() {
                     onUpscale={handleOpenUpscaleDialog}
                     getGenerationImageUrl={getGenerationImageUrl}
                     onRefreshTimeline={() => loadWorkspaceGenerations(currentWorkspace)}
+                    onRefreshCanvas={handleRefreshCanvas}
+                    canvasRefreshKey={canvasRefreshKey}
                 />
 
                 {/* Main Canvas Area */}
@@ -877,6 +934,7 @@ function App() {
                         setInpaintingMaskInvert={setInpaintingMaskInvert}
                         canvasPadding={canvasPadding}
                         generationMode={generationMode}
+                        canvasRefreshKey={canvasRefreshKey}
                     />
                 ) : (
                     <InpaintCanvas
@@ -912,6 +970,7 @@ function App() {
                         inpaintFullResPadding={0}
                         setInpaintFullResPadding={() => { }}
                         generationMode={generationMode}
+                        canvasRefreshKey={canvasRefreshKey}
                     />
                 )}
 

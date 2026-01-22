@@ -54,9 +54,13 @@ const CanvasArea = ({
     generationMode = "txt2img",
     focusBounds = null,
     maskBounds = null,
+    canvasRefreshKey = 0,
 }) => {
     // Always use input image for canvas layout in edit mode - livePreview is purely cosmetic
-    const mainImageSrc = viewMode === "edit" ? inputImage || displayImage : displayImage || inputImage;
+    const baseImageSrc = viewMode === "edit" ? inputImage || displayImage : displayImage || inputImage;
+    const mainImageSrc = baseImageSrc && canvasRefreshKey > 0 
+        ? `${baseImageSrc}?refresh=${canvasRefreshKey}` 
+        : baseImageSrc;
 
     const previewOverlay = livePreview ? (
         <div
@@ -312,31 +316,33 @@ const CanvasArea = ({
 
                         {/* DOM Border Implementation - Green dotted borders with red outline */}
                         {inpaintFullRes && inpaintFullResPadding > 0 && showBorder && focusBounds && (
-                                    <div
-                                        key={`borders-${focusBounds?.x}-${focusBounds?.y}-${focusBounds?.width}-${focusBounds?.height}`}
-                                        className="absolute inset-0 pointer-events-none"
-                                    >
+                            <div
+                                key={`borders-${focusBounds?.x}-${focusBounds?.y}-${focusBounds?.width}-${focusBounds?.height}`}
+                                className="absolute inset-0 pointer-events-none"
+                            >
                                 {/* Green dotted border - represents padding area */}
                                 <div
-                                    className="absolute border-dotted border-green-500"
+                                    className="absolute outline-dotted outline-green-500"
                                     style={{
                                         top: `${focusBounds.y || 0}px`,
                                         left: `${focusBounds.x || 0}px`,
                                         width: `${focusBounds.width || 0}px`,
                                         height: `${focusBounds.height || 0}px`,
-                                        borderWidth: '6px',
+                                        outlineWidth: '3px',
+                                        outlineOffset: '3px'
                                     }}
                                 />
                                 {/* Red outline border - represents the inner mask area */}
                                 {maskBounds && (
                                     <div
-                                        className="absolute border-red-500"
+                                        className="absolute outline outline-red-500"
                                         style={{
                                             top: `${maskBounds.y || 0}px`,
                                             left: `${maskBounds.x || 0}px`,
                                             width: `${maskBounds.width || 0}px`,
                                             height: `${maskBounds.height || 0}px`,
-                                            borderWidth: '6px',
+                                            outlineWidth: '3px',
+                                            outlineOffset: '3px'
                                         }}
                                     />
                                 )}
