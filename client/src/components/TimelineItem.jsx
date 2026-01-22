@@ -27,7 +27,6 @@ const TimelineItem = ({
         const fetchDimensions = async () => {
             if (item.genid && item.workspace) {
                 try {
-                    console.log("Fetching generation metadata", { genid: item.genid, workspace: item.workspace });
                     const category = item.status === 'commit' ? 'commits' : item.status === 'reject' ? 'rejects' : 'candidates';
                     const meta = await api.getGenerationAsset(item.workspace, category, item.genid, 'meta.json');
                     const width = meta.full_width;

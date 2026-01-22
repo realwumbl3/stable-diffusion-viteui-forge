@@ -27,7 +27,9 @@ const Header = ({
   onRestart,
   onInterrupt,
   currentWorkspace,
+  workspaces,
   onWorkspaceChange,
+  onCreateWorkspace,
   onOpenWorkspace,
   pageLocked,
   onToggleLock,
@@ -51,15 +53,15 @@ const Header = ({
   setHeight,
   inputImage
 }) => {
-  console.log("Header render: loading =", loading, "progress =", progress);
-
   return (
     <header className="studio-toolbar border-b-studio-border">
       {/* Left Section - Workspace */}
       <div className="flex items-center gap-3">
         <WorkspacePicker
           currentWorkspace={currentWorkspace}
+          workspaces={workspaces}
           onWorkspaceChange={onWorkspaceChange}
+          onCreateWorkspace={onCreateWorkspace}
           onOpenWorkspace={onOpenWorkspace}
         />
       </div>

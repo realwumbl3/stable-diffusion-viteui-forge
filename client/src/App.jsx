@@ -24,6 +24,8 @@ function App() {
     const composerNegativePrompt = composerPrompts.negative;
     const [workspacePromptLoaded, setWorkspacePromptLoaded] = useState(false);
     const programmaticComposerUpdateRef = useRef(false);
+    const initialLoadRef = useRef(false);
+    const workspaceChangingRef = useRef(false);
     const [loading, setLoading] = useState(false);
     const [currentImage, setCurrentImage] = useState(null);
     const [currentTaskId, setCurrentTaskId] = useState(null);
@@ -114,6 +116,7 @@ function App() {
     });
 
     const [currentWorkspace, setCurrentWorkspace] = useState(null);
+    const [workspaces, setWorkspaces] = useState([]);
     const [workspaceBrowserOpen, setWorkspaceBrowserOpen] = useState(false);
     const [inputImageData, setInputImageData] = useState(null);
 
@@ -141,6 +144,8 @@ function App() {
     useTitleIconAnimation(loading);
 
     useEffect(() => {
+        if (initialLoadRef.current) return;
+        initialLoadRef.current = true;
         loadInitialData();
         initializeWorkspace();
     }, []);
@@ -242,28 +247,53 @@ function App() {
 
     const initializeWorkspace = async () => {
         try {
+            workspaceChangingRef.current = true;
             const data = await api.listWorkspaces();
             const workspaces = data.workspaces || [];
+            setWorkspaces(workspaces);
             if (workspaces.length > 0) {
-                const sorted = [...workspaces].sort((a, b) => {
-                    const aTime = a.created ? new Date(a.created).getTime() : 0;
-                    const bTime = b.created ? new Date(b.created).getTime() : 0;
-                    return bTime - aTime;
-                });
-                setCurrentWorkspace(sorted[0].name);
-                await loadWorkspaceGenerations(sorted[0].name);
-                await loadWorkspacePrompt(sorted[0].name);
+                // Check for stored workspace in localStorage
+                const lastWorkspace = localStorage.getItem('viteui-last-workspace');
+                let selectedWorkspace;
+
+                if (lastWorkspace && workspaces.find(ws => ws.name === lastWorkspace)) {
+                    // Use the stored workspace if it still exists
+                    selectedWorkspace = workspaces.find(ws => ws.name === lastWorkspace);
+                } else {
+                    // Fall back to most recently created workspace
+                    const sorted = [...workspaces].sort((a, b) => {
+                        const aTime = a.created ? new Date(a.created).getTime() : 0;
+                        const bTime = b.created ? new Date(b.created).getTime() : 0;
+                        return bTime - aTime;
+                    });
+                    selectedWorkspace = sorted[0];
+                }
+
+                setCurrentWorkspace(selectedWorkspace.name);
+                await loadWorkspaceGenerations(selectedWorkspace.name);
+                await loadWorkspacePrompt(selectedWorkspace.name);
+                setTimeout(() => {
+                    workspaceChangingRef.current = false;
+                }, 100);
                 return;
             }
 
             const created = await api.createWorkspace("untitled");
             if (created?.name) {
                 setCurrentWorkspace(created.name);
+                // Store the new workspace in localStorage
+                localStorage.setItem('viteui-last-workspace', created.name);
+                // Add the newly created workspace to the list
+                setWorkspaces([created]);
                 await loadWorkspaceGenerations(created.name);
                 await loadWorkspacePrompt(created.name);
+                setTimeout(() => {
+                    workspaceChangingRef.current = false;
+                }, 100);
             }
         } catch (error) {
             console.error("Failed to initialize workspace:", error);
+            workspaceChangingRef.current = false;
         }
     };
 
@@ -322,7 +352,10 @@ function App() {
 
     const handleWorkspaceChange = async (workspaceName) => {
         if (!workspaceName) return;
+        workspaceChangingRef.current = true;
         setCurrentWorkspace(workspaceName);
+        // Store the current workspace in localStorage
+        localStorage.setItem('viteui-last-workspace', workspaceName);
         setCurrentImage(null);
         setInputImage(null);
         setInputImageData(null);
@@ -330,6 +363,37 @@ function App() {
         setComposerNodes([]);
         await loadWorkspaceGenerations(workspaceName);
         await loadWorkspacePrompt(workspaceName);
+        // Small delay to ensure all state updates have settled
+        setTimeout(() => {
+            workspaceChangingRef.current = false;
+        }, 100);
+    };
+
+    const handleCreateWorkspace = async (name) => {
+        try {
+            workspaceChangingRef.current = true;
+            const result = await api.createWorkspace(name);
+            if (result?.name) {
+                // Store the new workspace in localStorage
+                localStorage.setItem('viteui-last-workspace', result.name);
+                // Add the new workspace to the list
+                setWorkspaces(prev => [...prev, result]);
+                setCurrentWorkspace(result.name);
+                setCurrentImage(null);
+                setInputImage(null);
+                setInputImageData(null);
+                setWorkspacePromptLoaded(false);
+                setComposerNodes([]);
+                await loadWorkspaceGenerations(result.name);
+                await loadWorkspacePrompt(result.name);
+                setTimeout(() => {
+                    workspaceChangingRef.current = false;
+                }, 100);
+            }
+        } catch (error) {
+            console.error("Failed to create workspace:", error);
+            workspaceChangingRef.current = false;
+        }
     };
 
     const handleComposerNodesChange = (nodes) => {
@@ -337,7 +401,7 @@ function App() {
     };
 
     useEffect(() => {
-        if (!currentWorkspace || !workspacePromptLoaded) return;
+        if (!currentWorkspace || !workspacePromptLoaded || workspaceChangingRef.current) return;
         if (programmaticComposerUpdateRef.current) {
             programmaticComposerUpdateRef.current = false;
             return;
@@ -920,7 +984,9 @@ function App() {
                     onRestart={handleRestart}
                     onInterrupt={handleEnd}
                     currentWorkspace={currentWorkspace}
+                    workspaces={workspaces}
                     onWorkspaceChange={handleWorkspaceChange}
+                    onCreateWorkspace={handleCreateWorkspace}
                     onOpenWorkspace={() => setWorkspaceBrowserOpen(true)}
                     pageLocked={pageLocked}
                     onToggleLock={() => setPageLocked(!pageLocked)}
@@ -973,7 +1039,9 @@ function App() {
                 onRestart={handleRestart}
                 onInterrupt={handleEnd}
                 currentWorkspace={currentWorkspace}
+                workspaces={workspaces}
                 onWorkspaceChange={handleWorkspaceChange}
+                onCreateWorkspace={handleCreateWorkspace}
                 onOpenWorkspace={() => setWorkspaceBrowserOpen(true)}
                 pageLocked={pageLocked}
                 onToggleLock={() => setPageLocked(!pageLocked)}

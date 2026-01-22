@@ -60,6 +60,20 @@ function PromptComposer({
     onToggle,
 }: PromptComposerProps) {
     const { nodes, setNodes } = usePromptComposerStore(initialData);
+    const updatingFromInitialDataRef = useRef(false);
+
+    // Update nodes when initialData changes (e.g., when loading workspace prompts)
+    useEffect(() => {
+        if (initialData && initialData.length > 0) {
+            updatingFromInitialDataRef.current = true;
+            setNodes(initialData);
+            // Clear the flag after a short delay to ensure the nodes update has completed
+            setTimeout(() => {
+                updatingFromInitialDataRef.current = false;
+            }, 0);
+        }
+    }, [initialData, setNodes]);
+
     // Initialize with default nodes if none provided and no initial data was given
     useEffect(() => {
         if (nodes.length === 0 && (!initialData || initialData.length === 0)) {
@@ -176,7 +190,9 @@ function PromptComposer({
 
     // Call onNodesChange whenever nodes change
     useEffect(() => {
-        onNodesChange?.(nodes);
+        if (!updatingFromInitialDataRef.current) {
+            onNodesChange?.(nodes);
+        }
     }, [nodes, onNodesChange]);
 
     // Drag reorder function (simplified like vanilla JS)

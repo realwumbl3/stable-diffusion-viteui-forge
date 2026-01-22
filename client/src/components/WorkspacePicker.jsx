@@ -1,45 +1,18 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Folder, Plus, FolderOpen } from "lucide-react";
 import OptionPicker from "./OptionPicker.jsx";
-import api from "../Api";
 
-const WorkspacePicker = ({ currentWorkspace, onWorkspaceChange, onOpenWorkspace }) => {
-    const [workspaces, setWorkspaces] = useState([]);
+const WorkspacePicker = ({ currentWorkspace, workspaces, onWorkspaceChange, onCreateWorkspace, onOpenWorkspace }) => {
     const [showCreate, setShowCreate] = useState(false);
     const [newWorkspaceName, setNewWorkspaceName] = useState("");
-
-    useEffect(() => {
-        loadWorkspaces();
-    }, []);
-
-    const loadWorkspaces = async () => {
-        try {
-            const data = await api.listWorkspaces();
-            setWorkspaces(data.workspaces || []);
-            if (!currentWorkspace && data.workspaces?.length) {
-                const sorted = [...data.workspaces].sort((a, b) => {
-                    const aTime = a.created ? new Date(a.created).getTime() : 0;
-                    const bTime = b.created ? new Date(b.created).getTime() : 0;
-                    return bTime - aTime;
-                });
-                onWorkspaceChange?.(sorted[0].name);
-            }
-        } catch (error) {
-            console.error("Failed to load workspaces:", error);
-        }
-    };
 
     const createWorkspace = async () => {
         const name = newWorkspaceName.trim();
         if (!name) return;
         try {
-            const result = await api.createWorkspace(name);
-            if (result?.name) {
-                await loadWorkspaces();
-                onWorkspaceChange?.(result.name);
-                setShowCreate(false);
-                setNewWorkspaceName("");
-            }
+            await onCreateWorkspace(name);
+            setShowCreate(false);
+            setNewWorkspaceName("");
         } catch (error) {
             console.error("Failed to create workspace:", error);
         }
