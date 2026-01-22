@@ -27,7 +27,7 @@
   background: var(--studio-panel);
   padding: 0.25em;
   grid-auto-flow: row;
-  grid-template-rows: max-content 1fr;
+  grid-template-rows: 1fr;
   width: 100%;
   min-width: min(160px, 100%);
   min-height: 300px;

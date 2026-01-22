@@ -22,7 +22,7 @@ import {
 } from "./utils/promptUtils";
 import { decodeLegacy } from "./utils/legacyEncoding";
 import NodeField from "./components/NodeField";
-import ClearPromptButton from "./components/ClearPromptButton";
+import PromptControls from "./components/PromptControls";
 import { usePromptComposerStore } from "./store";
 import {
     Type,
@@ -654,36 +654,44 @@ function PromptComposer({
                         <h3 className="text-studio-text font-medium text-sm">Prompt Editor</h3>
                     </div>
                     <div className="flex items-center gap-2">
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation()
-                                    handleModeButtonClick("simple")
-                                }}
-                                className={`flex items-center gap-1 px-2 py-1 text-xs rounded transition-colors ${
-                                    mode === "simple"
-                                        ? "bg-studio-accent text-white"
-                                        : "text-studio-textSecondary hover:text-studio-text hover:bg-studio-surface"
+                        {mode === "composer" && !collapsed && (
+                            <PromptControls
+                                onExportToJson={exportToJson}
+                                onImportFromJson={importFromJson}
+                                onLoadFromFile={loadFromFile}
+                                onClearNodes={clearNodes}
+                                className="border-r border-studio-border pr-2 ml-2"
+                            />
+                        )}
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation()
+                                handleModeButtonClick("simple")
+                            }}
+                            className={`flex items-center gap-1 px-2 py-1 text-xs rounded transition-colors ${mode === "simple"
+                                ? "bg-studio-accent text-white"
+                                : "text-studio-textSecondary hover:text-studio-text hover:bg-studio-surface"
                                 }`}
-                                title="Simple text input mode"
-                            >
-                                <Edit size={12} />
-                                Simple
-                            </button>
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation()
-                                    handleModeButtonClick("composer")
-                                }}
-                                className={`flex items-center gap-1 px-2 py-1 text-xs rounded transition-colors ${
-                                    mode === "composer"
-                                        ? "bg-studio-accent text-white"
-                                        : "text-studio-textSecondary hover:text-studio-text hover:bg-studio-surface"
+                            title="Simple text input mode"
+                        >
+                            <Edit size={12} />
+                            Simple
+                        </button>
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation()
+                                handleModeButtonClick("composer")
+                            }}
+                            className={`flex items-center gap-1 px-2 py-1 text-xs rounded transition-colors ${mode === "composer"
+                                ? "bg-studio-accent text-white"
+                                : "text-studio-textSecondary hover:text-studio-text hover:bg-studio-surface"
                                 }`}
-                                title="Advanced composer mode"
-                            >
-                                <Wrench size={12} />
-                                Composer
-                            </button>
+                            title="Advanced composer mode"
+                        >
+                            <Wrench size={12} />
+                            Composer
+                        </button>
+
                         <button
                             onClick={(e) => {
                                 e.stopPropagation()
@@ -735,34 +743,6 @@ function PromptComposer({
                                 <div className={cn("prompt-composer", className)}>
                                     <div className="better-prompt-container">
                                         <div className="better-prompt">
-                                            <div className="editor-footer">
-                                                <div className="left-side"></div>
-                                                <div className="right-side">
-                                                    <div className="column">
-                                                        <div className="row manage">
-                                                            <ClearPromptButton onClear={clearNodes} />
-                                                            <button
-                                                                className="button"
-                                                                onClick={exportToJson}
-                                                            >
-                                                                export
-                                                            </button>
-                                                            <button
-                                                                className="button"
-                                                                onClick={importFromJson}
-                                                            >
-                                                                import
-                                                            </button>
-                                                            <button
-                                                                className="button"
-                                                                onClick={loadFromFile}
-                                                            >
-                                                                load file
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
                                             <div
                                                 className="main-editor"
                                                 ref={editorRef}

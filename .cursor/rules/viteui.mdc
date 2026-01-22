@@ -33,7 +33,8 @@ webui*.sh
 viteui does not use these files at runtime.
 ViteUI Fork Rules
 
-Every new or modified file in the viteui fork OUTSIDE of client/|modules_viteapi/ MUST start with:# VITE UI
+Every new or modified file in the viteui fork OUTSIDE (higher level of the folder structure) of client/ or modules_viteapi/ MUST start with:# VITE UI
+All files inside client/ or modules_viteapi/ must NOT start with # VITE UI
 
 Modifying Forge Code (LAST RESORT)
 Only if absolutely unavoidable, you may touch code inside:/modules//modules_forge//extensions-builtin//extensions//backend//scripts/
