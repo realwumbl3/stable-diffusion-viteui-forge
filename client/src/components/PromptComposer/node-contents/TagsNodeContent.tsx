@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import type { TagsNode, Tag } from '../types'
 import TagComponent from '../components/TagComponent'
 
@@ -13,7 +13,15 @@ function TagsNodeContent({
   onUpdate,
 }: TagsNodeContentProps) {
   const tagRefs = useRef<(HTMLInputElement | null)[]>([])
-  const hasFocusedInitialTag = useRef(false)
+  const [hasFocusedInitialTag, setHasFocusedInitialTag] = useState(false)
+  const shouldFocusInitialTag =
+    node.value.length > 0 && node.value[0].value === '' && !hasFocusedInitialTag
+
+  useEffect(() => {
+    if (shouldFocusInitialTag) {
+      setHasFocusedInitialTag(true)
+    }
+  }, [shouldFocusInitialTag])
 
   const addTag = (value = '', focusNew = false) => {
     const newTag: Tag = { value, weight: 1 }
@@ -51,10 +59,7 @@ function TagsNodeContent({
     <div className="tags-node-container">
       <div className="tags-node">
         {node.value.map((tag, index) => {
-          const shouldFocus = index === 0 && tag.value === '' && !hasFocusedInitialTag.current
-          if (shouldFocus) {
-            hasFocusedInitialTag.current = true
-          }
+          const shouldFocus = index === 0 && tag.value === '' && shouldFocusInitialTag
           return (
             <TagComponent
               key={index}

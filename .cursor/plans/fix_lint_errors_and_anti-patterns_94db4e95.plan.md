@@ -16,16 +16,16 @@ todos:
     status: completed
   - id: phase3-1-variable-order
     content: "Phase 3.1: Fix variable accessed before declaration (useDrawing, TagComponent, WorkspaceBrowser)"
-    status: pending
+    status: completed
   - id: phase3-2-simple-setstate
     content: "Phase 3.2: Convert simple setState in effects to derived state (UpscaleDialog, useWorkspaceTabs, Sidebar)"
-    status: pending
+    status: completed
   - id: phase3-3-ref-to-state
     content: "Phase 3.3: Convert refs accessed during render to state (CanvasArea, InpaintCanvas, TagsNodeContent)"
-    status: pending
+    status: completed
   - id: phase3-4-complex-setstate
     content: "Phase 3.4: Refactor complex setState in effects (useCanvasState, OptionPicker, useWebSocketProgress)"
-    status: pending
+    status: in_progress
   - id: phase3-5-dependencies
     content: "Phase 3.5: Fix missing dependencies in hooks (24 warnings across multiple files)"
     status: pending

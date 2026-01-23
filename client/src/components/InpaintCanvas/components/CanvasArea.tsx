@@ -1,6 +1,6 @@
 // VITE UI
 import { Upload } from "lucide-react";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { cn } from "../../../lib/utils";
 import InpaintParametersPanel from "./InpaintParametersPanel";
 import type { CanvasAreaProps } from "../../../types/components";
@@ -90,8 +90,14 @@ const CanvasArea = ({
     const [showBrushIndicator, setShowBrushIndicator] = useState<boolean>(false);
     const cursorPointRef = useRef<HTMLDivElement>(null);
     const brushIndicatorRef = useRef<HTMLDivElement>(null);
-    const isMouseOverCanvas = useRef<boolean>(false);
+    const [isMouseOverCanvas, setIsMouseOverCanvas] = useState<boolean>(false);
+    const isMouseOverCanvasRef = useRef<boolean>(isMouseOverCanvas);
     const lastMousePos = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+
+    const setMouseOverCanvasState = useCallback((value: boolean) => {
+        isMouseOverCanvasRef.current = value;
+        setIsMouseOverCanvas(value);
+    }, []);
 
     // Supported tools that show brush indicator
     const supportedBrushTools = ["brush", "erase"];
@@ -129,7 +135,7 @@ const CanvasArea = ({
         let animationFrameId: number | null = null;
 
         const updateIndicatorPosition = (e: MouseEvent) => {
-            if (!isMouseOverCanvas.current) return;
+            if (!isMouseOverCanvasRef.current) return;
 
             const cursorPointElement = cursorPointRef.current;
             if (!cursorPointElement) return;
@@ -153,11 +159,11 @@ const CanvasArea = ({
         };
 
         const handleMouseEnter = (): void => {
-            isMouseOverCanvas.current = true;
+            setMouseOverCanvasState(true);
         };
 
         const handleMouseLeave = (): void => {
-            isMouseOverCanvas.current = false;
+            setMouseOverCanvasState(false);
         };
 
         canvasElement.addEventListener('mousemove', updateIndicatorPosition);
@@ -172,11 +178,11 @@ const CanvasArea = ({
                 cancelAnimationFrame(animationFrameId);
             }
         };
-    }, [canvasRef, brushSize, zoom]);
+    }, [canvasRef, brushSize, zoom, setMouseOverCanvasState]);
 
     // Update cursor position after zoom changes to prevent uncentering
     useEffect(() => {
-        if (!isMouseOverCanvas.current) return;
+        if (!isMouseOverCanvasRef.current) return;
 
         const cursorPointElement = cursorPointRef.current;
         if (!cursorPointElement) return;
@@ -383,7 +389,7 @@ const CanvasArea = ({
                                     backgroundColor: drawingMode === 'erase'
                                         ? 'rgba(239, 68, 68, 0.1)' // Red with opacity
                                         : 'rgba(59, 130, 246, 0.1)', // Light blue with opacity
-                                    opacity: isMouseOverCanvas.current ? 1 : 0.7,
+                            opacity: isMouseOverCanvas ? 1 : 0.7,
                                 }}
                             />
                         </div>
