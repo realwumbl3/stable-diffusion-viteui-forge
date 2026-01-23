@@ -161,7 +161,7 @@ export function useCanvasState(props: UseCanvasStateProps) {
             width: imageRef.current.naturalWidth || 1,
             height: imageRef.current.naturalHeight || 1,
         };
-    }, [viewMode, inputImage, livePreview, generationWidth, generationHeight]);
+    }, [viewMode, inputImage, livePreview, generationWidth, generationHeight, imageRef]);
 
     const calculateFitToScreenScale = useCallback(() => {
         if (!canvasRef.current || !imageRef.current) return 1;
@@ -184,7 +184,7 @@ export function useCanvasState(props: UseCanvasStateProps) {
         // Add bounds checking to prevent extreme zoom values
         // Minimum zoom: 0.01 (1%), Maximum zoom: 5.0 (500%)
         return Math.max(0.01, Math.min(scale, 5.0));
-    }, [getDisplayDimensions, fitToScreenPadding]);
+    }, [canvasRef, imageRef, getDisplayDimensions, fitToScreenPadding]);
 
     const calculateCenterOffset = useCallback(() => {
         // The flexbox centering works for vertical alignment, but horizontal might need adjustment
@@ -248,6 +248,7 @@ export function useCanvasState(props: UseCanvasStateProps) {
         calculateCenterOffset,
         livePreview,
         getDisplayDimensions,
+        imageRef,
     ]);
 
     // Zoom functions
@@ -318,7 +319,7 @@ export function useCanvasState(props: UseCanvasStateProps) {
         setZoom(scale);
         setPanOffset(calculateCenterOffset());
         setFitToScreen(true);
-    }, [calculateFitToScreenScale, calculateCenterOffset]);
+    }, [canvasRef, imageRef, calculateFitToScreenScale, calculateCenterOffset]);
 
     // Pan functions
     const startPan = useCallback((e: React.MouseEvent) => {
@@ -326,7 +327,7 @@ export function useCanvasState(props: UseCanvasStateProps) {
         e.preventDefault();
         setPanType('shift');
         panTargetRef.current.requestPointerLock();
-    }, []);
+    }, [panTargetRef]);
 
     const stopPan = useCallback(() => {
         if (document.pointerLockElement) {
@@ -377,7 +378,7 @@ export function useCanvasState(props: UseCanvasStateProps) {
             document.removeEventListener("mousemove", handleMouseMove);
             window.removeEventListener("keyup", handleKeyUp);
         };
-    }, [panType]);
+    }, [panType, panTargetRef]);
 
     return useMemo(() => ({
         // State

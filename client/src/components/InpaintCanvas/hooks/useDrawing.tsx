@@ -80,7 +80,7 @@ export function useDrawing({
 
         exportCtx.putImageData(imageData, 0, 0);
         return exportCanvas.toDataURL("image/png");
-    }, []);
+    }, [maskCanvasRef]);
 
     // Initialize canvases when input image loads (not when result changes)
     useEffect(() => {
@@ -164,7 +164,7 @@ export function useDrawing({
         return () => {
             img.removeEventListener("load", initializeCanvases);
         };
-    }, [inputImage]);
+    }, [inputImage, imageRef, maskCanvasRef, getMaskDataUrl, setInpaintMask, setMaskHistory, setHistoryIndex]);
 
     // Drawing functions
     const getCanvasCoordinates = useCallback((e: React.MouseEvent<HTMLImageElement>) => {
@@ -181,7 +181,7 @@ export function useDrawing({
         const y = (e.clientY - rect.top) * scaleY;
 
         return { x, y };
-    }, []);
+    }, [imageRef]);
 
     const drawBrush = useCallback((x: number, y: number, lastDrawPos: { x: number, y: number }) => {
         if (!maskCanvasRef.current) return;
@@ -254,7 +254,7 @@ export function useDrawing({
             width: maxX - minX + 1,
             height: maxY - minY + 1,
         };
-    }, []);
+    }, [maskCanvasRef]);
 
     // Undo/Redo functions
     const saveMaskState = useCallback(() => {
@@ -281,7 +281,7 @@ export function useDrawing({
             setHistoryIndex(newHistory.length - 1);
             return newHistory;
         });
-    }, [historyIndex]);
+    }, [historyIndex, maskCanvasRef]);
 
     const clearMask = useCallback(() => {
         if (maskCanvasRef.current) {
@@ -291,7 +291,7 @@ export function useDrawing({
             setInpaintMask(null);
             saveMaskState();
         }
-    }, [saveMaskState, setInpaintMask]);
+    }, [maskCanvasRef, saveMaskState, setInpaintMask]);
 
     const fillAtPoint = useCallback((x: number, y: number) => {
         if (!maskCanvasRef.current || !imageRef.current) return;
@@ -505,7 +505,7 @@ export function useDrawing({
             width: focusedWidth,
             height: focusedHeight,
         };
-    }, [inpaintFullRes, inpaintFullResPadding, getMaskBounds, generationWidth, generationHeight]);
+    }, [inpaintFullRes, inpaintFullResPadding, getMaskBounds, generationWidth, generationHeight, maskCanvasRef]);
 
     const updateBorderVisualization = useCallback(() => {
         // Calculate bounds (DOM implementation doesn't need canvas)
@@ -544,7 +544,7 @@ export function useDrawing({
                 updateBorderVisualization();
             }
         }
-    }, [historyIndex, maskHistory, getMaskDataUrl, setInpaintMask, updateBorderVisualization]);
+    }, [historyIndex, maskHistory, getMaskDataUrl, setInpaintMask, updateBorderVisualization, maskCanvasRef]);
 
     const redoMask = useCallback(() => {
         if (historyIndex < maskHistory.length - 1) {
@@ -563,7 +563,7 @@ export function useDrawing({
                 updateBorderVisualization();
             }
         }
-    }, [historyIndex, maskHistory, getMaskDataUrl, setInpaintMask, updateBorderVisualization]);
+    }, [historyIndex, maskHistory, getMaskDataUrl, setInpaintMask, updateBorderVisualization, maskCanvasRef]);
 
     const canUndo = historyIndex > 0;
     const canRedo = historyIndex < maskHistory.length - 1;

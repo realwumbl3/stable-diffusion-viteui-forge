@@ -162,7 +162,7 @@ function App() {
 
     useTitleIconAnimation(loading);
 
-    const loadWorkspaceGenerations = async (workspaceName: string): Promise<void> => {
+    const loadWorkspaceGenerations = useCallback(async (workspaceName: string): Promise<void> => {
         if (!workspaceName) return;
 
         try {
@@ -194,9 +194,9 @@ function App() {
                 discarded: [],
             });
         }
-    };
+    }, []);
 
-    async function loadWorkspacePrompt(workspaceName: string): Promise<void> {
+    const loadWorkspacePrompt = useCallback(async (workspaceName: string): Promise<void> => {
         if (!workspaceName) {
             setWorkspacePromptLoaded(true);
             return;
@@ -213,14 +213,14 @@ function App() {
         } finally {
             setWorkspacePromptLoaded(true);
         }
-    }
+    }, [setComposerNodes, setWorkspacePromptLoaded]);
 
-    const resetGenerationState = (): void => {
+    const resetGenerationState = useCallback((): void => {
         console.log("Resetting generation state: loading=false, currentTaskId=null");
         setLoading(false);
         setCurrentTaskId(null);
         sessionStorage.removeItem('currentTaskId'); // Clear stored task ID
-    };
+    }, []);
 
     const generateImage = useCallback(async (): Promise<void> => {
         setPendingRestart(false);

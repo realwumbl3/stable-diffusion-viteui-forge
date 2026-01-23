@@ -28,7 +28,7 @@ todos:
     status: completed
   - id: phase3-5-dependencies
     content: "Phase 3.5: Fix missing dependencies in hooks (24 warnings across multiple files)"
-    status: pending
+    status: completed
   - id: phase3-6-memoization
     content: "Phase 3.6: Fix preserve manual memoization issues (useCanvasState, PromptComposer)"
     status: pending

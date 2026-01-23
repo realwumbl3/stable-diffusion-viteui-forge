@@ -99,16 +99,14 @@ const CanvasArea = ({
         setIsMouseOverCanvas(value);
     }, []);
 
-    // Supported tools that show brush indicator
-    const supportedBrushTools = ["brush", "erase"];
-
     // Show brush indicator when input image is available, drawing mode is supported, and we're in inpaint mode
     useEffect(() => {
-        if (inputImage && supportedBrushTools.includes(drawingMode) && generationMode === "inpaint") {
-            setShowBrushIndicator(true);
-        } else {
-            setShowBrushIndicator(false);
-        }
+        const shouldShowBrushIndicator =
+            Boolean(inputImage) &&
+            generationMode === "inpaint" &&
+            (drawingMode === "brush" || drawingMode === "erase");
+
+        setShowBrushIndicator(shouldShowBrushIndicator);
     }, [inputImage, drawingMode, generationMode]);
 
     // Alt + scroll for brush size adjustment

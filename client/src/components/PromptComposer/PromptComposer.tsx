@@ -353,7 +353,7 @@ function PromptComposer({
         } catch (e) {
             console.error("Invalid JSON syntax", e);
         }
-    }, [jsonImportText]);
+    }, [jsonImportText, setNodes, setShowJsonImport]);
 
     // Function to load data from a prompt that contains embedded data
     const loadFromPrompt = useCallback((promptText: string) => {
@@ -368,7 +368,7 @@ function PromptComposer({
             }
         }
         return false;
-    }, []);
+    }, [setNodes]);
 
     // Keyboard shortcuts
     useEffect(() => {
@@ -389,7 +389,7 @@ function PromptComposer({
 
     const clearNodes = useCallback(() => {
         setNodes([]);
-    }, []);
+    }, [setNodes]);
 
     // Extract text chunks from PNG files
     const extractPNGTextChunks = (arrayBuffer: ArrayBuffer): string => {
@@ -631,7 +631,7 @@ function PromptComposer({
             }
         };
         input.click();
-    }, [generateId, loadFromPrompt]);
+    }, [loadFromPrompt, setNodes]);
 
     const simplePositiveNode = nodes.find(
         (node) => node.type === 'text' && (node as TextNode).mode === 'simple-positive'
