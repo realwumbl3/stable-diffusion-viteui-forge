@@ -49,6 +49,39 @@ export function useDrawing({
     const previousImageDimensions = useRef<{width: number, height: number} | null>(null);
 
 
+    const getMaskDataUrl = useCallback(() => {
+        if (!maskCanvasRef.current) return null;
+
+        const sourceCanvas = maskCanvasRef.current;
+        if (sourceCanvas.width === 0 || sourceCanvas.height === 0) return null;
+
+        const exportCanvas = document.createElement("canvas");
+        exportCanvas.width = sourceCanvas.width;
+        exportCanvas.height = sourceCanvas.height;
+
+        const exportCtx = exportCanvas.getContext("2d");
+        if (!exportCtx) return null;
+
+        exportCtx.drawImage(sourceCanvas, 0, 0);
+
+        const imageData = exportCtx.getImageData(0, 0, exportCanvas.width, exportCanvas.height);
+        const { data } = imageData;
+
+        // Normalize to fully opaque black/white mask for backend
+        for (let i = 3; i < data.length; i += 4) {
+            const alpha = data[i];
+            const isMasked = alpha > 0;
+            const value = isMasked ? 255 : 0;
+            data[i - 3] = value;
+            data[i - 2] = value;
+            data[i - 1] = value;
+            data[i] = 255;
+        }
+
+        exportCtx.putImageData(imageData, 0, 0);
+        return exportCanvas.toDataURL("image/png");
+    }, []);
+
     // Initialize canvases when input image loads (not when result changes)
     useEffect(() => {
         if (!inputImage || !imageRef.current) return;
@@ -178,39 +211,6 @@ export function useDrawing({
         }
     }, [drawingMode, brushHardness, brushSize]);
 
-
-    const getMaskDataUrl = useCallback(() => {
-        if (!maskCanvasRef.current) return null;
-
-        const sourceCanvas = maskCanvasRef.current;
-        if (sourceCanvas.width === 0 || sourceCanvas.height === 0) return null;
-
-        const exportCanvas = document.createElement("canvas");
-        exportCanvas.width = sourceCanvas.width;
-        exportCanvas.height = sourceCanvas.height;
-
-        const exportCtx = exportCanvas.getContext("2d");
-        if (!exportCtx) return null;
-
-        exportCtx.drawImage(sourceCanvas, 0, 0);
-
-        const imageData = exportCtx.getImageData(0, 0, exportCanvas.width, exportCanvas.height);
-        const { data } = imageData;
-
-        // Normalize to fully opaque black/white mask for backend
-        for (let i = 3; i < data.length; i += 4) {
-            const alpha = data[i];
-            const isMasked = alpha > 0;
-            const value = isMasked ? 255 : 0;
-            data[i - 3] = value;
-            data[i - 2] = value;
-            data[i - 1] = value;
-            data[i] = 255;
-        }
-
-        exportCtx.putImageData(imageData, 0, 0);
-        return exportCanvas.toDataURL("image/png");
-    }, []);
 
     // Calculate bounding box of mask pixels for padding visualization
     const getMaskBounds = useCallback(() => {
