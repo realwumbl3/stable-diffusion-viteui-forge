@@ -30,23 +30,28 @@ class WebSocketProgressManager:
 
     def __init__(self):
         self.active_connections: Dict[str, Set[WebSocket]] = {}  # task_id -> set of websockets
-        self._lock = asyncio.Lock()
+        self._lock: asyncio.Lock | None = None
         self._loop: asyncio.AbstractEventLoop | None = None
+
+    def _get_lock(self) -> asyncio.Lock:
+        """Get or create the asyncio lock for the current event loop"""
+        current_loop = asyncio.get_running_loop()
+        if self._lock is None or self._loop != current_loop:
+            self._lock = asyncio.Lock()
+            self._loop = current_loop
+        return self._lock
 
     async def connect(self, websocket: WebSocket, task_id: str = None):
         """Accept and register a new WebSocket connection"""
         await websocket.accept()
-        # Capture the loop that owns the asyncio lock
-        if self._loop is None:
-            self._loop = asyncio.get_running_loop()
-        async with self._lock:
+        async with self._get_lock():
             if task_id not in self.active_connections:
                 self.active_connections[task_id] = set()
             self.active_connections[task_id].add(websocket)
 
     async def disconnect(self, websocket: WebSocket, task_id: str = None):
         """Remove a WebSocket connection"""
-        async with self._lock:
+        async with self._get_lock():
             if task_id and task_id in self.active_connections:
                 self.active_connections[task_id].discard(websocket)
                 # Clean up empty task sets
@@ -58,7 +63,7 @@ class WebSocketProgressManager:
         message = json.dumps(progress_data)
 
         # Create a copy of connections to avoid modification during iteration
-        async with self._lock:
+        async with self._get_lock():
             connections_to_remove = set()
 
             # Flatten all connections from all tasks
@@ -88,7 +93,7 @@ class WebSocketProgressManager:
         }
         message = json.dumps(message_data)
 
-        async with self._lock:
+        async with self._get_lock():
             connections_to_remove = set()
 
             # Only send to connections subscribed to this task
@@ -116,19 +121,24 @@ class WebSocketProgressManager:
         def run_async():
             """Run the async broadcast in a new event loop"""
             try:
-                asyncio.run(self.broadcast_task_progress(task_id, progress_data))
+                new_loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(new_loop)
+                new_loop.run_until_complete(self.broadcast_task_progress(task_id, progress_data))
+                new_loop.close()
             except Exception as e:
                 print(f"WebSocket progress broadcast error: {e}")
 
         try:
-            # Prefer the loop that owns the asyncio lock
-            loop = self._loop or asyncio.get_running_loop()
+            # Check if we're in an event loop
+            loop = asyncio.get_running_loop()
             if loop.is_running():
+                # Schedule the coroutine in the running loop
                 asyncio.run_coroutine_threadsafe(self.broadcast_task_progress(task_id, progress_data), loop)
             else:
-                asyncio.run_coroutine_threadsafe(self.broadcast_task_progress(task_id, progress_data), loop)
+                # Loop exists but not running, just run it
+                loop.run_until_complete(self.broadcast_task_progress(task_id, progress_data))
         except RuntimeError:
-            # No running event loop available, start in a background thread
+            # No event loop available, start in a background thread with new loop
             thread = threading.Thread(target=run_async, daemon=True)
             thread.start()
 

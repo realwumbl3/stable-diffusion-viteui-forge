@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { API_BASE_URL } from '../lib/utils'
 
 export interface ProgressData {
   progress?: number
@@ -50,9 +51,12 @@ export class ProgressWebSocketManager {
     }
 
     this.currentTaskId = taskId
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+
+    // Parse API base URL to construct WebSocket URL
+    const apiUrl = new URL(API_BASE_URL)
+    const protocol = apiUrl.protocol === 'https:' ? 'wss:' : 'ws:'
     const encodedTaskId = encodeURIComponent(taskId)
-    const wsUrl = `${protocol}//${window.location.host}/internal/progress-ws?task_id=${encodedTaskId}`
+    const wsUrl = `${protocol}//${apiUrl.host}/internal/progress-ws?task_id=${encodedTaskId}`
 
     try {
       this.ws = new WebSocket(wsUrl)
