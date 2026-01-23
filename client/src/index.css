@@ -251,10 +251,6 @@
     background-color: var(--studio-surface);
     border-bottom-width: 1px;
     border-color: var(--studio-border);
-    padding-left: 1rem;
-    padding-right: 1rem;
-    padding-top: 0.5rem;
-    padding-bottom: 0.5rem;
     display: flex;
     align-items: center;
     gap: 0.5rem;

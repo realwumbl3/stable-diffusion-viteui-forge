@@ -146,14 +146,18 @@ class WorkspaceManager:
 
     def get_workspace_structure(self) -> dict:
         def build_tree(path: Path) -> dict:
-            children = []
-            for child in sorted(path.iterdir(), key=lambda p: (not p.is_dir(), p.name.lower())):
-                if child.is_dir():
-                    # Skip internal folders that should not be treated as workspaces
-                    if child.name in {"commits", "rejects", "candidates", "previews"}:
-                        continue
-                    children.append(build_tree(child))
-            is_workspace = (path / "commits").is_dir() and (path / "rejects").is_dir()
+            is_workspace = (path / "workspace.json").exists()
+
+            # Workspaces are leaf nodes - they don't show children
+            if is_workspace:
+                children = []
+            else:
+                # Only populate children for non-workspace directories
+                children = []
+                for child in sorted(path.iterdir(), key=lambda p: (not p.is_dir(), p.name.lower())):
+                    if child.is_dir():
+                        children.append(build_tree(child))
+
             if path == self.workspace_root:
                 node_name = "workspaces"
                 node_path = "workspaces"
@@ -278,6 +282,76 @@ class WorkspaceManager:
         if not result["created"]:
             return {"success": False, "message": "Folder already exists", "path": result["path"]}
         return {"success": True, "path": result["path"]}
+
+    def move_workspace_item(self, payload: dict):
+        source_path = payload.get("source_path")
+        destination_path = payload.get("destination_path")
+
+        if not source_path or not destination_path:
+            raise HTTPException(status_code=422, detail="source_path and destination_path are required")
+
+        # Resolve paths relative to workspace root
+        source = self._resolve_relative_path(source_path)
+        destination = self._resolve_relative_path(destination_path)
+
+        # Check if source exists
+        if not source.exists():
+            raise HTTPException(status_code=404, detail=f"Source path does not exist: {source_path}")
+
+        # Check if destination parent exists
+        if not destination.parent.exists():
+            raise HTTPException(status_code=404, detail=f"Destination parent does not exist: {destination.parent}")
+
+        # Check if destination already exists
+        if destination.exists():
+            raise HTTPException(status_code=409, detail=f"Destination already exists: {destination_path}")
+
+        # Perform the move
+        try:
+            source.rename(destination)
+            return {
+                "success": True,
+                "source_path": source_path,
+                "destination_path": destination_path
+            }
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to move item: {str(e)}")
+
+    def rename_workspace_item(self, payload: dict):
+        item_path = payload.get("item_path")
+        new_name = payload.get("new_name")
+
+        if not item_path or not new_name:
+            raise HTTPException(status_code=422, detail="item_path and new_name are required")
+
+        # Validate new name (no slashes, not empty, etc.)
+        if "/" in new_name or "\\" in new_name or not new_name.strip():
+            raise HTTPException(status_code=422, detail="Invalid name: cannot contain slashes and cannot be empty")
+
+        # Resolve path relative to workspace root
+        source = self._resolve_relative_path(item_path)
+
+        # Check if source exists
+        if not source.exists():
+            raise HTTPException(status_code=404, detail=f"Item does not exist: {item_path}")
+
+        # Create destination path
+        destination = source.parent / new_name
+
+        # Check if destination already exists
+        if destination.exists():
+            raise HTTPException(status_code=409, detail=f"An item with this name already exists: {new_name}")
+
+        # Perform the rename
+        try:
+            source.rename(destination)
+            return {
+                "success": True,
+                "old_path": item_path,
+                "new_path": self._relative_path(destination)
+            }
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to rename item: {str(e)}")
 
     def commit_workspace_image(self, name: str, payload: dict):
         image_path = payload.get("image_path") if isinstance(payload, dict) else None
@@ -492,6 +566,8 @@ class WorkspaceManager:
         api.add_api_route("/workspaces", self.create_workspace, methods=["POST"])
         api.add_api_route("/workspaces/structure", self.get_workspace_structure, methods=["GET"])
         api.add_api_route("/workspaces/folders", self.create_workspace_folder, methods=["POST"])
+        api.add_api_route("/workspaces/move", self.move_workspace_item, methods=["POST"])
+        api.add_api_route("/workspaces/rename", self.rename_workspace_item, methods=["POST"])
         api.add_api_route("/workspaces/{name:path}/prompt", self.get_workspace_prompt, methods=["GET"])
         api.add_api_route("/workspaces/{name:path}/prompt", self.save_workspace_prompt, methods=["POST"])
 

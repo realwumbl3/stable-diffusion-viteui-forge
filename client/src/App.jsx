@@ -10,6 +10,7 @@ import Welcome from "./components/Welcome.jsx";
 import UpscaleDialog from "./components/UpscaleDialog.jsx";
 import WorkspaceBrowser from "./components/WorkspaceBrowser.jsx";
 import { useTitleIconAnimation } from "./hooks/useTitleIconAnimation";
+import { useWorkspaceTabs } from "./hooks/useWorkspaceTabs";
 import { WORKSPACE_PREFIX, parseWorkspaceImage, resolveImageSrc, API_BASE_URL } from "./lib/utils";
 import { composePromptsFromNodes, generateId } from "./components/PromptComposer/utils/promptUtils";
 import { encodeLegacy } from "./components/PromptComposer/utils/legacyEncoding";
@@ -115,7 +116,15 @@ function App() {
         discarded: [], // Array of Generation objects
     });
 
-    const [currentWorkspace, setCurrentWorkspace] = useState(null);
+    // Workspace tabs management
+    const {
+        openWorkspaces,
+        currentWorkspace,
+        openWorkspace,
+        closeWorkspace,
+        switchWorkspace
+    } = useWorkspaceTabs();
+
     const [workspaces, setWorkspaces] = useState([]);
     const [workspaceBrowserOpen, setWorkspaceBrowserOpen] = useState(false);
     const [inputImageData, setInputImageData] = useState(null);
@@ -253,7 +262,7 @@ function App() {
             setWorkspaces(workspaces);
             if (workspaces.length > 0) {
                 // Check for stored workspace in localStorage
-                const lastWorkspace = localStorage.getItem('viteui-last-workspace');
+                const lastWorkspace = localStorage.getItem('viteui-current-workspace');
                 let selectedWorkspace;
 
                 if (lastWorkspace && workspaces.find(ws => ws.name === lastWorkspace)) {
@@ -269,7 +278,7 @@ function App() {
                     selectedWorkspace = sorted[0];
                 }
 
-                setCurrentWorkspace(selectedWorkspace.name);
+                openWorkspace(selectedWorkspace.name);
                 await loadWorkspaceGenerations(selectedWorkspace.name);
                 await loadWorkspacePrompt(selectedWorkspace.name);
                 setTimeout(() => {
@@ -280,9 +289,7 @@ function App() {
 
             const created = await api.createWorkspace("untitled");
             if (created?.name) {
-                setCurrentWorkspace(created.name);
-                // Store the new workspace in localStorage
-                localStorage.setItem('viteui-last-workspace', created.name);
+                openWorkspace(created.name);
                 // Add the newly created workspace to the list
                 setWorkspaces([created]);
                 await loadWorkspaceGenerations(created.name);
@@ -352,10 +359,16 @@ function App() {
 
     const handleWorkspaceChange = async (workspaceName) => {
         if (!workspaceName) return;
+
+        // Ensure workspace is in tabs (should be handled by openWorkspace, but being safe)
+        if (!openWorkspaces.includes(workspaceName)) {
+            openWorkspace(workspaceName);
+        } else {
+            switchWorkspace(workspaceName);
+        }
+
+        // Load workspace data
         workspaceChangingRef.current = true;
-        setCurrentWorkspace(workspaceName);
-        // Store the current workspace in localStorage
-        localStorage.setItem('viteui-last-workspace', workspaceName);
         setCurrentImage(null);
         setInputImage(null);
         setInputImageData(null);
@@ -374,11 +387,11 @@ function App() {
             workspaceChangingRef.current = true;
             const result = await api.createWorkspace(name);
             if (result?.name) {
-                // Store the new workspace in localStorage
-                localStorage.setItem('viteui-last-workspace', result.name);
                 // Add the new workspace to the list
                 setWorkspaces(prev => [...prev, result]);
-                setCurrentWorkspace(result.name);
+                // Open it in a new tab
+                openWorkspace(result.name);
+
                 setCurrentImage(null);
                 setInputImage(null);
                 setInputImageData(null);
@@ -393,6 +406,24 @@ function App() {
         } catch (error) {
             console.error("Failed to create workspace:", error);
             workspaceChangingRef.current = false;
+        }
+    };
+
+    const handleWorkspaceClose = (workspaceName) => {
+        closeWorkspace(workspaceName);
+        // If closing the current workspace, clear the workspace data
+        if (currentWorkspace === workspaceName) {
+            setCurrentImage(null);
+            setInputImage(null);
+            setInputImageData(null);
+            setWorkspacePromptLoaded(false);
+            setComposerNodes([]);
+            setTimeline({
+                generationQueue: [],
+                currentPreview: null,
+                committedHistory: [],
+                discarded: [],
+            });
         }
     };
 
@@ -1038,11 +1069,12 @@ function App() {
                 onSkip={handleSkip}
                 onRestart={handleRestart}
                 onInterrupt={handleEnd}
+                openWorkspaces={openWorkspaces}
                 currentWorkspace={currentWorkspace}
-                workspaces={workspaces}
                 onWorkspaceChange={handleWorkspaceChange}
+                onWorkspaceClose={handleWorkspaceClose}
                 onCreateWorkspace={handleCreateWorkspace}
-                onOpenWorkspace={() => setWorkspaceBrowserOpen(true)}
+                onOpenWorkspaceBrowser={() => setWorkspaceBrowserOpen(true)}
                 pageLocked={pageLocked}
                 onToggleLock={() => setPageLocked(!pageLocked)}
                 // New header controls
