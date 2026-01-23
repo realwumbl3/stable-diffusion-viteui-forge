@@ -4,6 +4,22 @@ import { X, Loader2, Maximize2 } from 'lucide-react'
 import { cn } from '../lib/utils'
 import type { UpscaleDialogProps } from '../types/components'
 
+const resolveInitialUpscaler = (
+  selectedUpscaler: string,
+  availableUpscalers: UpscaleDialogProps['availableUpscalers']
+) => {
+  if (selectedUpscaler) return selectedUpscaler
+
+  if (typeof window !== 'undefined') {
+    const savedUpscaler = localStorage.getItem('lastUpscaler')
+    if (savedUpscaler && availableUpscalers.find(u => u.name === savedUpscaler)) {
+      return savedUpscaler
+    }
+  }
+
+  return availableUpscalers[0]?.name ?? ''
+}
+
 const UpscaleDialog = ({
   isOpen,
   onClose,
@@ -14,24 +30,11 @@ const UpscaleDialog = ({
   loading = false,
   error = null
 }: UpscaleDialogProps) => {
-  const [currentUpscaler, setCurrentUpscaler] = useState<string>(selectedUpscaler)
+  const [currentUpscaler, setCurrentUpscaler] = useState<string>(() =>
+    resolveInitialUpscaler(selectedUpscaler, availableUpscalers)
+  )
   const [imageDimensions, setImageDimensions] = useState<{ width: number; height: number }>({ width: 0, height: 0 })
   const imgRef = useRef<HTMLImageElement>(null)
-
-  // Load saved upscaler from localStorage on mount and when selectedUpscaler changes
-  useEffect(() => {
-    if (selectedUpscaler) {
-      setCurrentUpscaler(selectedUpscaler)
-    }
-  }, [selectedUpscaler])
-
-  // Load last used upscaler from localStorage
-  useEffect(() => {
-    const savedUpscaler = localStorage.getItem('lastUpscaler')
-    if (savedUpscaler && availableUpscalers.find(u => u.name === savedUpscaler)) {
-      setCurrentUpscaler(savedUpscaler)
-    }
-  }, [availableUpscalers])
 
   // Get image dimensions when image loads
   useEffect(() => {
@@ -59,7 +62,9 @@ const UpscaleDialog = ({
 
   const handleUpscalerChange = (upscalerName: string): void => {
     setCurrentUpscaler(upscalerName)
-    localStorage.setItem('lastUpscaler', upscalerName)
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('lastUpscaler', upscalerName)
+    }
   }
 
   const handleUpscale = (scaleFactor: number): void => {

@@ -1,49 +1,59 @@
 // VITE UI
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { UseWorkspaceTabsReturn } from '../types/hooks';
 
 const STORAGE_KEY_OPEN_WORKSPACES = 'viteui-open-workspaces';
 const STORAGE_KEY_CURRENT_WORKSPACE = 'viteui-current-workspace';
 
+const loadInitialTabs = (): { openWorkspaces: string[]; currentWorkspace: string | null } => {
+    if (typeof window === 'undefined') {
+        return { openWorkspaces: [], currentWorkspace: null };
+    }
+
+    try {
+        const storedOpen = localStorage.getItem(STORAGE_KEY_OPEN_WORKSPACES);
+        const storedCurrent = localStorage.getItem(STORAGE_KEY_CURRENT_WORKSPACE);
+
+        let openWorkspacesData: string[] = [];
+        if (storedOpen) {
+            const parsed = JSON.parse(storedOpen);
+            if (Array.isArray(parsed)) {
+                openWorkspacesData = parsed;
+            }
+        }
+
+        let currentWorkspaceData: string | null = storedCurrent;
+
+        if (currentWorkspaceData && !openWorkspacesData.includes(currentWorkspaceData)) {
+            openWorkspacesData = [...openWorkspacesData, currentWorkspaceData];
+            localStorage.setItem(STORAGE_KEY_OPEN_WORKSPACES, JSON.stringify(openWorkspacesData));
+        }
+
+        return {
+            openWorkspaces: openWorkspacesData,
+            currentWorkspace: currentWorkspaceData,
+        };
+    } catch (error) {
+        console.warn('Failed to load workspace tabs from localStorage:', error);
+        return { openWorkspaces: [], currentWorkspace: null };
+    }
+};
+
 /**
  * Hook for managing workspace tabs with localStorage persistence
  */
 export const useWorkspaceTabs = (): UseWorkspaceTabsReturn => {
-    const [openWorkspaces, setOpenWorkspaces] = useState<string[]>([]);
-    const [currentWorkspace, setCurrentWorkspace] = useState<string | null>(null);
+    const initialTabsRef = useRef<{ openWorkspaces: string[]; currentWorkspace: string | null }>();
 
-    // Load from localStorage on mount
-    useEffect(() => {
-        try {
-            const storedOpen = localStorage.getItem(STORAGE_KEY_OPEN_WORKSPACES);
-            const storedCurrent = localStorage.getItem(STORAGE_KEY_CURRENT_WORKSPACE);
+    if (!initialTabsRef.current) {
+        initialTabsRef.current = loadInitialTabs();
+    }
 
-            let openWorkspacesData: string[] = [];
-            if (storedOpen) {
-                const parsed = JSON.parse(storedOpen);
-                if (Array.isArray(parsed)) {
-                    openWorkspacesData = parsed;
-                }
-            }
+    const [openWorkspaces, setOpenWorkspaces] = useState<string[]>(initialTabsRef.current.openWorkspaces);
+    const [currentWorkspace, setCurrentWorkspace] = useState<string | null>(
+        initialTabsRef.current.currentWorkspace
+    );
 
-            // If we have a current workspace but it's not in open workspaces, add it
-            if (storedCurrent && !openWorkspacesData.includes(storedCurrent)) {
-                openWorkspacesData = [...openWorkspacesData, storedCurrent];
-                // Update localStorage to fix the inconsistency
-                localStorage.setItem(STORAGE_KEY_OPEN_WORKSPACES, JSON.stringify(openWorkspacesData));
-            }
-
-            setOpenWorkspaces(openWorkspacesData);
-
-            if (storedCurrent) {
-                setCurrentWorkspace(storedCurrent);
-            }
-        } catch (error) {
-            console.warn('Failed to load workspace tabs from localStorage:', error);
-        }
-    }, []);
-
-    // Save to localStorage whenever state changes
     useEffect(() => {
         try {
             localStorage.setItem(STORAGE_KEY_OPEN_WORKSPACES, JSON.stringify(openWorkspaces));
@@ -75,10 +85,7 @@ export const useWorkspaceTabs = (): UseWorkspaceTabsReturn => {
     }, []);
 
     const closeWorkspace = useCallback((workspaceName: string) => {
-        setOpenWorkspaces(prev => {
-            const filtered = prev.filter(name => name !== workspaceName);
-            return filtered;
-        });
+        setOpenWorkspaces(prev => prev.filter(name => name !== workspaceName));
 
         // If closing the current workspace, switch to another one
         setCurrentWorkspace(prev => {

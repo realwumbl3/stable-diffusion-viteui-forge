@@ -8,7 +8,7 @@ import {
   Edit,
   RefreshCw
 } from 'lucide-react'
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useMemo } from 'react'
 import { cn, resolveImageSrc } from '../lib/utils'
 import TimelineItem from './TimelineItem'
 import type { SidebarProps } from '../types/components'
@@ -34,27 +34,22 @@ const Sidebar = ({
 }: SidebarProps) => {
   const [committedPage, setCommittedPage] = useState<number>(0)
   const [discardedPage, setDiscardedPage] = useState<number>(0)
-  const [canvasDimensions, setCanvasDimensions] = useState<{ width: number; height: number }>({ width: 0, height: 0 })
+  const [imageLoadTick, setImageLoadTick] = useState(0)
   const canvasImgRef = useRef<HTMLImageElement>(null)
 
-  useEffect(() => {
+  const canvasDimensions = useMemo(() => {
     const img = canvasImgRef.current
-    if (img && currentImage) {
-      const handleLoad = (): void => {
-        const width = img.naturalWidth
-        const height = img.naturalHeight
-        setCanvasDimensions({ width, height })
-      }
-      if (img.complete) {
-        handleLoad()
-      } else {
-        img.addEventListener('load', handleLoad)
-        return () => img.removeEventListener('load', handleLoad)
-      }
-    } else if (!currentImage) {
-      setCanvasDimensions({ width: 0, height: 0 })
+
+    if (img && img.naturalWidth > 0 && img.naturalHeight > 0) {
+      return { width: img.naturalWidth, height: img.naturalHeight }
     }
-  }, [currentImage])
+
+    return { width: 0, height: 0 }
+  }, [currentImage, canvasRefreshKey, imageLoadTick])
+
+  const handleCanvasImageLoad = () => {
+    setImageLoadTick((tick) => tick + 1)
+  }
 
   const previewImage = getGenerationImageUrl ? getGenerationImageUrl(timeline.currentPreview) : timeline.currentPreview?.image
   const hasQueueItems = timeline.generationQueue.length > 0
@@ -235,6 +230,7 @@ const Sidebar = ({
                         crossOrigin="anonymous"
                         alt="Canvas"
                         className="w-full object-contain"
+                        onLoad={handleCanvasImageLoad}
                       />
                     ) : (
                       <div className="w-full h-32 flex items-center justify-center text-xs text-studio-text-muted">
