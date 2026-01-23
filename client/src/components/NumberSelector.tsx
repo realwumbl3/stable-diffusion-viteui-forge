@@ -1,6 +1,18 @@
+// VITE UI
 import { useState, useEffect, useRef } from 'react';
 import { ChevronUp, ChevronDown } from 'lucide-react';
 import { cn } from '../lib/utils';
+
+interface NumberSelectorProps {
+  value: number;
+  onChange: (value: number) => void;
+  min?: number;
+  max?: number;
+  step?: number;
+  className?: string;
+  inputClassName?: string;
+  disabled?: boolean;
+}
 
 const NumberSelector = ({
   value,
@@ -11,17 +23,17 @@ const NumberSelector = ({
   className = "",
   inputClassName = "",
   disabled = false
-}) => {
+}: NumberSelectorProps) => {
   const [isFocused, setIsFocused] = useState(false);
-  const containerRef = useRef(null);
-  const inputRef = useRef(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // Handle scroll wheel
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
 
-    const handleWheel = (e) => {
+    const handleWheel = (e: WheelEvent) => {
       e.preventDefault();
       const delta = e.deltaY > 0 ? -step : step;
       const newValue = Math.max(min, Math.min(max, value + delta));
@@ -34,17 +46,17 @@ const NumberSelector = ({
     return () => container.removeEventListener('wheel', handleWheel);
   }, [value, min, max, step, onChange]);
 
-  const increment = () => {
+  const increment = (): void => {
     const newValue = Math.min(max, value + step);
     onChange(newValue);
   };
 
-  const decrement = () => {
+  const decrement = (): void => {
     const newValue = Math.max(min, value - step);
     onChange(newValue);
   };
 
-  const handleInputChange = (e) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
     const inputValue = parseFloat(e.target.value);
     if (!isNaN(inputValue)) {
       const clampedValue = Math.max(min, Math.min(max, inputValue));
@@ -52,7 +64,7 @@ const NumberSelector = ({
     }
   };
 
-  const handleKeyDown = (e) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>): void => {
     if (disabled) return;
 
     if (e.key === 'ArrowUp') {
@@ -80,7 +92,7 @@ const NumberSelector = ({
         const newValue = currentValue.slice(0, start) + e.key + currentValue.slice(end);
         input.value = newValue;
         input.setSelectionRange(start + 1, start + 1);
-        handleInputChange({ target: input });
+        handleInputChange({ target: input } as React.ChangeEvent<HTMLInputElement>);
       }
     } else if (e.key === 'Enter' || e.key === ' ') {
       // Allow Enter/Space to work normally
@@ -115,7 +127,7 @@ const NumberSelector = ({
         onFocus={() => setIsFocused(true)}
         onBlur={(e) => {
           // Don't blur if focus is moving to container
-          if (!containerRef.current?.contains(e.relatedTarget)) {
+          if (!containerRef.current?.contains(e.relatedTarget as Node)) {
             setIsFocused(false);
           }
         }}

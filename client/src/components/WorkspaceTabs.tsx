@@ -1,6 +1,8 @@
+// VITE UI
 import { useState, useEffect, useRef } from "react";
 import { X, Plus, FolderOpen } from "lucide-react";
-import CreateWorkspaceDialog from "./CreateWorkspaceDialog.jsx";
+import CreateWorkspaceDialog from "./CreateWorkspaceDialog";
+import type { WorkspaceTabsProps } from "../types/components";
 
 /**
  * WorkspaceTabs component for managing multiple open workspaces with tabs
@@ -12,8 +14,8 @@ const WorkspaceTabs = ({
     onWorkspaceClose,
     onOpenWorkspaceBrowser,
     onCreateWorkspace
-}) => {
-    const tabsRef = useRef(null);
+}: WorkspaceTabsProps) => {
+    const tabsRef = useRef<HTMLDivElement>(null);
     const [showCreateDialog, setShowCreateDialog] = useState(false);
 
     // Scroll active tab into view
@@ -30,12 +32,12 @@ const WorkspaceTabs = ({
         }
     }, [currentWorkspace, openWorkspaces]);
 
-    const handleTabClick = (workspaceName, e) => {
+    const handleTabClick = (workspaceName: string, e: React.MouseEvent): void => {
         e.preventDefault();
         onWorkspaceChange?.(workspaceName);
     };
 
-    const handleTabClose = (workspaceName, e) => {
+    const handleTabClose = (workspaceName: string, e: React.MouseEvent): void => {
         e.stopPropagation();
         onWorkspaceClose?.(workspaceName);
     };

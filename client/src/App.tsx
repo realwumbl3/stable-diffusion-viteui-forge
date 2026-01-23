@@ -1,22 +1,26 @@
+// VITE UI
 import { useState, useEffect, useMemo, useRef } from "react";
-import api from "./api";
+import api from "./Api";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { useWebSocketProgress } from "./hooks/useWebSocketProgress";
-import Header from "./components/Header.jsx";
-import Sidebar from "./components/Sidebar.jsx";
-import InpaintCanvas from "./components/InpaintCanvas/components/InpaintCanvas.jsx";
-import PropertiesPanel from "./components/PropertiesPanel.jsx";
-import Welcome from "./components/Welcome.jsx";
-import UpscaleDialog from "./components/UpscaleDialog.jsx";
-import WorkspaceBrowser from "./components/WorkspaceBrowser.jsx";
+import Header from "./components/Header";
+import Sidebar from "./components/Sidebar";
+import InpaintCanvas from "./components/InpaintCanvas/components/InpaintCanvas";
+import PropertiesPanel from "./components/PropertiesPanel";
+import Welcome from "./components/Welcome";
+import UpscaleDialog from "./components/UpscaleDialog";
+import WorkspaceBrowser from "./components/WorkspaceBrowser";
 import { useTitleIconAnimation } from "./hooks/useTitleIconAnimation";
 import { useWorkspaceTabs } from "./hooks/useWorkspaceTabs";
 import { WORKSPACE_PREFIX, parseWorkspaceImage, resolveImageSrc, API_BASE_URL } from "./lib/utils";
 import { composePromptsFromNodes, generateId } from "./components/PromptComposer/utils/promptUtils";
 import { encodeLegacy } from "./components/PromptComposer/utils/legacyEncoding";
+import type { Generation, ModelInfo, SamplerInfo, UpscalerInfo, WorkspaceInfo } from "./Api";
+import type { PromptNode } from "./components/PromptComposer/types";
+import type { Timeline, GenerationMode, Progress } from "./types/components";
 
 function App() {
-    const [composerNodes, setComposerNodes] = useState([]);
+    const [composerNodes, setComposerNodes] = useState<PromptNode[]>([]);
     const composerPrompts = useMemo(
         () => composePromptsFromNodes(composerNodes),
         [composerNodes]
@@ -27,13 +31,13 @@ function App() {
     const programmaticComposerUpdateRef = useRef(false);
     const initialLoadRef = useRef(false);
     const workspaceChangingRef = useRef(false);
-    const [loading, setLoading] = useState(false);
-    const [currentImage, setCurrentImage] = useState(null);
-    const [currentTaskId, setCurrentTaskId] = useState(null);
-    const [canvasRefreshKey, setCanvasRefreshKey] = useState(0);
-    const [pendingRestart, setPendingRestart] = useState(false);
+    const [loading, setLoading] = useState<boolean>(false);
+    const [currentImage, setCurrentImage] = useState<string | null>(null);
+    const [currentTaskId, setCurrentTaskId] = useState<string | null>(null);
+    const [canvasRefreshKey, setCanvasRefreshKey] = useState<number>(0);
+    const [pendingRestart, setPendingRestart] = useState<boolean>(false);
 
-    const createSimpleTextNodes = (positiveText = "", negativeText = "") => [
+    const createSimpleTextNodes = (positiveText = "", negativeText = ""): PromptNode[] => [
         {
             id: generateId(),
             type: "text",
@@ -58,16 +62,16 @@ function App() {
     const { progress, isConnected, livePreview } = useWebSocketProgress(currentTaskId);
 
     // Model and sampler settings
-    const [models, setModels] = useState([]);
-    const [samplers, setSamplers] = useState([]);
-    const [selectedModel, setSelectedModel] = useState("");
-    const [selectedSampler, setSelectedSampler] = useState("Euler a");
-    const [clipSkip, setClipSkip] = useState(1);
+    const [models, setModels] = useState<ModelInfo[]>([]);
+    const [samplers, setSamplers] = useState<SamplerInfo[]>([]);
+    const [selectedModel, setSelectedModel] = useState<string>("");
+    const [selectedSampler, setSelectedSampler] = useState<string>("Euler a");
+    const [clipSkip, setClipSkip] = useState<number>(1);
 
     // Generation parameters
-    const [generationMode, setGenerationMode] = useState("txt2img");
+    const [generationMode, setGenerationMode] = useState<GenerationMode>("txt2img");
 
-    const handleGenerationModeChange = (mode) => {
+    const handleGenerationModeChange = (mode: GenerationMode): void => {
         setGenerationMode(mode);
         // When switching to inpaint mode, force edit mode for mask editing
         if (mode === "inpaint") {
@@ -91,25 +95,25 @@ function App() {
     };
 
     // Inpainting parameters
-    const [inpaintMask, setInpaintMask] = useState(null);
-    const [maskBlur, setMaskBlur] = useState(4);
-    const [inpaintingFill, setInpaintingFill] = useState(0);
-    const [inpaintFullRes, setInpaintFullRes] = useState(true);
-    const [inpaintFullResPadding, setInpaintFullResPadding] = useState(64);
-    const [inpaintingMaskInvert, setInpaintingMaskInvert] = useState(false);
-    const [canvasPadding, setCanvasPadding] = useState(64);
-    const [steps, setSteps] = useState(20);
-    const [cfgScale, setCfgScale] = useState(7);
-    const [width, setWidth] = useState(512);
-    const [height, setHeight] = useState(512);
-    const [batchSize, setBatchSize] = useState(1);
-    const [count, setCount] = useState(1);
+    const [inpaintMask, setInpaintMask] = useState<string | null>(null);
+    const [maskBlur, setMaskBlur] = useState<number>(4);
+    const [inpaintingFill, setInpaintingFill] = useState<number>(0);
+    const [inpaintFullRes, setInpaintFullRes] = useState<boolean>(true);
+    const [inpaintFullResPadding, setInpaintFullResPadding] = useState<number>(64);
+    const [inpaintingMaskInvert, setInpaintingMaskInvert] = useState<boolean>(false);
+    const [canvasPadding, setCanvasPadding] = useState<number>(64);
+    const [steps, setSteps] = useState<number>(20);
+    const [cfgScale, setCfgScale] = useState<number>(7);
+    const [width, setWidth] = useState<number>(512);
+    const [height, setHeight] = useState<number>(512);
+    const [batchSize, setBatchSize] = useState<number>(1);
+    const [count, setCount] = useState<number>(1);
 
     // img2img parameters
-    const [denoisingStrength, setDenoisingStrength] = useState(0.75);
-    const [inputImage, setInputImage] = useState(null);
+    const [denoisingStrength, setDenoisingStrength] = useState<number>(0.75);
+    const [inputImage, setInputImage] = useState<string | null>(null);
 
-    const [timeline, setTimeline] = useState({
+    const [timeline, setTimeline] = useState<Timeline>({
         generationQueue: [], // Array of Generation objects
         currentPreview: null, // Generation object or null
         committedHistory: [], // Array of Generation objects
@@ -125,9 +129,9 @@ function App() {
         switchWorkspace
     } = useWorkspaceTabs();
 
-    const [workspaces, setWorkspaces] = useState([]);
-    const [workspaceBrowserOpen, setWorkspaceBrowserOpen] = useState(false);
-    const [inputImageData, setInputImageData] = useState(null);
+    const [workspaces, setWorkspaces] = useState<WorkspaceInfo[]>([]);
+    const [workspaceBrowserOpen, setWorkspaceBrowserOpen] = useState<boolean>(false);
+    const [inputImageData, setInputImageData] = useState<string | null>(null);
 
     // Save settings
     const [saveImages, setSaveImages] = useState(false);
@@ -141,7 +145,14 @@ function App() {
     const [pageLocked, setPageLocked] = useState(false);
 
     // Upscale dialog state
-    const [upscaleDialog, setUpscaleDialog] = useState({
+    const [upscaleDialog, setUpscaleDialog] = useState<{
+        isOpen: boolean;
+        sourceImage: { id: string; image: string; type: 'timeline' | 'canvas' } | null;
+        selectedUpscaler: string;
+        availableUpscalers: UpscalerInfo[];
+        loading: boolean;
+        error: string | null;
+    }>({
         isOpen: false,
         sourceImage: null, // {id, image, type: 'timeline'|'canvas'}
         selectedUpscaler: "Lanczos",
@@ -166,7 +177,7 @@ function App() {
 
     // Handle page lock functionality
     useEffect(() => {
-        const handleBeforeUnload = (e) => {
+        const handleBeforeUnload = (e: BeforeUnloadEvent): string | undefined => {
             if (pageLocked) {
                 e.preventDefault();
                 e.returnValue = ''; // Chrome requires returnValue to be set
@@ -201,7 +212,7 @@ function App() {
         }
     }, [loading, pendingRestart, composerPrompt]);
 
-    const loadInitialData = async () => {
+    const loadInitialData = async (): Promise<void> => {
         try {
             const [modelsData, samplersData, optionsData] = await Promise.all([
                 api.getModels(),
@@ -254,7 +265,7 @@ function App() {
         }
     };
 
-    const initializeWorkspace = async () => {
+    const initializeWorkspace = async (): Promise<void> => {
         try {
             workspaceChangingRef.current = true;
             const data = await api.listWorkspaces();
@@ -304,7 +315,7 @@ function App() {
         }
     };
 
-    const loadWorkspaceGenerations = async (workspaceName) => {
+    const loadWorkspaceGenerations = async (workspaceName: string): Promise<void> => {
         if (!workspaceName) return;
 
         try {
@@ -338,7 +349,7 @@ function App() {
         }
     };
 
-    async function loadWorkspacePrompt(workspaceName) {
+    async function loadWorkspacePrompt(workspaceName: string): Promise<void> {
         if (!workspaceName) {
             setWorkspacePromptLoaded(true);
             return;
@@ -357,7 +368,7 @@ function App() {
         }
     }
 
-    const handleWorkspaceChange = async (workspaceName) => {
+    const handleWorkspaceChange = async (workspaceName: string): Promise<void> => {
         if (!workspaceName) return;
 
         // Ensure workspace is in tabs (should be handled by openWorkspace, but being safe)
@@ -382,7 +393,7 @@ function App() {
         }, 100);
     };
 
-    const handleCreateWorkspace = async (name) => {
+    const handleCreateWorkspace = async (name: string): Promise<void> => {
         try {
             workspaceChangingRef.current = true;
             const result = await api.createWorkspace(name);
@@ -409,7 +420,7 @@ function App() {
         }
     };
 
-    const handleWorkspaceClose = (workspaceName) => {
+    const handleWorkspaceClose = (workspaceName: string): void => {
         closeWorkspace(workspaceName);
         // If closing the current workspace, clear the workspace data
         if (currentWorkspace === workspaceName) {
@@ -427,7 +438,7 @@ function App() {
         }
     };
 
-    const handleComposerNodesChange = (nodes) => {
+    const handleComposerNodesChange = (nodes: PromptNode[]): void => {
         setComposerNodes(nodes);
     };
 
@@ -448,18 +459,18 @@ function App() {
         return () => clearTimeout(timer);
     }, [composerNodes, currentWorkspace, workspacePromptLoaded]);
 
-    const toWorkspaceImage = (workspaceName, relativePath) =>
+    const toWorkspaceImage = (workspaceName: string, relativePath: string): string =>
         `${WORKSPACE_PREFIX}${encodeURIComponent(workspaceName)}/${relativePath}`;
 
     // Get image URL for a generation
-    const getGenerationImageUrl = (generation, size = 'full') => {
+    const getGenerationImageUrl = (generation: Generation | null, size: 'preview' | 'full' = 'full'): string | null => {
         if (!generation) return null;
         const asset = size === 'preview' ? '512.png' : 'full.png';
         const category = generation.status === 'commit' ? 'commits' : generation.status === 'reject' ? 'rejects' : 'candidates';
         return `${API_BASE_URL}/api/workspaces/${encodeURIComponent(generation.workspace)}/${category}/${generation.genid}/${asset}`;
     };
 
-    const fetchImageAsDataUrl = async (imageValue) => {
+    const fetchImageAsDataUrl = async (imageValue: string): Promise<string> => {
         const imageUrl = resolveImageSrc(imageValue, "full");
         const response = await fetch(imageUrl);
         if (!response.ok) {
@@ -474,7 +485,7 @@ function App() {
         });
     };
 
-    const getBase64Payload = async (imageValue) => {
+    const getBase64Payload = async (imageValue: string | null): Promise<string | null> => {
         if (!imageValue) return null;
         if (typeof imageValue === "string" && imageValue.startsWith("data:")) {
             return imageValue;
@@ -482,7 +493,7 @@ function App() {
         return await fetchImageAsDataUrl(imageValue);
     };
 
-    const generateImage = async () => {
+    const generateImage = async (): Promise<void> => {
         setPendingRestart(false);
         if (!composerPrompt.trim()) return;
         if ((generationMode === "img2img" || generationMode === "inpaint") && timeline.committedHistory.length === 0) {
@@ -589,9 +600,10 @@ function App() {
             console.log("Generation completed successfully, clearing progress");
         } catch (error) {
             console.error("Error generating image:", error);
+            const errorMessage = error instanceof Error ? error.message : String(error);
 
             // Check for specific error types
-            if (error.message?.includes("Failed to fetch") || error.message?.includes("NetworkError") || error.message?.includes("404")) {
+            if (errorMessage.includes("Failed to fetch") || errorMessage.includes("NetworkError") || errorMessage.includes("404")) {
                 // Check if this is likely a missing input image
                 if (generationMode === "inpaint" || generationMode === "img2img") {
                     alert("Failed to load input image. The image may no longer be available. Please select a different input image.");
@@ -601,9 +613,9 @@ function App() {
                 } else {
                     alert("Network error occurred. Please check your connection and try again.");
                 }
-            } else if (error.message?.includes("CORS")) {
+            } else if (errorMessage.includes("CORS")) {
                 alert("CORS error occurred. This may be due to browser security restrictions.");
-            } else if (error.message?.includes("interrupted") || error.message?.includes("interrupt")) {
+            } else if (errorMessage.includes("interrupted") || errorMessage.includes("interrupt")) {
                 alert("Generation was interrupted. Please try again.");
             } else {
                 alert("Error generating image. Make sure the API server is running on port 7861.");
@@ -617,7 +629,7 @@ function App() {
         }
     };
 
-    const handleModelChange = async (modelTitle) => {
+    const handleModelChange = async (modelTitle: string): Promise<void> => {
         setSelectedModel(modelTitle);
         try {
             await api.setModel(modelTitle);
@@ -626,7 +638,7 @@ function App() {
         }
     };
 
-    const handleClipSkipChange = async (newClipSkip) => {
+    const handleClipSkipChange = async (newClipSkip: number): Promise<void> => {
         setClipSkip(newClipSkip);
         try {
             await api.setOptions({ CLIP_stop_at_last_layers: newClipSkip });
@@ -635,7 +647,7 @@ function App() {
         }
     };
 
-    const handleSkip = async () => {
+    const handleSkip = async (): Promise<void> => {
         try {
             console.log("Skipping generation");
             await api.skip();
@@ -645,14 +657,14 @@ function App() {
         }
     };
 
-    const resetGenerationState = () => {
+    const resetGenerationState = (): void => {
         console.log("Resetting generation state: loading=false, currentTaskId=null");
         setLoading(false);
         setCurrentTaskId(null);
         sessionStorage.removeItem('currentTaskId'); // Clear stored task ID
     };
 
-    const handleInterrupt = async () => {
+    const handleInterrupt = async (): Promise<void> => {
         try {
             await api.interrupt();
             console.log("Generation interrupt signal sent - waiting for API response");
@@ -665,20 +677,20 @@ function App() {
         }
     };
 
-    const handleRestart = () => {
+    const handleRestart = (): void => {
         if (!loading) return;
         setPendingRestart(true);
         handleInterrupt();
     };
 
-    const handleEnd = () => {
+    const handleEnd = (): void => {
         if (pendingRestart) {
             setPendingRestart(false);
         }
         handleInterrupt();
     };
 
-    const handleCanvasImageUpload = async (imageSrc) => {
+    const handleCanvasImageUpload = async (imageSrc: string): Promise<void> => {
         if (!currentWorkspace) return;
         try {
             const result = await api.importWorkspaceImage(currentWorkspace, imageSrc);
@@ -736,14 +748,14 @@ function App() {
         }
     };
 
-    const handlePreviewSelect = (generation) => {
+    const handlePreviewSelect = (generation: Generation | null): void => {
         setTimeline((prev) => ({
             ...prev,
             currentPreview: generation,
         }));
     };
 
-    const handleRejectPreview = async () => {
+    const handleRejectPreview = async (): Promise<void> => {
         const preview = timeline.currentPreview;
         if (!preview) return;
 
@@ -756,7 +768,7 @@ function App() {
         }
     };
 
-    const handleCommitPreview = async () => {
+    const handleCommitPreview = async (): Promise<void> => {
         const preview = timeline.currentPreview;
         if (!preview) return;
 
@@ -792,7 +804,7 @@ function App() {
         }
     };
 
-    const handleDiscardGeneration = async (generation) => {
+    const handleDiscardGeneration = async (generation: Generation): Promise<void> => {
         try {
             await api.deleteWorkspaceImage(generation.workspace, `${generation.status === 'candidate' ? 'candidates' : generation.status === 'commit' ? 'commits' : 'rejects'}/${generation.genid}/full.png`);
             // Reload generations to get updated status
@@ -802,7 +814,7 @@ function App() {
         }
     };
 
-    const handleRestoreGeneration = async (generation) => {
+    const handleRestoreGeneration = async (generation: Generation): Promise<void> => {
         try {
             await api.restoreWorkspaceImage(generation.workspace, `${generation.status === 'reject' ? 'rejects' : 'commits'}/${generation.genid}/full.png`);
             // Reload generations to get updated status
@@ -812,7 +824,7 @@ function App() {
         }
     };
 
-    const handleUncommitGeneration = async (generation) => {
+    const handleUncommitGeneration = async (generation: Generation): Promise<void> => {
         try {
             await api.uncommitWorkspaceImage(generation.workspace, `commits/${generation.genid}/full.png`);
             // Reload generations to get updated status
@@ -823,7 +835,7 @@ function App() {
     };
 
     // Upscale functionality
-    const handleOpenUpscaleDialog = (sourceImage) => {
+    const handleOpenUpscaleDialog = (sourceImage: { id: string; image: string; type: 'timeline' | 'canvas' }): void => {
         // Fetch available upscalers if not already loaded
         if (upscaleDialog.availableUpscalers.length === 0) {
             api.getUpscalers()
@@ -852,7 +864,7 @@ function App() {
         }));
     };
 
-    const handleCloseUpscaleDialog = () => {
+    const handleCloseUpscaleDialog = (): void => {
         setUpscaleDialog((prev) => ({
             ...prev,
             isOpen: false,
@@ -862,17 +874,20 @@ function App() {
         }));
     };
 
-    const getWorkspaceImagePath = (sourceImage) => {
+    const getWorkspaceImagePath = (sourceImage: { id: string; image: string; type: 'timeline' | 'canvas' } | Generation | null): string | null => {
+        if (!sourceImage) return null;
+        
         // If sourceImage is a generation object (from timeline), build path from genid and status
-        if (sourceImage && sourceImage.genid && sourceImage.workspace) {
-            const category = sourceImage.status === 'commit' ? 'commits' 
-                : sourceImage.status === 'reject' ? 'rejects' 
+        if ('genid' in sourceImage && 'workspace' in sourceImage && 'status' in sourceImage) {
+            const gen = sourceImage as Generation;
+            const category = gen.status === 'commit' ? 'commits' 
+                : gen.status === 'reject' ? 'rejects' 
                 : 'candidates';
-            return `${category}/${sourceImage.genid}/full.png`;
+            return `${category}/${gen.genid}/full.png`;
         }
         
         // If sourceImage is from canvas, try to extract from currentImage URL or use latest committed
-        if (sourceImage && sourceImage.type === 'canvas') {
+        if ('type' in sourceImage && sourceImage.type === 'canvas') {
             // Try to extract workspace path from currentImage URL
             if (currentImage) {
                 const workspaceInfo = parseWorkspaceImage(currentImage);
@@ -897,7 +912,7 @@ function App() {
         return null;
     };
 
-    const handleUpscale = async (upscaler, scaleFactor) => {
+    const handleUpscale = async (upscaler: string, scaleFactor: number): Promise<void> => {
         if (!upscaleDialog.sourceImage) return;
 
         // Set loading state
@@ -954,15 +969,16 @@ function App() {
             handleCloseUpscaleDialog();
         } catch (error) {
             console.error("Upscale failed:", error);
+            const errorMessage = error instanceof Error ? error.message : "Upscale failed. Please try again.";
             setUpscaleDialog((prev) => ({
                 ...prev,
                 loading: false,
-                error: error.message || "Upscale failed. Please try again.",
+                error: errorMessage,
             }));
         }
     };
 
-    const handleGetStarted = (templatePrompt = "") => {
+    const handleGetStarted = (templatePrompt = ""): void => {
         if (templatePrompt) {
             setComposerNodes(createSimpleTextNodes(templatePrompt));
         }
@@ -1015,10 +1031,9 @@ function App() {
                     onRestart={handleRestart}
                     onInterrupt={handleEnd}
                     currentWorkspace={currentWorkspace}
-                    workspaces={workspaces}
                     onWorkspaceChange={handleWorkspaceChange}
                     onCreateWorkspace={handleCreateWorkspace}
-                    onOpenWorkspace={() => setWorkspaceBrowserOpen(true)}
+                    onOpenWorkspaceBrowser={() => setWorkspaceBrowserOpen(true)}
                     pageLocked={pageLocked}
                     onToggleLock={() => setPageLocked(!pageLocked)}
                     pendingRestart={pendingRestart}

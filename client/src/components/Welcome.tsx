@@ -1,3 +1,4 @@
+// VITE UI
 import {
   Wand2,
   Zap,
@@ -5,8 +6,9 @@ import {
   Layers,
   Download
 } from 'lucide-react'
+import type { WelcomeProps } from '../types/components';
 
-const Welcome = ({ onGetStarted }) => {
+const Welcome = ({ onGetStarted }: WelcomeProps) => {
 
   const features = [
     { icon: Zap, title: 'Fast Generation', desc: 'Generate images in seconds with advanced AI' },

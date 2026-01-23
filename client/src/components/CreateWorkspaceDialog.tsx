@@ -1,13 +1,15 @@
+// VITE UI
 import { useState, useEffect, useRef } from 'react'
 import { X, Plus } from 'lucide-react'
+import type { CreateWorkspaceDialogProps } from '../types/components'
 
 const CreateWorkspaceDialog = ({
   isOpen,
   onClose,
   onCreateWorkspace
-}) => {
+}: CreateWorkspaceDialogProps) => {
   const [workspaceName, setWorkspaceName] = useState('')
-  const inputRef = useRef(null)
+  const inputRef = useRef<HTMLInputElement>(null)
 
   // Focus input when dialog opens
   useEffect(() => {
@@ -16,7 +18,7 @@ const CreateWorkspaceDialog = ({
     }
   }, [isOpen])
 
-  const handleSubmit = (e) => {
+  const handleSubmit = (e: React.FormEvent): void => {
     e.preventDefault()
     const trimmedName = workspaceName.trim()
     if (trimmedName) {
@@ -26,12 +28,12 @@ const CreateWorkspaceDialog = ({
     }
   }
 
-  const handleCancel = () => {
+  const handleCancel = (): void => {
     setWorkspaceName('')
     onClose()
   }
 
-  const handleKeyDown = (e) => {
+  const handleKeyDown = (e: React.KeyboardEvent): void => {
     if (e.key === 'Escape') {
       handleCancel()
     }
@@ -51,6 +53,7 @@ const CreateWorkspaceDialog = ({
           <button
             onClick={handleCancel}
             className="text-studio-textSecondary hover:text-studio-text p-1 rounded transition-colors"
+            type="button"
           >
             <X size={20} />
           </button>

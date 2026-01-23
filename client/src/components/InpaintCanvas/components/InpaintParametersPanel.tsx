@@ -2,6 +2,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Minus, Plus } from "lucide-react";
 import { cn } from "../../../lib/utils";
+import type { InpaintParametersPanelProps } from "../../../types/components";
 
 const InpaintParametersPanel = ({
     // Mask blur parameters
@@ -22,14 +23,14 @@ const InpaintParametersPanel = ({
     // Full res padding parameters
     inpaintFullResPadding,
     setInpaintFullResPadding,
-}) => {
-    const paddingControlRef = useRef(null);
+}: InpaintParametersPanelProps) => {
+    const paddingControlRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         const element = paddingControlRef.current;
         if (!element) return;
 
-        const handleWheel = (e) => {
+        const handleWheel = (e: WheelEvent) => {
             e.preventDefault();
             if (e.deltaY > 0) {
                 setInpaintFullResPadding(Math.max(0, inpaintFullResPadding - 64));
@@ -117,6 +118,7 @@ const InpaintParametersPanel = ({
                                         : "text-studio-textSecondary hover:text-studio-text hover:bg-studio-surface border border-studio-border"
                                 }`}
                                 title="Focused (Full Resolution)"
+                                type="button"
                             >
                                 Focused
                             </button>
@@ -128,6 +130,7 @@ const InpaintParametersPanel = ({
                                         : "text-studio-textSecondary hover:text-studio-text hover:bg-studio-surface border border-studio-border"
                                 }`}
                                 title="Invert Mask"
+                                type="button"
                             >
                                 Invert
                             </button>
@@ -147,6 +150,7 @@ const InpaintParametersPanel = ({
                                     onClick={() => setInpaintFullResPadding(Math.max(0, inpaintFullResPadding - 8))}
                                     className="studio-btn-ghost p-1"
                                     title="Decrease Padding"
+                                    type="button"
                                 >
                                     <Minus size={12} />
                                 </button>
@@ -159,6 +163,7 @@ const InpaintParametersPanel = ({
                                     onClick={() => setInpaintFullResPadding(Math.min(1024, inpaintFullResPadding + 8))}
                                     className="studio-btn-ghost p-1"
                                     title="Increase Padding"
+                                    type="button"
                                 >
                                     <Plus size={12} />
                                 </button>

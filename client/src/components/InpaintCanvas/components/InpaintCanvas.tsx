@@ -1,7 +1,7 @@
 // VITE UI
 import { useState, useRef, useEffect, useCallback } from "react";
 import PromptComposer from "../../PromptComposer";
-import InpaintToolbar from "./InpaintToolbar.jsx";
+import InpaintToolbar from "./InpaintToolbar";
 import { resolveImageSrc } from "../../../lib/utils";
 
 // Import our extracted hooks and components
@@ -9,9 +9,10 @@ import { useCanvasState } from "../hooks/useCanvasState";
 import { useDrawing } from "../hooks/useDrawing";
 import { useFileHandling } from "../hooks/useFileHandling";
 import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
-import ZoomToolbar from "./ZoomToolbar.jsx";
-import CanvasArea from "./CanvasArea.jsx";
-import StatusBar from "./StatusBar.jsx";
+import ZoomToolbar from "./ZoomToolbar";
+import CanvasArea from "./CanvasArea";
+import StatusBar from "./StatusBar";
+import type { InpaintCanvasProps } from "../../../types/components";
 
 const InpaintCanvas = ({
     currentImage,
@@ -51,30 +52,30 @@ const InpaintCanvas = ({
     generationMode = "txt2img",
     // Canvas refresh key
     canvasRefreshKey = 0,
-}) => {
+}: InpaintCanvasProps) => {
     const displayImage = previewImage || currentImage;
     const resolvedDisplayImage = resolveImageSrc(displayImage, "full");
-    const resolvedInputImage = resolveImageSrc(inputImage, "full");
-    const resolvedPreviewImage = resolveImageSrc(previewImage, "full");
-    const resolvedCurrentImage = resolveImageSrc(currentImage, "full");
+    const resolvedInputImage = resolveImageSrc(inputImage || null, "full");
+    const resolvedPreviewImage = resolveImageSrc(previewImage || null, "full");
+    const resolvedCurrentImage = resolveImageSrc(currentImage || null, "full");
 
     // Refs
-    const canvasRef = useRef(null);
-    const maskCanvasRef = useRef(null);
-    const overlayCanvasRef = useRef(null);
-    const imageRef = useRef(null);
-    const panTargetRef = useRef(null);
+    const canvasRef = useRef<HTMLDivElement>(null);
+    const maskCanvasRef = useRef<HTMLCanvasElement>(null);
+    const overlayCanvasRef = useRef<HTMLCanvasElement>(null);
+    const imageRef = useRef<HTMLImageElement>(null);
+    const panTargetRef = useRef<HTMLDivElement>(null);
 
     // State for brush settings
-    const [brushSize, setBrushSize] = useState(initialBrushSize);
-    const [drawingMode, setDrawingMode] = useState(initialDrawingMode);
-    const [brushHardness, setBrushHardness] = useState(1.0); // 1.0 = 100% opacity/hardness
-    const [fillTarget, setFillTarget] = useState("image");
-    const [fillTolerance, setFillTolerance] = useState(32);
-    const [fillOverfill, setFillOverfill] = useState(0);
+    const [brushSize, setBrushSize] = useState<number>(initialBrushSize);
+    const [drawingMode, setDrawingMode] = useState<string>(initialDrawingMode);
+    const [brushHardness, setBrushHardness] = useState<number>(1.0); // 1.0 = 100% opacity/hardness
+    const [fillTarget, setFillTarget] = useState<string>("image");
+    const [fillTolerance, setFillTolerance] = useState<number>(32);
+    const [fillOverfill, setFillOverfill] = useState<number>(0);
 
     // UI visibility state
-    const [uiVisible, setUiVisible] = useState(true);
+    const [uiVisible, setUiVisible] = useState<boolean>(true);
 
     // Initialize hooks
     const canvasState = useCanvasState({
@@ -123,7 +124,7 @@ const InpaintCanvas = ({
     });
 
     // Mouse event handlers
-    const handleDocumentMouseUp = useCallback(() => {
+    const handleDocumentMouseUp = useCallback((): void => {
         if (canvasState.isDrawing) {
             canvasState.setIsDrawing(false);
             canvasState.setLastDrawPos(null); // Clear last position when done drawing
@@ -138,7 +139,7 @@ const InpaintCanvas = ({
         }
     }, [canvasState, drawing, setInpaintMask]);
 
-    const handleDocumentMouseDown = useCallback((e) => {
+    const handleDocumentMouseDown = useCallback((e: MouseEvent): void => {
         canvasState.setMouseButtonDown(e.button === 0); // Left mouse button
     }, [canvasState]);
 
@@ -159,7 +160,7 @@ const InpaintCanvas = ({
         const canvasElement = canvasRef.current;
         if (!panElement || !canvasElement || (!displayImage && !inputImage && !livePreview)) return;
 
-        const handleWheelEvent = (e) => {
+        const handleWheelEvent = (e: WheelEvent): void => {
             // Skip zoom if Alt is held (reserved for brush size adjustment)
             if (e.altKey) return;
 
@@ -175,7 +176,7 @@ const InpaintCanvas = ({
             const mouseX = e.clientX - rect.left - rect.width / 2;
             const mouseY = e.clientY - rect.top - rect.height / 2;
 
-            canvasState.setZoom((prev) => {
+            canvasState.setZoom((prev: number) => {
                 const newZoom = Math.max(0.01, Math.min(5.0, prev * delta));
                 canvasState.setFitToScreen(false);
 
@@ -199,19 +200,19 @@ const InpaintCanvas = ({
 
         panElement.addEventListener("wheel", handleWheelEvent);
         return () => panElement.removeEventListener("wheel", handleWheelEvent);
-    }, [canvasState]);
+    }, [canvasState, displayImage, inputImage, livePreview]);
 
 
     // File handling functions (delegate to hook)
-    const handleFileInput = (e) => {
-        const file = e.target.files[0];
+    const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>): void => {
+        const file = e.target.files?.[0];
         if (file) {
             fileHandling.handleFileSelect(file);
         }
     };
 
     // Mouse event handlers that use the hooks
-    const handleMouseDown = (e) => {
+    const handleMouseDown = (e: React.MouseEvent): void => {
         if (!(inputImage || displayImage || livePreview)) return;
 
         // Handle right-click panning
@@ -245,7 +246,7 @@ const InpaintCanvas = ({
         }
     };
 
-    const handleMouseMove = (e) => {
+    const handleMouseMove = (e: React.MouseEvent): void => {
         if (!canvasState.isDrawing || generationMode !== "inpaint") return;
 
         const { x, y } = drawing.getCanvasCoordinates(e);
@@ -253,7 +254,7 @@ const InpaintCanvas = ({
         canvasState.setLastDrawPos({ x, y });
     };
 
-    const handleMouseEnter = (e) => {
+    const handleMouseEnter = (e: React.MouseEvent): void => {
         // Resume drawing only if mouse button is held down, we're not currently drawing,
         // drawing was started on canvas, we're in inpaint mode, and we're entering over a valid target
         if (
@@ -273,7 +274,7 @@ const InpaintCanvas = ({
         }
     };
 
-    const handleMouseUp = (e) => {
+    const handleMouseUp = (e: React.MouseEvent): void => {
         // Handle right-click panning release
         if (canvasState.isRightClickPanning && e?.button === 2) {
             if (document.pointerLockElement) {
@@ -415,13 +416,13 @@ const InpaintCanvas = ({
 
             {/* Status Bar */}
             <StatusBar
-                displayImage={displayImage}
-                inputImage={inputImage}
+                displayImage={displayImage || undefined}
+                inputImage={inputImage || undefined}
                 zoom={canvasState.zoom}
                 brushSize={brushSize}
                 brushHardness={brushHardness}
                 drawingMode={drawingMode}
-                progress={progress}
+                progress={progress || undefined}
                 loading={loading}
             />
 

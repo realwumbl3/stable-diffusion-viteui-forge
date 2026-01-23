@@ -1,5 +1,7 @@
+// VITE UI
 import { Brush, Eraser, PaintBucket, RotateCcw, Undo, Redo, Eye, EyeOff, Square } from "lucide-react";
 import { cn } from "../../../lib/utils";
+import type { InpaintToolbarProps } from "../../../types/components";
 
 const InpaintToolbar = ({
     drawingMode,
@@ -19,7 +21,7 @@ const InpaintToolbar = ({
     onClear,
     canUndo = false,
     canRedo = false,
-}) => {
+}: InpaintToolbarProps) => {
     const tools = [
         {
             id: "brush",
@@ -70,6 +72,7 @@ const InpaintToolbar = ({
                                         : "text-studio-textSecondary hover:text-studio-text hover:bg-studio-surface"
                                 )}
                                 title={`${tool.label} (${tool.shortcut})`}
+                                type="button"
                             >
                                 <tool.icon size={14} />
                                 <span className="text-center leading-tight">{tool.label}</span>
@@ -83,7 +86,7 @@ const InpaintToolbar = ({
                     <div className="flex flex-col gap-2">
                         <div className="flex flex-col gap-1">
                             <div className="grid grid-cols-3 gap-1 bg-studio-surface rounded-lg p-1 border border-studio-border">
-                                {["canvas", "image", "both"].map((mode) => (
+                                {(["canvas", "image", "both"] as const).map((mode) => (
                                     <button
                                         key={mode}
                                         onClick={() => setFillTarget(mode)}
@@ -94,6 +97,7 @@ const InpaintToolbar = ({
                                                 : "text-studio-textSecondary hover:text-studio-text hover:bg-studio-surface"
                                         )}
                                         title={`Fill target: ${mode}`}
+                                        type="button"
                                     >
                                         {mode}
                                     </button>
@@ -147,6 +151,7 @@ const InpaintToolbar = ({
                                 : "text-studio-textSecondary hover:text-studio-text hover:bg-studio-surface"
                         )}
                         title="Toggle Mask Visibility"
+                        type="button"
                     >
                         {showMask ? <Eye size={14} /> : <EyeOff size={14} />}
                         <span className="text-center leading-tight">Mask</span>
@@ -161,6 +166,7 @@ const InpaintToolbar = ({
                                 : "text-studio-textSecondary hover:text-studio-text hover:bg-studio-surface"
                         )}
                         title="Toggle Border Visualization"
+                        type="button"
                     >
                         <Square size={14} />
                         <span className="text-center leading-tight">Border</span>
@@ -180,6 +186,7 @@ const InpaintToolbar = ({
                                     !canUndo && "opacity-50 cursor-not-allowed"
                                 )}
                                 title="Undo (Ctrl+Z)"
+                                type="button"
                             >
                                 <Undo size={12} />
                                 <span className="text-xs">Undo</span>
@@ -192,6 +199,7 @@ const InpaintToolbar = ({
                                     !canRedo && "opacity-50 cursor-not-allowed"
                                 )}
                                 title="Redo (Ctrl+Y)"
+                                type="button"
                             >
                                 <Redo size={12} />
                                 <span className="text-xs">Redo</span>

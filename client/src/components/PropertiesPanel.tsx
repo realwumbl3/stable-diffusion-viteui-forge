@@ -1,8 +1,10 @@
+// VITE UI
 import { useState } from "react";
 import { ChevronRight, Settings, Image as ImageIcon, Sliders } from "lucide-react";
 import { cn } from "../lib/utils";
-import ResolutionPicker from "./ResolutionPicker.jsx";
-import NumberSelector from "./NumberSelector.jsx";
+import ResolutionPicker from "./ResolutionPicker";
+import NumberSelector from "./NumberSelector";
+import type { PropertiesPanelProps } from "../types/components";
 
 const PropertiesPanel = ({
     collapsed,
@@ -23,8 +25,8 @@ const PropertiesPanel = ({
     onClipSkipChange,
     saveImages,
     setSaveImages,
-}) => {
-    const [activeSection, setActiveSection] = useState("generation");
+}: PropertiesPanelProps) => {
+    const [activeSection, setActiveSection] = useState<string>("generation");
 
     const sections = [
         { id: "generation", icon: Sliders, label: "Generation, parameters", description: "All generation settings" },
@@ -60,6 +62,7 @@ const PropertiesPanel = ({
                                     : "bg-studio-panel text-studio-textSecondary hover:text-studio-text hover:bg-studio-surface"
                             )}
                             title={section.label}
+                            type="button"
                         >
                             <section.icon size={20} />
                         </button>
@@ -96,6 +99,7 @@ const PropertiesPanel = ({
                                         ? "bg-studio-accent/20 text-studio-accent border border-studio-accent/30"
                                         : "text-studio-textSecondary hover:text-studio-text hover:bg-studio-surface"
                                 )}
+                                type="button"
                             >
                                 <section.icon size={16} />
                                 <div className="flex-1 min-w-0">
@@ -121,10 +125,14 @@ const PropertiesPanel = ({
                                                         type="file"
                                                         accept="image/*"
                                                         onChange={(e) => {
-                                                            const file = e.target.files[0];
+                                                            const file = e.target.files?.[0];
                                                             if (file) {
                                                                 const reader = new FileReader();
-                                                                reader.onload = (e) => onImageUpload(e.target.result);
+                                                                reader.onload = (e) => {
+                                                                    if (e.target?.result) {
+                                                                        onImageUpload(e.target.result as string);
+                                                                    }
+                                                                };
                                                                 reader.readAsDataURL(file);
                                                             }
                                                         }}
@@ -141,6 +149,7 @@ const PropertiesPanel = ({
                                                             <button
                                                                 onClick={() => onImageUpload(null)}
                                                                 className="absolute top-2 right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600"
+                                                                type="button"
                                                             >
                                                                 ×
                                                             </button>
@@ -217,7 +226,7 @@ const PropertiesPanel = ({
                                         setWidth={setWidth}
                                         height={height}
                                         setHeight={setHeight}
-                                        inputImage={inputImage}
+                                        inputImage={inputImage || undefined}
                                     />
 
                                 </div>

@@ -1,3 +1,4 @@
+// VITE UI
 import { useEffect, useRef } from "react";
 
 const BASE_TITLE = "sd-vite-ui";
@@ -5,22 +6,22 @@ const TITLE_SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "
 const RANDOM_BRAILLE_MIN = 0x2800;
 const RANDOM_BRAILLE_RANGE = 0x100;
 
-const getRandomBrailleChar = () =>
+const getRandomBrailleChar = (): string =>
     String.fromCharCode(RANDOM_BRAILLE_MIN + Math.floor(Math.random() * RANDOM_BRAILLE_RANGE));
 
-export function useTitleIconAnimation(loading) {
-    const frameRef = useRef(-1);
-    const startTimeRef = useRef(0);
+export function useTitleIconAnimation(loading: boolean): void {
+    const frameRef = useRef<number>(-1);
+    const startTimeRef = useRef<number>(0);
 
     useEffect(() => {
-        let intervalId;
+        let intervalId: number | undefined;
         if (loading) {
             startTimeRef.current = performance.now();
             frameRef.current = -1;
 
-            const updateTitle = () => {
+            const updateTitle = (): void => {
                 const elapsed = performance.now() - startTimeRef.current;
-                let titleSymbol;
+                let titleSymbol: string;
 
                 if (elapsed < 1000) {
                     titleSymbol = getRandomBrailleChar();
@@ -41,7 +42,7 @@ export function useTitleIconAnimation(loading) {
         }
 
         return () => {
-            if (intervalId) {
+            if (intervalId !== undefined) {
                 window.clearInterval(intervalId);
             }
         };

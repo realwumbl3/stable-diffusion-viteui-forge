@@ -1,7 +1,9 @@
+// VITE UI
 import { X, Maximize2 } from "lucide-react";
-import { cn, resolveImageSrc, parseWorkspaceImage } from "../lib/utils";
+import { cn, resolveImageSrc } from "../lib/utils";
 import { useState, useRef, useEffect } from "react";
-import api from "../api";
+import api from "../Api";
+import type { TimelineItemProps } from "../types/components";
 
 const TimelineItem = ({
     item,
@@ -17,14 +19,14 @@ const TimelineItem = ({
     showUpscale = false,
     commitLabel = "Commit",
     getGenerationImageUrl,
-}) => {
-    const [aspectRatio, setAspectRatio] = useState(1);
-    const [imageDimensions, setImageDimensions] = useState({ width: 0, height: 0 });
+}: TimelineItemProps) => {
+    const [aspectRatio, setAspectRatio] = useState<number>(1);
+    const [imageDimensions, setImageDimensions] = useState<{ width: number; height: number }>({ width: 0, height: 0 });
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-    const imgRef = useRef(null);
+    const imgRef = useRef<HTMLImageElement>(null);
 
     useEffect(() => {
-        const fetchDimensions = async () => {
+        const fetchDimensions = async (): Promise<void> => {
             if (item.genid && item.workspace) {
                 try {
                     const category = item.status === 'commit' ? 'commits' : item.status === 'reject' ? 'rejects' : 'candidates';
@@ -55,7 +57,7 @@ const TimelineItem = ({
             <button onClick={onSelect} className="w-full h-full text-left" type="button">
                 <img
                     ref={imgRef}
-                    src={getGenerationImageUrl ? getGenerationImageUrl(item, 'preview') : resolveImageSrc(item.image, "preview")}
+                    src={getGenerationImageUrl ? getGenerationImageUrl(item, 'preview') : resolveImageSrc(item.image, "preview") || ''}
                     crossOrigin="anonymous"
                     alt="Timeline item"
                     className="w-full h-full object-contain"

@@ -1,3 +1,4 @@
+// VITE UI
 import {
   ChevronLeft,
   ChevronRight,
@@ -10,7 +11,8 @@ import {
 } from 'lucide-react'
 import { useState, useRef, useEffect } from 'react'
 import { cn, resolveImageSrc } from '../lib/utils'
-import TimelineItem from './TimelineItem.jsx'
+import TimelineItem from './TimelineItem'
+import type { SidebarProps } from '../types/components'
 
 const Sidebar = ({
   collapsed,
@@ -30,16 +32,16 @@ const Sidebar = ({
   onRefreshTimeline,
   onRefreshCanvas,
   canvasRefreshKey
-}) => {
-  const [committedPage, setCommittedPage] = useState(0)
-  const [discardedPage, setDiscardedPage] = useState(0)
-  const [canvasDimensions, setCanvasDimensions] = useState({ width: 0, height: 0 })
-  const canvasImgRef = useRef(null)
+}: SidebarProps) => {
+  const [committedPage, setCommittedPage] = useState<number>(0)
+  const [discardedPage, setDiscardedPage] = useState<number>(0)
+  const [canvasDimensions, setCanvasDimensions] = useState<{ width: number; height: number }>({ width: 0, height: 0 })
+  const canvasImgRef = useRef<HTMLImageElement>(null)
 
   useEffect(() => {
     const img = canvasImgRef.current
     if (img && currentImage) {
-      const handleLoad = () => {
+      const handleLoad = (): void => {
         const width = img.naturalWidth
         const height = img.naturalHeight
         setCanvasDimensions({ width, height })
@@ -92,6 +94,7 @@ const Sidebar = ({
             onClick={onToggle}
             className="w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200 hover:scale-110 bg-studio-panel text-studio-textSecondary hover:text-studio-text hover:bg-studio-surface"
             title="Timeline"
+            type="button"
           >
             <ImageIcon size={20} />
           </button>
@@ -121,6 +124,7 @@ const Sidebar = ({
                     : "text-studio-textSecondary hover:text-studio-text hover:bg-studio-surface"
                 )}
                 title="Text to Image (Alt+T)"
+                type="button"
               >
                 <Type size={16} />
                 <span className="hidden sm:inline">Text</span>
@@ -140,6 +144,7 @@ const Sidebar = ({
                     : "text-studio-textSecondary hover:text-studio-text hover:bg-studio-surface"
                 )}
                 title="Image to Image (Alt+I)"
+                type="button"
               >
                 <ImageIcon size={16} />
                 <span className="hidden sm:inline">Image</span>
@@ -159,6 +164,7 @@ const Sidebar = ({
                     : "text-studio-textSecondary hover:text-studio-text hover:bg-studio-surface"
                 )}
                 title="Inpaint (Alt+N)"
+                type="button"
               >
                 <Edit size={16} />
                 <span className="hidden sm:inline">Inpaint</span>
@@ -180,6 +186,7 @@ const Sidebar = ({
                       }}
                       className="p-1 hover:bg-studio-surface rounded text-studio-textSecondary hover:text-studio-text transition-all duration-200"
                       title="Refresh Timeline"
+                      type="button"
                     >
                       <RefreshCw size={12} />
                     </button>
@@ -225,7 +232,7 @@ const Sidebar = ({
                     {currentImage ? (
                       <img
                         ref={canvasImgRef}
-                        src={`${resolveImageSrc(currentImage, "full")}${canvasRefreshKey > 0 ? `?refresh=${canvasRefreshKey}` : ''}`}
+                        src={`${resolveImageSrc(currentImage, "full") || ''}${canvasRefreshKey > 0 ? `?refresh=${canvasRefreshKey}` : ''}`}
                         crossOrigin="anonymous"
                         alt="Canvas"
                         className="w-full object-contain"
@@ -304,6 +311,7 @@ const Sidebar = ({
                           disabled={committedPage === 0}
                           className="p-0.5 hover:bg-studio-surface rounded disabled:opacity-50 disabled:cursor-not-allowed"
                           title="Previous page"
+                          type="button"
                         >
                           <ChevronLeft size={12} />
                         </button>
@@ -315,6 +323,7 @@ const Sidebar = ({
                           disabled={committedPage >= committedPages - 1}
                           className="p-0.5 hover:bg-studio-surface rounded disabled:opacity-50 disabled:cursor-not-allowed"
                           title="Next page"
+                          type="button"
                         >
                           <ChevronRight size={12} />
                         </button>
@@ -357,6 +366,7 @@ const Sidebar = ({
                           disabled={discardedPage === 0}
                           className="p-0.5 hover:bg-studio-surface rounded disabled:opacity-50 disabled:cursor-not-allowed"
                           title="Previous page"
+                          type="button"
                         >
                           <ChevronLeft size={12} />
                         </button>
@@ -368,6 +378,7 @@ const Sidebar = ({
                           disabled={discardedPage >= discardedPages - 1}
                           className="p-0.5 hover:bg-studio-surface rounded disabled:opacity-50 disabled:cursor-not-allowed"
                           title="Next page"
+                          type="button"
                         >
                           <ChevronRight size={12} />
                         </button>

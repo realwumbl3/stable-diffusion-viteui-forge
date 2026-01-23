@@ -1,9 +1,9 @@
 // VITE UI
-
 import { useState, useRef, useEffect } from 'react'
 import { ChevronDown, Image as ImageIcon } from 'lucide-react'
 import { cn } from '../lib/utils'
-import ResolutionPicker from './ResolutionPicker.jsx'
+import ResolutionPicker from './ResolutionPicker'
+import type { ResolutionIndicatorProps } from '../types/components'
 
 const ResolutionIndicator = ({
   width,
@@ -11,16 +11,16 @@ const ResolutionIndicator = ({
   height,
   setHeight,
   inputImage
-}) => {
+}: ResolutionIndicatorProps) => {
   const [isOpen, setIsOpen] = useState(false)
-  const indicatorRef = useRef(null)
-  const popupRef = useRef(null)
+  const indicatorRef = useRef<HTMLDivElement>(null)
+  const popupRef = useRef<HTMLDivElement>(null)
 
   // Close popup when clicking outside
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (indicatorRef.current && !indicatorRef.current.contains(event.target) &&
-          popupRef.current && !popupRef.current.contains(event.target)) {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (indicatorRef.current && !indicatorRef.current.contains(event.target as Node) &&
+          popupRef.current && !popupRef.current.contains(event.target as Node)) {
         setIsOpen(false)
       }
     }
@@ -31,7 +31,7 @@ const ResolutionIndicator = ({
     }
   }, [isOpen])
 
-  const handleToggle = () => {
+  const handleToggle = (): void => {
     setIsOpen(!isOpen)
   }
 
@@ -47,6 +47,7 @@ const ResolutionIndicator = ({
           isOpen && "bg-studio-accent/10 border-studio-accent text-studio-accent"
         )}
         title="Click to change resolution"
+        type="button"
       >
         <ImageIcon size={14} />
         <span className="font-medium">{width}×{height}</span>

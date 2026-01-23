@@ -1,4 +1,6 @@
+// VITE UI
 import { useState, useEffect, useCallback } from 'react';
+import type { UseWorkspaceTabsReturn } from '../types/hooks';
 
 const STORAGE_KEY_OPEN_WORKSPACES = 'viteui-open-workspaces';
 const STORAGE_KEY_CURRENT_WORKSPACE = 'viteui-current-workspace';
@@ -6,9 +8,9 @@ const STORAGE_KEY_CURRENT_WORKSPACE = 'viteui-current-workspace';
 /**
  * Hook for managing workspace tabs with localStorage persistence
  */
-export const useWorkspaceTabs = () => {
-    const [openWorkspaces, setOpenWorkspaces] = useState([]);
-    const [currentWorkspace, setCurrentWorkspace] = useState(null);
+export const useWorkspaceTabs = (): UseWorkspaceTabsReturn => {
+    const [openWorkspaces, setOpenWorkspaces] = useState<string[]>([]);
+    const [currentWorkspace, setCurrentWorkspace] = useState<string | null>(null);
 
     // Load from localStorage on mount
     useEffect(() => {
@@ -16,7 +18,7 @@ export const useWorkspaceTabs = () => {
             const storedOpen = localStorage.getItem(STORAGE_KEY_OPEN_WORKSPACES);
             const storedCurrent = localStorage.getItem(STORAGE_KEY_CURRENT_WORKSPACE);
 
-            let openWorkspacesData = [];
+            let openWorkspacesData: string[] = [];
             if (storedOpen) {
                 const parsed = JSON.parse(storedOpen);
                 if (Array.isArray(parsed)) {
@@ -62,7 +64,7 @@ export const useWorkspaceTabs = () => {
         }
     }, [currentWorkspace]);
 
-    const openWorkspace = useCallback((workspaceName) => {
+    const openWorkspace = useCallback((workspaceName: string) => {
         setOpenWorkspaces(prev => {
             if (!prev.includes(workspaceName)) {
                 return [...prev, workspaceName];
@@ -72,7 +74,7 @@ export const useWorkspaceTabs = () => {
         setCurrentWorkspace(workspaceName);
     }, []);
 
-    const closeWorkspace = useCallback((workspaceName) => {
+    const closeWorkspace = useCallback((workspaceName: string) => {
         setOpenWorkspaces(prev => {
             const filtered = prev.filter(name => name !== workspaceName);
             return filtered;
@@ -88,7 +90,7 @@ export const useWorkspaceTabs = () => {
         });
     }, [openWorkspaces]);
 
-    const switchWorkspace = useCallback((workspaceName) => {
+    const switchWorkspace = useCallback((workspaceName: string) => {
         if (openWorkspaces.includes(workspaceName)) {
             setCurrentWorkspace(workspaceName);
         }

@@ -1,11 +1,13 @@
+// VITE UI
 import { useState, useEffect } from 'react'
+import type { StatusBarProps } from '../../../types/components'
 
 // Hook to track memory usage
-const useMemoryUsage = () => {
-  const [memoryUsage, setMemoryUsage] = useState(null)
+const useMemoryUsage = (): number | null => {
+  const [memoryUsage, setMemoryUsage] = useState<number | null>(null)
 
   useEffect(() => {
-    const updateMemoryUsage = () => {
+    const updateMemoryUsage = (): void => {
       if (performance.memory) {
         const used = performance.memory.usedJSHeapSize
         const usedMB = Math.round(used / 1024 / 1024)
@@ -32,7 +34,7 @@ const StatusBar = ({
     drawingMode,
     progress,
     loading,
-}) => {
+}: StatusBarProps) => {
     const memoryUsage = useMemoryUsage()
     return (
         <div className="studio-toolbar justify-between text-xs text-studio-textSecondary ps-2 pe-2">
@@ -60,7 +62,7 @@ const StatusBar = ({
                         <span>
                             Step {progress.sampling_step || 0}/{progress.sampling_steps || 0}
                         </span>
-                        {progress.total_batches > 1 && (
+                        {progress.total_batches && progress.total_batches > 1 && (
                             <>
                                 <span>•</span>
                                 <span>
@@ -69,7 +71,7 @@ const StatusBar = ({
                             </>
                         )}
                         <span>•</span>
-                        <span>{Math.round(progress.progress * 100)}%</span>
+                        <span>{Math.round((progress.progress || 0) * 100)}%</span>
                         {progress.eta && (
                             <>
                                 <span>•</span>

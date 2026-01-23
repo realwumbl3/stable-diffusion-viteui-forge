@@ -1,33 +1,30 @@
+// VITE UI
 import { useEffect, useState } from "react";
 import { Folder, FolderPlus, ChevronRight, ChevronDown, Briefcase } from "lucide-react";
-import api from "../api";
+import api from "../Api";
+import type { WorkspaceBrowserProps, WorkspaceStructureNode } from "../types/components";
 
 /**
  * WorkspaceBrowser component for managing workspace structure
  * Features: drag & drop, renaming, folder creation, workspace selection
  */
-const WorkspaceBrowser = ({ currentWorkspace, onSelectWorkspace, onClose }) => {
+const WorkspaceBrowser = ({ currentWorkspace, onSelectWorkspace, onClose }: WorkspaceBrowserProps) => {
     // Component state
-    const [structure, setStructure] = useState(null);
-    const [expanded, setExpanded] = useState(new Set());
-    const [newFolderName, setNewFolderName] = useState("");
+    const [structure, setStructure] = useState<WorkspaceStructureNode | null>(null);
+    const [expanded, setExpanded] = useState<Set<string>>(new Set());
+    const [newFolderName, setNewFolderName] = useState<string>("");
 
     // Drag and drop state
-    const [draggedItem, setDraggedItem] = useState(null);
-    const [dragOverItem, setDragOverItem] = useState(null);
+    const [draggedItem, setDraggedItem] = useState<WorkspaceStructureNode | null>(null);
+    const [dragOverItem, setDragOverItem] = useState<WorkspaceStructureNode | null>(null);
 
     // Rename state
-    const [renamingItem, setRenamingItem] = useState(null);
-    const [renameValue, setRenameValue] = useState("");
+    const [renamingItem, setRenamingItem] = useState<WorkspaceStructureNode | null>(null);
+    const [renameValue, setRenameValue] = useState<string>("");
 
     // Click handling state
-    const [clickTimeout, setClickTimeout] = useState(null);
+    const [clickTimeout, setClickTimeout] = useState<ReturnType<typeof setTimeout> | null>(null);
 
-    useEffect(() => {
-        loadStructure();
-    }, []);
-
-    // Effects
     useEffect(() => {
         loadStructure();
     }, []);
@@ -39,7 +36,7 @@ const WorkspaceBrowser = ({ currentWorkspace, onSelectWorkspace, onClose }) => {
     }, [clickTimeout]);
 
     // Data loading
-    const loadStructure = async () => {
+    const loadStructure = async (): Promise<void> => {
         try {
             const data = await api.getWorkspaceStructure();
             setStructure(data.structure);
@@ -50,7 +47,7 @@ const WorkspaceBrowser = ({ currentWorkspace, onSelectWorkspace, onClose }) => {
     };
 
     // Tree expansion
-    const toggleExpanded = (path) => {
+    const toggleExpanded = (path: string): void => {
         const next = new Set(expanded);
         if (next.has(path)) {
             next.delete(path);
@@ -61,7 +58,7 @@ const WorkspaceBrowser = ({ currentWorkspace, onSelectWorkspace, onClose }) => {
     };
 
     // Folder creation
-    const createFolder = async () => {
+    const createFolder = async (): Promise<void> => {
         const trimmed = newFolderName.trim();
         if (!trimmed) return;
         try {
@@ -74,7 +71,7 @@ const WorkspaceBrowser = ({ currentWorkspace, onSelectWorkspace, onClose }) => {
     };
 
     // Drag and drop handlers
-    const handleDragStart = (e, node) => {
+    const handleDragStart = (e: React.DragEvent, node: WorkspaceStructureNode): void => {
         // Don't allow dragging the root "workspaces" node
         if (node.path === "workspaces") {
             e.preventDefault();
@@ -85,12 +82,12 @@ const WorkspaceBrowser = ({ currentWorkspace, onSelectWorkspace, onClose }) => {
         e.dataTransfer.setData("text/plain", node.path);
     };
 
-    const handleDragEnd = () => {
+    const handleDragEnd = (): void => {
         setDraggedItem(null);
         setDragOverItem(null);
     };
 
-    const handleDragOver = (e, node) => {
+    const handleDragOver = (e: React.DragEvent, node: WorkspaceStructureNode): void => {
         e.preventDefault();
 
         // Only allow dropping on folders, not workspaces
@@ -100,7 +97,7 @@ const WorkspaceBrowser = ({ currentWorkspace, onSelectWorkspace, onClose }) => {
         }
 
         // Don't allow dropping on the dragged item itself or its children
-        if (node.path === draggedItem?.path || node.path.startsWith(draggedItem?.path + "/")) {
+        if (draggedItem && (node.path === draggedItem.path || node.path.startsWith(draggedItem.path + "/"))) {
             setDragOverItem(null);
             return;
         }
@@ -109,11 +106,11 @@ const WorkspaceBrowser = ({ currentWorkspace, onSelectWorkspace, onClose }) => {
         e.dataTransfer.dropEffect = "move";
     };
 
-    const handleDragLeave = () => {
+    const handleDragLeave = (): void => {
         setDragOverItem(null);
     };
 
-    const handleDrop = async (e, node) => {
+    const handleDrop = async (e: React.DragEvent, node: WorkspaceStructureNode): Promise<void> => {
         e.preventDefault();
         setDragOverItem(null);
 
@@ -139,7 +136,7 @@ const WorkspaceBrowser = ({ currentWorkspace, onSelectWorkspace, onClose }) => {
     };
 
     // Rename functionality
-    const startRename = (node) => {
+    const startRename = (node: WorkspaceStructureNode): void => {
         // Don't allow renaming the root "workspaces" node
         if (node.path === "workspaces") return;
         if (clickTimeout) {
@@ -150,7 +147,7 @@ const WorkspaceBrowser = ({ currentWorkspace, onSelectWorkspace, onClose }) => {
         setRenameValue(node.name);
     };
 
-    const handleClick = (node) => {
+    const handleClick = (node: WorkspaceStructureNode): void => {
         if (renamingItem) return;
 
         const isWorkspace = node.type === "workspace";
@@ -177,12 +174,12 @@ const WorkspaceBrowser = ({ currentWorkspace, onSelectWorkspace, onClose }) => {
         setClickTimeout(timeout);
     };
 
-    const cancelRename = () => {
+    const cancelRename = (): void => {
         setRenamingItem(null);
         setRenameValue("");
     };
 
-    const confirmRename = async () => {
+    const confirmRename = async (): Promise<void> => {
         const trimmedName = renameValue.trim();
         if (!renamingItem || !trimmedName || trimmedName === renamingItem.name) {
             cancelRename();
@@ -198,14 +195,14 @@ const WorkspaceBrowser = ({ currentWorkspace, onSelectWorkspace, onClose }) => {
         }
     };
 
-    const handleRenameKeyDown = (e) => {
+    const handleRenameKeyDown = (e: React.KeyboardEvent<HTMLInputElement>): void => {
         if (e.key === "Enter") confirmRename();
         else if (e.key === "Escape") cancelRename();
     };
 
 
     // Helper functions for cleaner code
-    const getNodeClasses = (node) => {
+    const getNodeClasses = (node: WorkspaceStructureNode): string => {
         const isActive = currentWorkspace && node.path === currentWorkspace;
         const isDraggedOver = dragOverItem?.path === node.path;
         const isBeingDragged = draggedItem?.path === node.path;
@@ -220,20 +217,20 @@ const WorkspaceBrowser = ({ currentWorkspace, onSelectWorkspace, onClose }) => {
         return `${baseClasses} ${stateClasses} ${isBeingDragged ? "opacity-50" : ""}`;
     };
 
-    const renderExpandIcon = (hasChildren, isWorkspace, isExpanded) => {
+    const renderExpandIcon = (hasChildren: boolean, isWorkspace: boolean, isExpanded: boolean): React.ReactNode => {
         if (!hasChildren || isWorkspace) return <span className="w-4 h-4" />;
         return isExpanded
             ? <ChevronDown className="w-4 h-4" />
             : <ChevronRight className="w-4 h-4" />;
     };
 
-    const renderIcon = (isWorkspace) => {
+    const renderIcon = (isWorkspace: boolean): React.ReactNode => {
         return isWorkspace
             ? <Briefcase className="w-4 h-4 text-studio-accent" />
             : <Folder className="w-4 h-4 text-studio-textSecondary" />;
     };
 
-    const renderName = (node) => {
+    const renderName = (node: WorkspaceStructureNode): React.ReactNode => {
         const isRenaming = renamingItem?.path === node.path;
 
         if (isRenaming) {
@@ -253,7 +250,7 @@ const WorkspaceBrowser = ({ currentWorkspace, onSelectWorkspace, onClose }) => {
         return <span className="text-sm">{node.name}</span>;
     };
 
-    const renderChildren = (node, hasChildren, isWorkspace, isExpanded) => {
+    const renderChildren = (node: WorkspaceStructureNode, hasChildren: boolean, isWorkspace: boolean, isExpanded: boolean): React.ReactNode => {
         if (!hasChildren || isWorkspace || !isExpanded) return null;
 
         return (
@@ -263,7 +260,7 @@ const WorkspaceBrowser = ({ currentWorkspace, onSelectWorkspace, onClose }) => {
         );
     };
 
-    const renderNode = (node) => {
+    const renderNode = (node: WorkspaceStructureNode | null): React.ReactNode => {
         if (!node) return null;
 
         const isExpanded = expanded.has(node.path);

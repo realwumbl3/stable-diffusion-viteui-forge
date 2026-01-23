@@ -1,3 +1,4 @@
+// VITE UI
 import {
   Zap,
   SkipForward,
@@ -6,11 +7,12 @@ import {
   Lock,
   Unlock
 } from 'lucide-react'
-import NumberSelector from './NumberSelector.jsx'
-import OptionPicker from './OptionPicker.jsx'
+import NumberSelector from './NumberSelector'
+import OptionPicker from './OptionPicker'
 import { cn } from '../lib/utils'
-import WorkspaceTabs from './WorkspaceTabs.jsx'
-import ResolutionIndicator from './ResolutionIndicator.jsx'
+import WorkspaceTabs from './WorkspaceTabs'
+import ResolutionIndicator from './ResolutionIndicator'
+import type { HeaderProps } from '../types/components'
 
 const Header = ({
   loading,
@@ -48,7 +50,7 @@ const Header = ({
   height,
   setHeight,
   inputImage
-}) => {
+}: HeaderProps) => {
   return (
     <header className="studio-toolbar border-b-studio-border">
       {/* Top Section - Workspace Tabs */}
@@ -94,6 +96,7 @@ const Header = ({
               "studio-btn-primary flex flex-col items-center gap-1 px-4 py-2 relative",
               (!canGenerate || loading) && "opacity-50 cursor-not-allowed"
             )}
+            type="button"
           >
             {pendingRestart ? (
               <>
@@ -104,8 +107,8 @@ const Header = ({
               <>
                 <div className="flex flex-col items-center gap-1">
                   <div className="w-4 h-4 border-2 border-studio-bg border-t-transparent rounded-full animate-spin" />
-                  <span className="text-sm">{Math.round(progress.progress * 100)}%</span>
-                  {progress.total_batches > 1 && (
+                  <span className="text-sm">{Math.round((progress.progress || 0) * 100)}%</span>
+                  {progress.total_batches && progress.total_batches > 1 && (
                     <span className="text-xs text-studio-textSecondary">
                       (Batch {progress.current_batch}/{progress.total_batches})
                     </span>
@@ -115,7 +118,7 @@ const Header = ({
                 <div className="absolute bottom-0 left-0 right-0 h-1 bg-studio-bg/20 rounded-b-md overflow-hidden">
                   <div
                     className="h-full bg-studio-accent transition-all duration-300 ease-out"
-                    style={{ width: `${progress.progress * 100}%` }}
+                    style={{ width: `${(progress.progress || 0) * 100}%` }}
                   />
                 </div>
               </>
@@ -139,6 +142,7 @@ const Header = ({
                 onClick={onSkip}
                 className="studio-btn-secondary flex flex-col items-center gap-1 px-3 py-1 text-sm hover:bg-studio-accent/20"
                 title="Skip current generation"
+                type="button"
               >
                 <SkipForward size={16} />
                 Skip
@@ -147,6 +151,7 @@ const Header = ({
                 onClick={onRestart}
                 className="studio-btn-secondary flex flex-col items-center gap-1 px-3 py-1 text-sm hover:bg-studio-accent/20"
                 title="Restart generation after interrupting current work"
+                type="button"
               >
                 <RotateCw size={16} />
                 Restart
@@ -155,6 +160,7 @@ const Header = ({
                 onClick={onInterrupt}
                 className="studio-btn-secondary flex flex-col items-center gap-1 px-3 py-1 text-sm hover:bg-studio-accent/20"
                 title="Interrupt all generations"
+                type="button"
               >
                 <Square size={16} />
                 End
@@ -237,6 +243,7 @@ const Header = ({
               pageLocked && "text-studio-accent"
             )}
             title={pageLocked ? "Unlock page (prevents accidental navigation)" : "Lock page (prevents accidental navigation)"}
+            type="button"
           >
             {pageLocked ? <Lock size={18} /> : <Unlock size={18} />}
           </button>

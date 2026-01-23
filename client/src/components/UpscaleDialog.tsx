@@ -1,6 +1,8 @@
+// VITE UI
 import { useState, useEffect, useRef } from 'react'
 import { X, Loader2, Maximize2 } from 'lucide-react'
 import { cn } from '../lib/utils'
+import type { UpscaleDialogProps } from '../types/components'
 
 const UpscaleDialog = ({
   isOpen,
@@ -11,10 +13,10 @@ const UpscaleDialog = ({
   availableUpscalers,
   loading = false,
   error = null
-}) => {
-  const [currentUpscaler, setCurrentUpscaler] = useState(selectedUpscaler)
-  const [imageDimensions, setImageDimensions] = useState({ width: 0, height: 0 })
-  const imgRef = useRef(null)
+}: UpscaleDialogProps) => {
+  const [currentUpscaler, setCurrentUpscaler] = useState<string>(selectedUpscaler)
+  const [imageDimensions, setImageDimensions] = useState<{ width: number; height: number }>({ width: 0, height: 0 })
+  const imgRef = useRef<HTMLImageElement>(null)
 
   // Load saved upscaler from localStorage on mount and when selectedUpscaler changes
   useEffect(() => {
@@ -35,7 +37,7 @@ const UpscaleDialog = ({
   useEffect(() => {
     const img = imgRef.current
     if (img && sourceImage?.image) {
-      const handleLoad = () => {
+      const handleLoad = (): void => {
         setImageDimensions({
           width: img.naturalWidth,
           height: img.naturalHeight
@@ -55,16 +57,16 @@ const UpscaleDialog = ({
 
   const scaleFactors = [1.5, 2, 3, 4]
 
-  const handleUpscalerChange = (upscalerName) => {
+  const handleUpscalerChange = (upscalerName: string): void => {
     setCurrentUpscaler(upscalerName)
     localStorage.setItem('lastUpscaler', upscalerName)
   }
 
-  const handleUpscale = (scaleFactor) => {
+  const handleUpscale = (scaleFactor: number): void => {
     onUpscale(currentUpscaler, scaleFactor)
   }
 
-  const getScaledDimensions = (scaleFactor) => {
+  const getScaledDimensions = (scaleFactor: number): { width: number; height: number } | null => {
     if (imageDimensions.width === 0 || imageDimensions.height === 0) return null
     return {
       width: Math.round(imageDimensions.width * scaleFactor),
@@ -85,6 +87,7 @@ const UpscaleDialog = ({
             onClick={onClose}
             className="text-studio-textSecondary hover:text-studio-text p-1 rounded transition-colors"
             disabled={loading}
+            type="button"
           >
             <X size={20} />
           </button>
@@ -123,6 +126,7 @@ const UpscaleDialog = ({
                         ? "bg-studio-surface border-studio-border text-studio-textMuted cursor-not-allowed"
                         : "bg-studio-surface border-studio-border text-studio-text hover:bg-studio-panelHover hover:border-studio-accent"
                     )}
+                    type="button"
                   >
                     {upscaler.name}
                     {upscaler.scale && upscaler.scale !== 1 && (
@@ -159,6 +163,7 @@ const UpscaleDialog = ({
                         ? "bg-studio-surface border-studio-border text-studio-textMuted cursor-not-allowed"
                         : "bg-studio-surface border-studio-border text-studio-text hover:bg-studio-panelHover hover:border-studio-accent"
                     )}
+                    type="button"
                   >
                     <div className="flex flex-col items-start">
                       <span>{factor}x</span>

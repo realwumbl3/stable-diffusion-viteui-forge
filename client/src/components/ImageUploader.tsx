@@ -1,6 +1,8 @@
+// VITE UI
 import { useRef, useState } from 'react'
 import { Upload } from 'lucide-react'
 import { cn } from '../lib/utils'
+import type { ImageUploaderProps } from '../types/components'
 
 const ImageUploader = ({
   inputImage,
@@ -8,44 +10,46 @@ const ImageUploader = ({
   loading,
   progress,
   className = ""
-}) => {
-  const fileInputRef = useRef(null)
+}: ImageUploaderProps) => {
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [isDragOver, setIsDragOver] = useState(false)
 
-  const handleFileSelect = (file) => {
+  const handleFileSelect = (file: File | null): void => {
     if (file && file.type.startsWith('image/')) {
       const reader = new FileReader()
       reader.onload = (e) => {
-        if (onImageUpload) {
-          onImageUpload(e.target.result)
+        if (onImageUpload && e.target?.result) {
+          onImageUpload(e.target.result as string)
         }
       }
       reader.readAsDataURL(file)
     }
   }
 
-  const handleFileInput = (e) => {
-    const file = e.target.files[0]
-    handleFileSelect(file)
+  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>): void => {
+    const file = e.target.files?.[0]
+    if (file) {
+      handleFileSelect(file)
+    }
   }
 
-  const openFileDialog = () => {
+  const openFileDialog = (): void => {
     fileInputRef.current?.click()
   }
 
-  const handleDragOver = (e) => {
+  const handleDragOver = (e: React.DragEvent): void => {
     e.preventDefault()
     e.stopPropagation()
     setIsDragOver(true)
   }
 
-  const handleDragLeave = (e) => {
+  const handleDragLeave = (e: React.DragEvent): void => {
     e.preventDefault()
     e.stopPropagation()
     setIsDragOver(false)
   }
 
-  const handleDrop = (e) => {
+  const handleDrop = (e: React.DragEvent): void => {
     e.preventDefault()
     e.stopPropagation()
     setIsDragOver(false)
@@ -63,6 +67,7 @@ const ImageUploader = ({
         onClick={openFileDialog}
         className="studio-btn-ghost p-2"
         title="Upload Image"
+        type="button"
       >
         <Upload size={16} />
       </button>
@@ -84,12 +89,12 @@ const ImageUploader = ({
               <div className="w-64 h-3 bg-studio-bg/30 rounded-full overflow-hidden mb-2">
                 <div
                   className="h-full bg-studio-accent transition-all duration-300 ease-out"
-                  style={{ width: `${progress.progress * 100}%` }}
+                  style={{ width: `${(progress.progress || 0) * 100}%` }}
                 />
               </div>
               <p className="text-studio-textSecondary text-sm">
-                {Math.round(progress.progress * 100)}%
-                {progress.total_batches > 1 && ` • Batch ${progress.current_batch}/${progress.total_batches}`}
+                {Math.round((progress.progress || 0) * 100)}%
+                {progress.total_batches && progress.total_batches > 1 && ` • Batch ${progress.current_batch}/${progress.total_batches}`}
                 {progress.eta && ` • ETA: ${Math.round(progress.eta)}s`}
               </p>
             </>

@@ -1,7 +1,9 @@
+// VITE UI
 import { Upload } from "lucide-react";
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import { cn } from "../../../lib/utils";
-import InpaintParametersPanel from "./InpaintParametersPanel.jsx";
+import InpaintParametersPanel from "./InpaintParametersPanel";
+import type { CanvasAreaProps } from "../../../types/components";
 
 const CanvasArea = ({
     canvasRef,
@@ -55,7 +57,7 @@ const CanvasArea = ({
     focusBounds = null,
     maskBounds = null,
     canvasRefreshKey = 0,
-}) => {
+}: CanvasAreaProps) => {
     // Always use input image for canvas layout in edit mode - livePreview is purely cosmetic
     const baseImageSrc = viewMode === "edit" ? inputImage || displayImage : displayImage || inputImage;
     const mainImageSrc = baseImageSrc && canvasRefreshKey > 0 
@@ -64,7 +66,6 @@ const CanvasArea = ({
 
     const previewOverlay = livePreview ? (
         <div
-            alt="Live preview"
             className="absolute pointer-events-none"
             style={{
                 top: showBorder && inpaintFullRes && inpaintFullResPadding > 0 && focusBounds ? `${focusBounds.y || 0}px` : '0px',
@@ -86,11 +87,11 @@ const CanvasArea = ({
     ) : null;
 
     // Brush size indicator state
-    const [showBrushIndicator, setShowBrushIndicator] = useState(false);
-    const cursorPointRef = useRef(null);
-    const brushIndicatorRef = useRef(null);
-    const isMouseOverCanvas = useRef(false);
-    const lastMousePos = useRef({ x: 0, y: 0 });
+    const [showBrushIndicator, setShowBrushIndicator] = useState<boolean>(false);
+    const cursorPointRef = useRef<HTMLDivElement>(null);
+    const brushIndicatorRef = useRef<HTMLDivElement>(null);
+    const isMouseOverCanvas = useRef<boolean>(false);
+    const lastMousePos = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
     // Supported tools that show brush indicator
     const supportedBrushTools = ["brush", "erase"];
@@ -109,25 +110,25 @@ const CanvasArea = ({
         const canvasElement = canvasRef.current;
         if (!canvasElement) return;
 
-        const handleWheel = (e) => {
+        const handleWheel = (e: WheelEvent) => {
             if (e.altKey) {
                 e.preventDefault();
-                setBrushSize(prevSize => Math.max(1, Math.min(200, prevSize + scrollWheelZoomIncrement * (e.deltaY > 0 ? -1 : 1))));
+                setBrushSize((prevSize: number) => Math.max(1, Math.min(200, prevSize + scrollWheelZoomIncrement * (e.deltaY > 0 ? -1 : 1))));
             }
         };
 
         canvasElement.addEventListener('wheel', handleWheel, { passive: false });
         return () => canvasElement.removeEventListener('wheel', handleWheel);
-    }, [canvasRef, setBrushSize]);
+    }, [canvasRef, setBrushSize, scrollWheelZoomIncrement]);
 
     // Optimized mouse tracking for brush indicator
     useEffect(() => {
         const canvasElement = canvasRef.current;
         if (!canvasElement) return;
 
-        let animationFrameId = null;
+        let animationFrameId: number | null = null;
 
-        const updateIndicatorPosition = (e) => {
+        const updateIndicatorPosition = (e: MouseEvent) => {
             if (!isMouseOverCanvas.current) return;
 
             const cursorPointElement = cursorPointRef.current;
@@ -143,17 +144,19 @@ const CanvasArea = ({
             // Position the 0x0 cursor point element exactly at mouse position
             if (animationFrameId === null) {
                 animationFrameId = requestAnimationFrame(() => {
-                    cursorPointElement.style.transform = `translate(${x}px, ${y}px)`;
+                    if (cursorPointElement) {
+                        cursorPointElement.style.transform = `translate(${x}px, ${y}px)`;
+                    }
                     animationFrameId = null;
                 });
             }
         };
 
-        const handleMouseEnter = () => {
+        const handleMouseEnter = (): void => {
             isMouseOverCanvas.current = true;
         };
 
-        const handleMouseLeave = () => {
+        const handleMouseLeave = (): void => {
             isMouseOverCanvas.current = false;
         };
 
@@ -165,7 +168,7 @@ const CanvasArea = ({
             canvasElement.removeEventListener('mousemove', updateIndicatorPosition);
             canvasElement.removeEventListener('mouseenter', handleMouseEnter);
             canvasElement.removeEventListener('mouseleave', handleMouseLeave);
-            if (animationFrameId) {
+            if (animationFrameId !== null) {
                 cancelAnimationFrame(animationFrameId);
             }
         };
@@ -204,7 +207,7 @@ const CanvasArea = ({
                                 </div>
                                 <p className="text-studio-textSecondary text-xs">
                                     {Math.round((progress.progress ?? 0) * 100)}%
-                                    {progress.total_batches > 1 &&
+                                    {progress.total_batches && progress.total_batches > 1 &&
                                         ` • Batch ${progress.current_batch}/${progress.total_batches}`}
                                     {progress.eta && ` • ETA: ${Math.round(progress.eta)}s`}
                                 </p>
@@ -293,7 +296,7 @@ const CanvasArea = ({
                                     : "result-image"
                             }
                             ref={imageRef}
-                            src={mainImageSrc}
+                            src={mainImageSrc || undefined}
                             crossOrigin="anonymous"
                             alt={viewMode === "edit" ? "Image to inpaint" : "Inpainted result"}
                             className="max-w-none shadow-studio-lg rounded-lg"

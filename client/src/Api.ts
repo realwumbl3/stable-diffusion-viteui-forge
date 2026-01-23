@@ -1,4 +1,7 @@
+// VITE UI
 // API Types
+import type { WorkspaceStructureNode } from './types/components';
+
 export interface Txt2ImgParams {
   prompt: string;
   negative_prompt?: string;
@@ -298,8 +301,8 @@ class StableDiffusionAPI {
     });
   }
 
-  async getWorkspaceStructure(): Promise<{ structure: any }> {
-    return this.request('/workspaces/structure');
+  async getWorkspaceStructure(): Promise<{ structure: WorkspaceStructureNode }> {
+    return this.request<{ structure: WorkspaceStructureNode }>('/workspaces/structure');
   }
 
   async createWorkspaceFolder(path: string): Promise<{ success: boolean; path: string; message?: string }> {

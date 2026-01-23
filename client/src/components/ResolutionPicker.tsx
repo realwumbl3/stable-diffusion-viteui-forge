@@ -1,6 +1,15 @@
+// VITE UI
 import { useState } from 'react'
 import { ChevronDown, ChevronUp, Lock, Unlock } from 'lucide-react'
 import { cn } from '../lib/utils'
+import type { ResolutionPickerProps } from '../types/components'
+
+interface AspectRatio {
+  ratio: string
+  name: string
+  width: number
+  height: number
+}
 
 const ResolutionPicker = ({
   width,
@@ -11,18 +20,18 @@ const ResolutionPicker = ({
   onToggleCollapsed,
   className,
   inputImage
-}) => {
-  const [selectedAspectRatio, setSelectedAspectRatio] = useState('1:1')
+}: ResolutionPickerProps) => {
+  const [selectedAspectRatio, setSelectedAspectRatio] = useState<string>('1:1')
   const [internalCollapsed, setInternalCollapsed] = useState(false)
   const [aspectRatioLocked, setAspectRatioLocked] = useState(false)
-  const [lockedAspectRatio, setLockedAspectRatio] = useState(null)
+  const [lockedAspectRatio, setLockedAspectRatio] = useState<number | null>(null)
 
   // Use external collapsed state if provided, otherwise use internal state
   const collapsed = externalCollapsed !== undefined ? externalCollapsed : internalCollapsed
   const handleToggle = onToggleCollapsed || (() => setInternalCollapsed(!internalCollapsed))
 
   // Common aspect ratios
-  const aspectRatios = [
+  const aspectRatios: AspectRatio[] = [
     { ratio: '1:1', name: 'Square', width: 1, height: 1 },
     { ratio: '4:3', name: 'Standard', width: 4, height: 3 },
     { ratio: '3:2', name: 'Classic', width: 3, height: 2 },
@@ -34,20 +43,20 @@ const ResolutionPicker = ({
   ]
 
   // Generate resolutions based on aspect ratio
-  const getResolutionsForAspectRatio = (aspectRatio) => {
+  const getResolutionsForAspectRatio = (aspectRatio: AspectRatio): Array<{ w: number; h: number }> => {
     const { width: wRatio, height: hRatio } = aspectRatio
-    const gcd = (a, b) => b === 0 ? a : gcd(b, a % b)
+    const gcd = (a: number, b: number): number => b === 0 ? a : gcd(b, a % b)
     const divisor = gcd(wRatio, hRatio)
     const normalizedWidth = wRatio / divisor
     const normalizedHeight = hRatio / divisor
 
-    const resolutions = []
+    const resolutions: Array<{ w: number; h: number }> = []
     const baseSizes = [512, 768, 1024, 1280, 1536, 1792, 2048, 2304, 2560, 2816, 3072, 3328, 3584, 3840, 4096]
 
     baseSizes.forEach(base => {
       // For landscape ratios (width > height), use base for width
       // For portrait ratios (height > width), use base for height
-      let w, h
+      let w: number, h: number
       if (normalizedWidth >= normalizedHeight) {
         w = base
         h = Math.round((base * normalizedHeight) / normalizedWidth)
@@ -76,7 +85,7 @@ const ResolutionPicker = ({
   const availableResolutions = currentAspectRatio ? getResolutionsForAspectRatio(currentAspectRatio) : []
 
   // Function to match source image resolution
-  const matchSourceResolution = () => {
+  const matchSourceResolution = (): void => {
     if (!inputImage) return
 
     const img = new Image()
@@ -92,7 +101,7 @@ const ResolutionPicker = ({
   }
 
   // Handle aspect ratio lock toggle
-  const handleAspectRatioLockToggle = () => {
+  const handleAspectRatioLockToggle = (): void => {
     if (!aspectRatioLocked) {
       // When enabling lock, store the current aspect ratio
       setLockedAspectRatio(width / height)
@@ -104,8 +113,8 @@ const ResolutionPicker = ({
   }
 
   // Handle width change with aspect ratio locking
-  const handleWidthChange = (newWidth) => {
-    const parsedWidth = parseInt(newWidth)
+  const handleWidthChange = (newWidth: string | number): void => {
+    const parsedWidth = typeof newWidth === 'string' ? parseInt(newWidth) : newWidth
     if (aspectRatioLocked && parsedWidth > 0 && lockedAspectRatio) {
       // Calculate height maintaining locked aspect ratio
       const newHeight = Math.round(parsedWidth / lockedAspectRatio)
@@ -119,8 +128,8 @@ const ResolutionPicker = ({
   }
 
   // Handle height change with aspect ratio locking
-  const handleHeightChange = (newHeight) => {
-    const parsedHeight = parseInt(newHeight)
+  const handleHeightChange = (newHeight: string | number): void => {
+    const parsedHeight = typeof newHeight === 'string' ? parseInt(newHeight) : newHeight
     if (aspectRatioLocked && parsedHeight > 0 && lockedAspectRatio) {
       // Calculate width maintaining locked aspect ratio
       const newWidth = Math.round(parsedHeight * lockedAspectRatio)
@@ -134,7 +143,7 @@ const ResolutionPicker = ({
   }
 
   // Handle wheel events for aspect ratio maintenance
-  const handleWheel = (e, isWidth) => {
+  const handleWheel = (e: React.WheelEvent, isWidth: boolean): void => {
     e.preventDefault()
     const delta = e.deltaY > 0 ? -64 : 64 // Scroll up increases, down decreases
     if (isWidth) {
@@ -147,7 +156,7 @@ const ResolutionPicker = ({
   }
 
   // Handle keyboard events for aspect ratio maintenance
-  const handleKeyDown = (e, isWidth) => {
+  const handleKeyDown = (e: React.KeyboardEvent, isWidth: boolean): void => {
     if (e.key === 'ArrowUp' || e.key === '+') {
       e.preventDefault()
       if (isWidth) {
@@ -206,6 +215,7 @@ const ResolutionPicker = ({
                     : "text-studio-textSecondary hover:text-studio-text hover:bg-studio-surface"
                 )}
                 title={aspectRatioLocked ? "Unlock aspect ratio" : "Lock aspect ratio"}
+                type="button"
               >
                 {aspectRatioLocked ? <Lock size={16} /> : <Unlock size={16} />}
               </button>
@@ -237,6 +247,7 @@ const ResolutionPicker = ({
               }}
               className="studio-btn-secondary w-full py-2 px-3 text-sm transition-all duration-200 hover:bg-studio-panelHover"
               title="Match the resolution of the input image"
+              type="button"
             >
               Match Source Resolution
             </button>
@@ -281,6 +292,7 @@ const ResolutionPicker = ({
                     : "text-studio-textSecondary hover:text-studio-text hover:bg-studio-surface"
                 )}
                 title={aspectRatioLocked ? "Unlock aspect ratio" : "Lock aspect ratio"}
+                type="button"
               >
                 {aspectRatioLocked ? <Lock size={16} /> : <Unlock size={16} />}
               </button>
@@ -313,6 +325,7 @@ const ResolutionPicker = ({
                 }}
                 className="studio-btn-secondary w-full py-2 px-3 text-sm transition-all duration-200 hover:bg-studio-panelHover"
                 title="Match the resolution of the input image"
+                type="button"
               >
                 Match Source Resolution
               </button>
@@ -336,6 +349,7 @@ const ResolutionPicker = ({
                       ? "bg-studio-accent text-black border-studio-accent shadow-lg font-semibold"
                       : "hover:bg-studio-panelHover"
                   )}
+                  type="button"
                 >
                   {aspect.name}
                   <br />
@@ -349,7 +363,7 @@ const ResolutionPicker = ({
           <div>
             <label className="studio-label">Resolutions ({selectedAspectRatio})</label>
             <div className="grid grid-cols-2 gap-2">
-              {availableResolutions.map((resolution, index) => (
+              {availableResolutions.map((resolution) => (
                 <button
                   key={`${resolution.w}x${resolution.h}`}
                   onClick={(e) => {
@@ -363,6 +377,7 @@ const ResolutionPicker = ({
                       ? "bg-studio-accent text-black border-studio-accent shadow-lg font-semibold"
                       : "hover:bg-studio-panelHover"
                   )}
+                  type="button"
                 >
                   {resolution.w}×{resolution.h}
                   <br />

@@ -1,9 +1,15 @@
 // VITE UI
 import { useState, useRef, useEffect } from 'react';
 import { ChevronDown } from 'lucide-react';
+import type { OptionPickerProps } from '../types/components';
 
-const useDropdownPosition = (isOpen, triggerRef) => {
-  const [position, setPosition] = useState({ top: 'top-full', left: 'left-0' });
+interface DropdownPosition {
+  top: string;
+  left: string;
+}
+
+const useDropdownPosition = (isOpen: boolean, triggerRef: React.RefObject<HTMLElement>): DropdownPosition => {
+  const [position, setPosition] = useState<DropdownPosition>({ top: 'top-full', left: 'left-0' });
 
   useEffect(() => {
     if (!isOpen || !triggerRef.current) return;
@@ -18,7 +24,7 @@ const useDropdownPosition = (isOpen, triggerRef) => {
     // Calculate if dropdown fits to the right
     const fitsRight = triggerRect.left + 120 <= viewportWidth; // 120px minimum width
 
-    let newPosition = { top: 'top-full', left: 'left-0' };
+    let newPosition: DropdownPosition = { top: 'top-full', left: 'left-0' };
 
     if (!fitsBelow) {
       // Show above if doesn't fit below
@@ -44,19 +50,19 @@ const OptionPicker = ({
   placeholder = "Select...",
   className = "",
   disabled = false
-}) => {
+}: OptionPickerProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [focusedIndex, setFocusedIndex] = useState(-1);
-  const containerRef = useRef(null);
-  const selectRef = useRef(null);
-  const triggerRef = useRef(null);
-  const dropdownRef = useRef(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const selectRef = useRef<HTMLSelectElement>(null);
+  const triggerRef = useRef<HTMLDivElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
   const dropdownPosition = useDropdownPosition(isOpen, triggerRef);
 
   // Close dropdown when clicking outside
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (containerRef.current && !containerRef.current.contains(event.target)) {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
         setIsOpen(false);
         setFocusedIndex(-1);
       }
@@ -80,7 +86,7 @@ const OptionPicker = ({
   useEffect(() => {
     if (!isOpen) return;
 
-    const handleKeyDown = (e) => {
+    const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'ArrowDown') {
         e.preventDefault();
         setFocusedIndex(prev => (prev + 1) % options.length);
@@ -130,13 +136,13 @@ const OptionPicker = ({
   const minWidth = 60; // Minimum width to prevent too narrow
   const containerWidth = Math.max(textWidth + 50, minWidth); // Add padding
 
-  const handleTriggerClick = () => {
+  const handleTriggerClick = (): void => {
     if (!disabled) {
       setIsOpen(!isOpen);
     }
   };
 
-  const handleOptionClick = (optionValue) => {
+  const handleOptionClick = (optionValue: string): void => {
     onChange(optionValue);
     setIsOpen(false);
   };
