@@ -1,5 +1,4 @@
-import React, { useRef } from 'react'
-import { cn } from '../../../lib/utils'
+import { useRef } from 'react'
 import type { TagsNode, Tag } from '../types'
 import TagComponent from '../components/TagComponent'
 
@@ -14,6 +13,7 @@ function TagsNodeContent({
   onUpdate,
 }: TagsNodeContentProps) {
   const tagRefs = useRef<(HTMLInputElement | null)[]>([])
+  const hasFocusedInitialTag = useRef(false)
 
   const addTag = (value = '', focusNew = false) => {
     const newTag: Tag = { value, weight: 1 }
@@ -50,19 +50,26 @@ function TagsNodeContent({
   return (
     <div className="tags-node-container">
       <div className="tags-node">
-        {node.value.map((tag, index) => (
-          <TagComponent
-            key={index}
-            ref={(el) => tagRefs.current[index] = el}
-            tag={tag}
-            onUpdate={(updates) => updateTag(index, updates)}
-            onRemove={() => removeTag(index)}
-            onAddTag={(value, focusNew) => addTag(value, focusNew)}
-          />
-        ))}
+        {node.value.map((tag, index) => {
+          const shouldFocus = index === 0 && tag.value === '' && !hasFocusedInitialTag.current
+          if (shouldFocus) {
+            hasFocusedInitialTag.current = true
+          }
+          return (
+            <TagComponent
+              key={index}
+              ref={(el) => tagRefs.current[index] = el}
+              tag={tag}
+              onUpdate={(updates) => updateTag(index, updates)}
+              onRemove={() => removeTag(index)}
+              onAddTag={(value, focusNew) => addTag(value, focusNew)}
+              shouldFocus={shouldFocus}
+            />
+          )
+        })}
         <button
           className="button add-tag-button"
-          onClick={() => addTag('')}
+          onClick={() => addTag('', true)}
         >
           +
         </button>

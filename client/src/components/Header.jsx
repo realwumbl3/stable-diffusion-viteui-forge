@@ -28,6 +28,7 @@ const Header = ({
   onOpenWorkspaceBrowser,
   pageLocked,
   onToggleLock,
+  pendingRestart,
   // New parameters for header controls
   steps,
   setSteps,
@@ -94,7 +95,12 @@ const Header = ({
               (!canGenerate || loading) && "opacity-50 cursor-not-allowed"
             )}
           >
-            {loading && progress ? (
+            {pendingRestart ? (
+              <>
+                <div className="w-4 h-4 border-2 border-studio-bg border-t-transparent rounded-full animate-spin" />
+                <span className="text-sm">Restarting...</span>
+              </>
+            ) : loading && progress ? (
               <>
                 <div className="flex flex-col items-center gap-1">
                   <div className="w-4 h-4 border-2 border-studio-bg border-t-transparent rounded-full animate-spin" />
@@ -126,8 +132,8 @@ const Header = ({
             )}
           </button>
 
-          {/* Skip and Interrupt buttons - only show when generating */}
-          {loading && (
+          {/* Skip and Interrupt buttons - only show when generating and not restarting */}
+          {loading && !pendingRestart && (
             <div className="flex items-center gap-2">
               <button
                 onClick={onSkip}

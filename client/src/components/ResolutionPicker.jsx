@@ -15,6 +15,7 @@ const ResolutionPicker = ({
   const [selectedAspectRatio, setSelectedAspectRatio] = useState('1:1')
   const [internalCollapsed, setInternalCollapsed] = useState(false)
   const [aspectRatioLocked, setAspectRatioLocked] = useState(false)
+  const [lockedAspectRatio, setLockedAspectRatio] = useState(null)
 
   // Use external collapsed state if provided, otherwise use internal state
   const collapsed = externalCollapsed !== undefined ? externalCollapsed : internalCollapsed
@@ -90,13 +91,24 @@ const ResolutionPicker = ({
     img.src = inputImage
   }
 
+  // Handle aspect ratio lock toggle
+  const handleAspectRatioLockToggle = () => {
+    if (!aspectRatioLocked) {
+      // When enabling lock, store the current aspect ratio
+      setLockedAspectRatio(width / height)
+    } else {
+      // When disabling lock, clear the stored aspect ratio
+      setLockedAspectRatio(null)
+    }
+    setAspectRatioLocked(!aspectRatioLocked)
+  }
+
   // Handle width change with aspect ratio locking
   const handleWidthChange = (newWidth) => {
     const parsedWidth = parseInt(newWidth)
-    if (aspectRatioLocked && parsedWidth > 0) {
-      // Calculate height maintaining aspect ratio
-      const aspectRatio = height / width
-      const newHeight = Math.round(parsedWidth * aspectRatio)
+    if (aspectRatioLocked && parsedWidth > 0 && lockedAspectRatio) {
+      // Calculate height maintaining locked aspect ratio
+      const newHeight = Math.round(parsedWidth / lockedAspectRatio)
       // Ensure height is divisible by 64
       const adjustedHeight = Math.round(newHeight / 64) * 64
       if (adjustedHeight >= 64) {
@@ -109,10 +121,9 @@ const ResolutionPicker = ({
   // Handle height change with aspect ratio locking
   const handleHeightChange = (newHeight) => {
     const parsedHeight = parseInt(newHeight)
-    if (aspectRatioLocked && parsedHeight > 0) {
-      // Calculate width maintaining aspect ratio
-      const aspectRatio = width / height
-      const newWidth = Math.round(parsedHeight * aspectRatio)
+    if (aspectRatioLocked && parsedHeight > 0 && lockedAspectRatio) {
+      // Calculate width maintaining locked aspect ratio
+      const newWidth = Math.round(parsedHeight * lockedAspectRatio)
       // Ensure width is divisible by 64
       const adjustedWidth = Math.round(newWidth / 64) * 64
       if (adjustedWidth >= 64) {
@@ -120,6 +131,38 @@ const ResolutionPicker = ({
       }
     }
     setHeight(parsedHeight)
+  }
+
+  // Handle wheel events for aspect ratio maintenance
+  const handleWheel = (e, isWidth) => {
+    e.preventDefault()
+    const delta = e.deltaY > 0 ? -64 : 64 // Scroll up increases, down decreases
+    if (isWidth) {
+      const newWidth = Math.max(64, width + delta)
+      handleWidthChange(newWidth)
+    } else {
+      const newHeight = Math.max(64, height + delta)
+      handleHeightChange(newHeight)
+    }
+  }
+
+  // Handle keyboard events for aspect ratio maintenance
+  const handleKeyDown = (e, isWidth) => {
+    if (e.key === 'ArrowUp' || e.key === '+') {
+      e.preventDefault()
+      if (isWidth) {
+        handleWidthChange(Math.max(64, width + 64))
+      } else {
+        handleHeightChange(Math.max(64, height + 64))
+      }
+    } else if (e.key === 'ArrowDown' || e.key === '-') {
+      e.preventDefault()
+      if (isWidth) {
+        handleWidthChange(Math.max(64, width - 64))
+      } else {
+        handleHeightChange(Math.max(64, height - 64))
+      }
+    }
   }
 
   return (
@@ -141,6 +184,8 @@ const ResolutionPicker = ({
                 type="number"
                 value={width}
                 onChange={(e) => handleWidthChange(e.target.value)}
+                onWheel={(e) => handleWheel(e, true)}
+                onKeyDown={(e) => handleKeyDown(e, true)}
                 min="64"
                 step="64"
                 className="studio-input w-full"
@@ -152,7 +197,7 @@ const ResolutionPicker = ({
               <button
                 onClick={(e) => {
                   e.stopPropagation()
-                  setAspectRatioLocked(!aspectRatioLocked)
+                  handleAspectRatioLockToggle()
                 }}
                 className={cn(
                   "p-2 rounded transition-all duration-200",
@@ -173,6 +218,8 @@ const ResolutionPicker = ({
                 type="number"
                 value={height}
                 onChange={(e) => handleHeightChange(e.target.value)}
+                onWheel={(e) => handleWheel(e, false)}
+                onKeyDown={(e) => handleKeyDown(e, false)}
                 min="64"
                 step="64"
                 className="studio-input w-full"
@@ -212,6 +259,8 @@ const ResolutionPicker = ({
                 type="number"
                 value={width}
                 onChange={(e) => handleWidthChange(e.target.value)}
+                onWheel={(e) => handleWheel(e, true)}
+                onKeyDown={(e) => handleKeyDown(e, true)}
                 min="64"
                 step="64"
                 className="studio-input w-full"
@@ -223,7 +272,7 @@ const ResolutionPicker = ({
               <button
                 onClick={(e) => {
                   e.stopPropagation()
-                  setAspectRatioLocked(!aspectRatioLocked)
+                  handleAspectRatioLockToggle()
                 }}
                 className={cn(
                   "p-2 rounded transition-all duration-200",
@@ -244,6 +293,8 @@ const ResolutionPicker = ({
                 type="number"
                 value={height}
                 onChange={(e) => handleHeightChange(e.target.value)}
+                onWheel={(e) => handleWheel(e, false)}
+                onKeyDown={(e) => handleKeyDown(e, false)}
                 min="64"
                 step="64"
                 className="studio-input w-full"

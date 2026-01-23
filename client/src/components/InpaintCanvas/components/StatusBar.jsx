@@ -35,7 +35,7 @@ const StatusBar = ({
 }) => {
     const memoryUsage = useMemoryUsage()
     return (
-        <div className="studio-toolbar justify-between text-xs text-studio-textSecondary">
+        <div className="studio-toolbar justify-between text-xs text-studio-textSecondary ps-2 pe-2">
             <div className="flex items-center gap-4">
                 <span>Inpaint Canvas</span>
                 {(displayImage || inputImage) && (
@@ -83,7 +83,7 @@ const StatusBar = ({
                 {memoryUsage && (
                     <span>mem: {memoryUsage}mb</span>
                 )}
-                <span>Stable Diffusion WebUI</span>
+                <span>Stable Diffusion viteUI</span>
                 {progress && loading && <span className="text-studio-accent">{progress.textinfo}</span>}
             </div>
         </div>

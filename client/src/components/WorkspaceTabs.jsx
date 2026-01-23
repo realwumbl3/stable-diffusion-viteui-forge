@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { X, Plus, FolderOpen } from "lucide-react";
+import CreateWorkspaceDialog from "./CreateWorkspaceDialog.jsx";
 
 /**
  * WorkspaceTabs component for managing multiple open workspaces with tabs
@@ -13,6 +14,7 @@ const WorkspaceTabs = ({
     onCreateWorkspace
 }) => {
     const tabsRef = useRef(null);
+    const [showCreateDialog, setShowCreateDialog] = useState(false);
 
     // Scroll active tab into view
     useEffect(() => {
@@ -72,12 +74,7 @@ const WorkspaceTabs = ({
             {/* Action buttons */}
             <div className="flex items-center gap-1 ml-2">
                 <button
-                    onClick={() => {
-                        const name = prompt("Enter workspace name:", "untitled");
-                        if (name && name.trim()) {
-                            onCreateWorkspace?.(name.trim());
-                        }
-                    }}
+                    onClick={() => setShowCreateDialog(true)}
                     className="p-1.5 hover:bg-studio-surface rounded transition-colors"
                     title="Create New Workspace"
                     type="button"
@@ -93,6 +90,13 @@ const WorkspaceTabs = ({
                     <FolderOpen className="w-4 h-4 text-studio-textSecondary" />
                 </button>
             </div>
+
+            {/* Create Workspace Dialog */}
+            <CreateWorkspaceDialog
+                isOpen={showCreateDialog}
+                onClose={() => setShowCreateDialog(false)}
+                onCreateWorkspace={onCreateWorkspace}
+            />
         </div>
     );
 };

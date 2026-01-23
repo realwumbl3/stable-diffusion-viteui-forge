@@ -1021,6 +1021,7 @@ function App() {
                     onOpenWorkspace={() => setWorkspaceBrowserOpen(true)}
                     pageLocked={pageLocked}
                     onToggleLock={() => setPageLocked(!pageLocked)}
+                    pendingRestart={pendingRestart}
                     // New header controls
                     steps={steps}
                     setSteps={setSteps}
@@ -1077,6 +1078,7 @@ function App() {
                 onOpenWorkspaceBrowser={() => setWorkspaceBrowserOpen(true)}
                 pageLocked={pageLocked}
                 onToggleLock={() => setPageLocked(!pageLocked)}
+                pendingRestart={pendingRestart}
                 // New header controls
                 steps={steps}
                 setSteps={setSteps}

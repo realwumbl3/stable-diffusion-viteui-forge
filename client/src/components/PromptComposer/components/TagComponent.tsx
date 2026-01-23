@@ -8,10 +8,11 @@ interface TagComponentProps {
     onUpdate: (updates: Partial<Tag>) => void;
     onRemove: () => void;
     onAddTag: (value?: string, focusNew?: boolean) => void;
+    shouldFocus?: boolean;
 }
 
 const TagComponent = React.forwardRef<HTMLInputElement, TagComponentProps>(
-    ({ tag, onUpdate, onRemove, onAddTag }, ref) => {
+    ({ tag, onUpdate, onRemove, onAddTag, shouldFocus }, ref) => {
         const [inputValue, setInputValue] = useState(tag.value);
         const inputRef = useRef<HTMLInputElement>(null);
         const measureRef = useRef<HTMLSpanElement>(null);
@@ -24,6 +25,12 @@ const TagComponent = React.forwardRef<HTMLInputElement, TagComponentProps>(
             // Adjust width when tag value changes from props
             setTimeout(() => adjustInputWidth(tag.value), 0);
         }, [tag.value]);
+
+        useEffect(() => {
+            if (shouldFocus && inputRef.current) {
+                setTimeout(() => inputRef.current?.focus(), 0);
+            }
+        }, [shouldFocus]);
 
         const adjustInputWidth = (value: string) => {
             if (measureRef.current && inputRef.current) {
