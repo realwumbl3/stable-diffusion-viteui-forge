@@ -25,7 +25,7 @@ todos:
     status: completed
   - id: phase3-4-complex-setstate
     content: "Phase 3.4: Refactor complex setState in effects (useCanvasState, OptionPicker, useWebSocketProgress)"
-    status: in_progress
+    status: completed
   - id: phase3-5-dependencies
     content: "Phase 3.5: Fix missing dependencies in hooks (24 warnings across multiple files)"
     status: pending

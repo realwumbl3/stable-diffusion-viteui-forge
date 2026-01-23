@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useReducer } from 'react'
 import { API_BASE_URL } from '../lib/utils'
 
 export interface ProgressData {
@@ -15,6 +15,44 @@ export interface ProgressData {
 
 export interface WebSocketMessage extends ProgressData {
   type?: 'connected' | 'disconnected' | 'ping' | 'pong'
+}
+
+interface ProgressState {
+  progress: ProgressData | null
+  livePreview: string | null
+}
+
+type ProgressAction =
+  | { type: 'RESET' }
+  | { type: 'SET_PROGRESS'; payload: ProgressData | null }
+  | { type: 'MERGE_PARTIAL'; payload: Partial<ProgressData> }
+  | { type: 'SET_LIVE_PREVIEW'; payload: string | null }
+
+function progressReducer(state: ProgressState, action: ProgressAction): ProgressState {
+  switch (action.type) {
+    case 'RESET':
+      return { progress: null, livePreview: null }
+    case 'SET_PROGRESS':
+      return { ...state, progress: action.payload }
+    case 'MERGE_PARTIAL': {
+      const previousProgress: ProgressData = state.progress ?? {}
+      return {
+        ...state,
+        progress: {
+          ...previousProgress,
+          ...action.payload,
+          progress:
+            typeof action.payload.progress === 'number'
+              ? action.payload.progress
+              : previousProgress.progress ?? 0,
+        },
+      }
+    }
+    case 'SET_LIVE_PREVIEW':
+      return { ...state, livePreview: action.payload }
+    default:
+      return state
+  }
 }
 
 export class ProgressWebSocketManager {
@@ -149,9 +187,12 @@ export interface UseWebSocketProgressReturn {
 }
 
 export const useWebSocketProgress = (taskId: string | null = null): UseWebSocketProgressReturn => {
-  const [progress, setProgress] = useState<ProgressData | null>(null)
+  const [progressState, dispatchProgressState] = useReducer(progressReducer, {
+    progress: null,
+    livePreview: null,
+  })
+  const { progress, livePreview } = progressState
   const [isConnected, setIsConnected] = useState<boolean>(false)
-  const [livePreview, setLivePreview] = useState<string | null>(null)
   const pingIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const completedTasksRef = useRef<Set<string>>(new Set())
 
@@ -195,8 +236,7 @@ export const useWebSocketProgress = (taskId: string | null = null): UseWebSocket
     console.log('Task ID changed:', taskId)
     if (!taskId) {
       console.log('Clearing progress and live preview')
-      setProgress(null)
-      setLivePreview(null)
+      dispatchProgressState({ type: 'RESET' })
     }
   }, [taskId])
 
@@ -213,14 +253,13 @@ export const useWebSocketProgress = (taskId: string | null = null): UseWebSocket
       // Handle connection status
       if (data.type === 'connected') {
         setIsConnected(true)
-        setLivePreview(null) // Clear any old preview when connecting to new task
+        dispatchProgressState({ type: 'SET_LIVE_PREVIEW', payload: null }) // Clear any old preview when connecting to new task
         return
       }
 
       if (data.type === 'disconnected') {
         setIsConnected(false)
-        setProgress(null)
-        setLivePreview(null)
+        dispatchProgressState({ type: 'RESET' })
         return
       }
 
@@ -246,38 +285,32 @@ export const useWebSocketProgress = (taskId: string | null = null): UseWebSocket
         if (data.completed && data.task_id) {
           console.log('WebSocket: Task completed', data.task_id)
           completedTasksRef.current.add(data.task_id)
-          setProgress(null)
-          setLivePreview(null)
+          dispatchProgressState({ type: 'RESET' })
           return
         }
 
         // Valid progress update
-        setProgress(data)
+        dispatchProgressState({ type: 'SET_PROGRESS', payload: data })
 
         // Update live preview - handle both presence and absence
         if (data.live_preview !== undefined) {
-          if (data.live_preview) {
-            setLivePreview(data.live_preview)
-          } else {
-            // Clear live preview when it's explicitly set to null/empty
-            setLivePreview(null)
-          }
+          dispatchProgressState({
+            type: 'SET_LIVE_PREVIEW',
+            payload: data.live_preview ? data.live_preview : null,
+          })
         }
       }
       // If it's a progress message but doesn't have valid progress data yet,
       // we can still update other fields like textinfo
       else if (data.textinfo || data.sampling_step !== undefined) {
-        // Update progress with partial data, preserving existing progress value
-        setProgress(prev => ({
-          ...prev,
-          ...data,
-          // Preserve progress if it was valid before
-          progress: typeof data.progress === 'number' ? data.progress : (prev?.progress ?? 0)
-        }))
+        dispatchProgressState({ type: 'MERGE_PARTIAL', payload: data })
 
         // Also check for live preview in partial updates
-        if (data.live_preview) {
-          setLivePreview(data.live_preview)
+        if (data.live_preview !== undefined) {
+          dispatchProgressState({
+            type: 'SET_LIVE_PREVIEW',
+            payload: data.live_preview ? data.live_preview : null,
+          })
         }
       }
     })

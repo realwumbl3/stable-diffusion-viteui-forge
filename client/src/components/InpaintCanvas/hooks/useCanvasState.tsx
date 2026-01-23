@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo, useReducer } from "react";
 
 interface UseCanvasStateProps {
     displayImage: string | null;
@@ -12,6 +12,62 @@ interface UseCanvasStateProps {
     imageRef: React.RefObject<HTMLImageElement>;
     panTargetRef: React.RefObject<HTMLDivElement>;
     fitToScreenPadding?: number;
+}
+
+type ViewMode = "edit" | "result";
+
+interface MaskState {
+    showMask: boolean;
+    lastMaskVisibility: boolean;
+    hasRememberedMaskSetting: boolean;
+}
+
+type MaskAction =
+    | { type: "SET_VISIBILITY"; visible: boolean; inPreview: boolean }
+    | { type: "ENTER_PREVIEW" }
+    | { type: "EXIT_PREVIEW" };
+
+const initialMaskState: MaskState = {
+    showMask: true,
+    lastMaskVisibility: true,
+    hasRememberedMaskSetting: false,
+};
+
+function maskReducer(state: MaskState, action: MaskAction): MaskState {
+    switch (action.type) {
+        case "SET_VISIBILITY":
+            if (!action.inPreview) {
+                return {
+                    showMask: action.visible,
+                    lastMaskVisibility: action.visible,
+                    hasRememberedMaskSetting: false,
+                };
+            }
+            return {
+                ...state,
+                showMask: action.visible,
+            };
+        case "ENTER_PREVIEW":
+            if (state.hasRememberedMaskSetting) {
+                return {
+                    ...state,
+                    showMask: false,
+                };
+            }
+            return {
+                showMask: false,
+                lastMaskVisibility: state.showMask,
+                hasRememberedMaskSetting: true,
+            };
+        case "EXIT_PREVIEW":
+            return {
+                showMask: state.lastMaskVisibility,
+                lastMaskVisibility: state.lastMaskVisibility,
+                hasRememberedMaskSetting: false,
+            };
+        default:
+            return state;
+    }
 }
 
 export function useCanvasState(props: UseCanvasStateProps) {
@@ -39,7 +95,6 @@ export function useCanvasState(props: UseCanvasStateProps) {
     const [isPanning, setIsPanning] = useState(false);
     const [panType, setPanType] = useState<'shift' | 'right-click' | null>(null); // 'shift' or 'right-click'
     const lastDrawPosRef = useRef<{ x: number; y: number } | null>(null);
-    const [viewMode, setViewMode] = useState("edit");
     const [mouseButtonDown, setMouseButtonDown] = useState(false);
     const [drawingStartedOnCanvas, setDrawingStartedOnCanvas] = useState(false);
     const [isRightClickPanning, setIsRightClickPanning] = useState(false);
@@ -51,10 +106,34 @@ export function useCanvasState(props: UseCanvasStateProps) {
     }, []);
 
     // Mask visibility state
-    const [showMask, setShowMask] = useState(true);
     const [showBorder, setShowBorder] = useState(true);
-    const [lastMaskVisibility, setLastMaskVisibility] = useState(true);
-    const [hasRememberedMaskSetting, setHasRememberedMaskSetting] = useState(false);
+    const [maskState, dispatchMaskState] = useReducer(maskReducer, initialMaskState);
+    const { showMask } = maskState;
+    const previewWasActiveRef = useRef<string | null>(null);
+    const isPreviewActive = Boolean(previewImage);
+
+    useEffect(() => {
+        const wasPreviewActive = Boolean(previewWasActiveRef.current);
+        if (isPreviewActive && !wasPreviewActive) {
+            dispatchMaskState({ type: "ENTER_PREVIEW" });
+        } else if (!isPreviewActive && wasPreviewActive) {
+            dispatchMaskState({ type: "EXIT_PREVIEW" });
+        }
+        previewWasActiveRef.current = previewImage;
+    }, [isPreviewActive, previewImage]);
+
+    const viewMode = useMemo<ViewMode>(() => {
+        if (forceEditMode || livePreview) {
+            return "edit";
+        }
+        if (displayImage) {
+            return "result";
+        }
+        if (inputImage) {
+            return "edit";
+        }
+        return "edit";
+    }, [forceEditMode, livePreview, displayImage, inputImage]);
 
     // Footer state
     const [footerCollapsed, setFooterCollapsed] = useState(false);
@@ -171,34 +250,6 @@ export function useCanvasState(props: UseCanvasStateProps) {
         getDisplayDimensions,
     ]);
 
-    // Update view mode based on available images
-    useEffect(() => {
-        if (forceEditMode || livePreview) {
-            setViewMode("edit");
-        } else if (displayImage) {
-            setViewMode("result");
-        } else if (inputImage) {
-            setViewMode("edit");
-        }
-    }, [displayImage, inputImage, forceEditMode, livePreview]);
-
-    // Manage mask visibility during preview mode
-    useEffect(() => {
-        if (previewImage) {
-            // When first entering preview mode, remember the canvas mask setting
-            if (!hasRememberedMaskSetting) {
-                setLastMaskVisibility(showMask);
-                setHasRememberedMaskSetting(true);
-            }
-            // Always hide mask in preview mode
-            setShowMask(false);
-        } else {
-            // When returning to canvas mode, restore the remembered mask setting
-            setShowMask(lastMaskVisibility);
-            setHasRememberedMaskSetting(false);
-        }
-    }, [previewImage]); // Remove showMask from dependencies to avoid cycles
-
     // Zoom functions
     const handleZoomIn = useCallback(() => {
         const zoomFactor = 1.2;
@@ -285,19 +336,12 @@ export function useCanvasState(props: UseCanvasStateProps) {
 
     // Custom mask setter that preserves setting when in canvas mode
     const setMaskVisibility = useCallback((newVisibility: boolean) => {
-        setShowMask(newVisibility);
-        // Only update remembered setting when not in preview mode
-        if (!previewImage) {
-            setLastMaskVisibility(newVisibility);
-            // Reset the flag so next preview session will remember this new setting
-            setHasRememberedMaskSetting(false);
-        }
-    }, [previewImage]);
-
-    // Toggle preview mode
-    const togglePreviewMode = useCallback(() => {
-        setViewMode((prev) => (prev === "edit" ? "result" : "edit"));
-    }, []);
+        dispatchMaskState({
+            type: "SET_VISIBILITY",
+            visible: newVisibility,
+            inPreview: isPreviewActive,
+        });
+    }, [isPreviewActive]);
 
     // Mouse and pointer lock event handlers
     useEffect(() => {
@@ -353,7 +397,6 @@ export function useCanvasState(props: UseCanvasStateProps) {
         lastDrawPosRef,
         setLastDrawPos,
         viewMode,
-        setViewMode,
         mouseButtonDown,
         setMouseButtonDown,
         drawingStartedOnCanvas,
@@ -367,8 +410,6 @@ export function useCanvasState(props: UseCanvasStateProps) {
         showMask,
         showBorder,
         setShowBorder,
-        lastMaskVisibility,
-        hasRememberedMaskSetting,
         footerCollapsed,
         setFooterCollapsed,
 
@@ -383,7 +424,6 @@ export function useCanvasState(props: UseCanvasStateProps) {
         startPan,
         stopPan,
         setMaskVisibility,
-        togglePreviewMode,
     }), [
         zoom,
         setZoom,
@@ -402,7 +442,6 @@ export function useCanvasState(props: UseCanvasStateProps) {
         // but setLastDrawPos is a stable callback now.
         setLastDrawPos,
         viewMode,
-        setViewMode,
         mouseButtonDown,
         setMouseButtonDown,
         drawingStartedOnCanvas,
@@ -416,8 +455,6 @@ export function useCanvasState(props: UseCanvasStateProps) {
         showMask,
         showBorder,
         setShowBorder,
-        lastMaskVisibility,
-        hasRememberedMaskSetting,
         footerCollapsed,
         setFooterCollapsed,
         getDisplayDimensions,
@@ -430,6 +467,5 @@ export function useCanvasState(props: UseCanvasStateProps) {
         startPan,
         stopPan,
         setMaskVisibility,
-        togglePreviewMode,
     ]);
 }

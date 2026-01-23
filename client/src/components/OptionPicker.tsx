@@ -1,5 +1,5 @@
 // VITE UI
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useEffect, useLayoutEffect, useMemo } from 'react';
 import { ChevronDown } from 'lucide-react';
 import type { OptionPickerProps } from '../types/components';
 
@@ -11,7 +11,7 @@ interface DropdownPosition {
 const useDropdownPosition = (isOpen: boolean, triggerRef: React.RefObject<HTMLElement>): DropdownPosition => {
   const [position, setPosition] = useState<DropdownPosition>({ top: 'top-full', left: 'left-0' });
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!isOpen || !triggerRef.current) return;
 
     const triggerRect = triggerRef.current.getBoundingClientRect();
