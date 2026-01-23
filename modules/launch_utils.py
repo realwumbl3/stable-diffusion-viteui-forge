@@ -542,8 +542,55 @@ def configure_forge_reference_checkout(a1111_home: Path):
         sys.argv.append(str(target_path))
 
 
+def configure_model_paths():
+    """Configure model paths based on environment variables."""
+    from pathlib import Path
+
+    # Load .env file if it exists
+    try:
+        from dotenv import load_dotenv
+        load_dotenv()
+    except ImportError:
+        pass  # python-dotenv not installed, skip loading .env file
+
+    # Check for environment variable override for stable-diffusion models path
+    sd_model_path = os.environ.get('SD_MODEL_PATH', "models/Stable-diffusion")
+
+    # Define model directories that should be configured
+    model_refs = [
+        ("--ckpt-dir", sd_model_path),
+        ("--vae-dir", "models/VAE"),
+        ("--hypernetwork-dir", "models/hypernetworks"),
+        ("--embeddings-dir", "embeddings"),
+        ("--lora-dir", "models/lora"),
+        ("--controlnet-dir", "models/ControlNet"),
+        ("--controlnet-preprocessor-models-dir", "extensions/sd-webui-controlnet/annotator/downloads"),
+    ]
+
+    for arg_name, relative_path in model_refs:
+        target_path = Path(relative_path)
+
+        # Skip existence check for SD_MODEL_PATH since user may create symlink later
+        if arg_name == "--ckpt-dir":
+            print(f"Setting {arg_name} to {target_path} (SD_MODEL_PATH configured)")
+        elif not target_path.exists():
+            print(f"Path {target_path} does not exist. Skip setting {arg_name}")
+            continue
+
+        if arg_name in sys.argv:
+            # Do not override existing dir setting.
+            continue
+
+        sys.argv.append(arg_name)
+        sys.argv.append(str(target_path))
+
+
 def start():
     print(f"Launching API server with arguments: {shlex.join(sys.argv[1:])}")
+
+    # Configure model paths based on environment variables
+    configure_model_paths()
+
     import viteui  # This imports viteui and runs initialization
 
     viteui.api_worker()  # Call api_worker directly since import doesn't trigger it

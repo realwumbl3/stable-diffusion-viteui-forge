@@ -1,3 +1,4 @@
+:: # VITE UI
 @echo off
 
 rem AUTO_CLOSE_WINDOW is no longer used - SD server now runs in main window
@@ -18,6 +19,53 @@ set ERROR_REPORTING=FALSE
 mkdir tmp 2>NUL
 
 setlocal enabledelayedexpansion
+set "VITEUI_ROOT=%~dp0"
+set "VITEUI_ENV_FILE=%VITEUI_ROOT%.env"
+set "VITEUI_DEFAULT_API_PORT=7861"
+set "VITEUI_DEFAULT_VITE_PORT=5173"
+set "VITEUI_ENV_API_PORT="
+set "VITEUI_ENV_VITE_PORT="
+if exist "%VITEUI_ENV_FILE%" (
+    for /f "usebackq tokens=1* delims== eol=#" %%E in ("%VITEUI_ENV_FILE%") do (
+        if /i "%%~E"=="API_PORT" set "VITEUI_ENV_API_PORT=%%~F"
+        if /i "%%~E"=="VITE_PORT" set "VITEUI_ENV_VITE_PORT=%%~F"
+    )
+)
+set "VITEUI_API_PORT_ARG_PROVIDED=0"
+set "VITEUI_API_PORT_FROM_ARG="
+set "VITEUI_EXPECTING_PORT_VALUE=0"
+for %%I in (%*) do (
+    if "!VITEUI_EXPECTING_PORT_VALUE!"=="1" (
+        set "VITEUI_API_PORT_FROM_ARG=%%~I"
+        set "VITEUI_API_PORT_ARG_PROVIDED=1"
+        set "VITEUI_EXPECTING_PORT_VALUE=0"
+    ) else (
+        set "VITEUI_CMD_ARG=%%~I"
+        if /i "!VITEUI_CMD_ARG!"=="--port" (
+            set "VITEUI_API_PORT_ARG_PROVIDED=1"
+            set "VITEUI_EXPECTING_PORT_VALUE=1"
+        ) else if /i "!VITEUI_CMD_ARG:~0,7!"=="--port=" (
+            set "VITEUI_API_PORT_ARG_PROVIDED=1"
+            set "VITEUI_API_PORT_FROM_ARG=!VITEUI_CMD_ARG:~7!"
+        )
+    )
+)
+if defined VITEUI_API_PORT_FROM_ARG (
+    set "VITEUI_API_DISPLAY_PORT=!VITEUI_API_PORT_FROM_ARG!"
+) else if defined VITEUI_ENV_API_PORT (
+    set "VITEUI_API_DISPLAY_PORT=!VITEUI_ENV_API_PORT!"
+) else (
+    set "VITEUI_API_DISPLAY_PORT=%VITEUI_DEFAULT_API_PORT%"
+)
+set "VITEUI_PORT_EXTRA_ARGS="
+if "%VITEUI_API_PORT_ARG_PROVIDED%"=="0" if defined VITEUI_ENV_API_PORT (
+    set "VITEUI_PORT_EXTRA_ARGS= --port !VITEUI_ENV_API_PORT!"
+)
+if defined VITEUI_ENV_VITE_PORT (
+    set "VITEUI_VITE_DISPLAY_PORT=!VITEUI_ENV_VITE_PORT!"
+) else (
+    set "VITEUI_VITE_DISPLAY_PORT=%VITEUI_DEFAULT_VITE_PORT%"
+)
 
 rem Check for --vite argument
 set USE_VITE=0
@@ -98,16 +146,16 @@ if not exist "client\dist" (
 )
 
 echo Starting Stable Diffusion API server with integrated frontend...
-echo Frontend will be served from: http://localhost:7861
-echo API endpoints will be available at: http://localhost:7861/api/*
-%PYTHON% launch.py --disable-gpu-warning %*
+echo Frontend will be served from: http://localhost:!VITEUI_API_DISPLAY_PORT!
+echo API endpoints will be available at: http://localhost:!VITEUI_API_DISPLAY_PORT!/api/*
+%PYTHON% launch.py --disable-gpu-warning%VITEUI_PORT_EXTRA_ARGS% %*
 
 goto :endofscript
 
 :vite_launch
 echo Starting Vite development server and API server...
-echo Frontend will be served from: http://localhost:5173
-echo API endpoints will be available at: http://localhost:7861/api/* (proxied through Vite)
+echo Frontend will be served from: http://localhost:!VITEUI_VITE_DISPLAY_PORT!
+echo API endpoints will be available at: http://localhost:!VITEUI_API_DISPLAY_PORT!/api/* (proxied through Vite)
 
 rem Remove --vite from arguments for the API server
 set API_ARGS=
@@ -116,14 +164,18 @@ for %%i in (%*) do (
 )
 
 rem Start API server in background
-echo Starting API server on port 7861...
-start "Stable Diffusion API" %PYTHON% launch.py --disable-gpu-warning %API_ARGS%
+echo Starting API server on port !VITEUI_API_DISPLAY_PORT!...
+start "Stable Diffusion API" %PYTHON% launch.py --disable-gpu-warning%VITEUI_PORT_EXTRA_ARGS% %API_ARGS%
 
 rem Wait a moment for API server to start
 timeout /t 3 /nobreak > nul
 
 rem Start Vite dev server
-echo Starting Vite dev server on port 5173...
+echo Starting Vite dev server on port !VITEUI_VITE_DISPLAY_PORT!...
+if defined VITEUI_ENV_VITE_PORT (
+    set "VITE_PORT=!VITEUI_ENV_VITE_PORT!"
+    set "PORT=!VITEUI_ENV_VITE_PORT!"
+)
 cd client
 if not exist node_modules (
     echo Installing client dependencies...
@@ -140,8 +192,8 @@ goto :accelerate_launch_normal
 
 :vite_accelerate_launch
 echo Starting Vite development server and API server with acceleration...
-echo Frontend will be served from: http://localhost:5173
-echo API endpoints will be available at: http://localhost:7861/api/* (proxied through Vite)
+echo Frontend will be served from: http://localhost:!VITEUI_VITE_DISPLAY_PORT!
+echo API endpoints will be available at: http://localhost:!VITEUI_API_DISPLAY_PORT!/api/* (proxied through Vite)
 
 rem Remove --vite from arguments for the API server
 set API_ARGS=
@@ -150,14 +202,18 @@ for %%i in (%*) do (
 )
 
 rem Start API server with acceleration in background
-echo Starting API server on port 7861 with acceleration...
-start "Stable Diffusion API" %ACCELERATE% launch --num_cpu_threads_per_process=6 launch.py --disable-gpu-warning --cuda-malloc %API_ARGS%
+echo Starting API server on port !VITEUI_API_DISPLAY_PORT! with acceleration...
+start "Stable Diffusion API" %ACCELERATE% launch --num_cpu_threads_per_process=6 launch.py --disable-gpu-warning --cuda-malloc%VITEUI_PORT_EXTRA_ARGS% %API_ARGS%
 
 rem Wait a moment for API server to start
 timeout /t 3 /nobreak > nul
 
 rem Start Vite dev server
-echo Starting Vite dev server on port 5173...
+echo Starting Vite dev server on port !VITEUI_VITE_DISPLAY_PORT!...
+if defined VITEUI_ENV_VITE_PORT (
+    set "VITE_PORT=!VITEUI_ENV_VITE_PORT!"
+    set "PORT=!VITEUI_ENV_VITE_PORT!"
+)
 cd client
 if not exist node_modules (
     echo Installing client dependencies...
@@ -192,9 +248,9 @@ if not exist "client\dist" (
 )
 
 echo Starting Stable Diffusion API server with integrated frontend and acceleration...
-echo Frontend will be served from: http://localhost:7861
-echo API endpoints will be available at: http://localhost:7861/api/*
-%ACCELERATE% launch --num_cpu_threads_per_process=6 launch.py --disable-gpu-warning --cuda-malloc %*
+echo Frontend will be served from: http://localhost:!VITEUI_API_DISPLAY_PORT!
+echo API endpoints will be available at: http://localhost:!VITEUI_API_DISPLAY_PORT!/api/*
+%ACCELERATE% launch --num_cpu_threads_per_process=6 launch.py --disable-gpu-warning --cuda-malloc%VITEUI_PORT_EXTRA_ARGS% %*
 
 goto :endofscript
 
