@@ -11,7 +11,6 @@ interface UseCanvasStateProps {
     canvasRef: React.RefObject<HTMLDivElement>;
     imageRef: React.RefObject<HTMLImageElement>;
     panTargetRef: React.RefObject<HTMLDivElement>;
-    canvasPadding?: number;
     fitToScreenPadding?: number;
 }
 

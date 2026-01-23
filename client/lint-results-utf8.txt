@@ -1,0 +1,726 @@
+﻿
+> stable-diffusion-api-client@0.0.0 lint
+> eslint . --report-unused-disable-directives --max-warnings 0
+
+
+C:\Users\wumbl\Documents\DEV\viteui\stable-diffusion-viteui-forge\client\src\Api.ts
+   45:27   error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   99:10   error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  105:35   error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  106:30   error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  125:31   error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  134:21   error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  197:46   error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  198:40   error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  212:44   error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  264:88   error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  265:63   error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  369:108  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\wumbl\Documents\DEV\viteui\stable-diffusion-viteui-forge\client\src\App.tsx
+  128:12  error    'workspaces' is assigned a value but never used                                                                         @typescript-eslint/no-unused-vars
+  165:8   warning  React Hook useEffect has a missing dependency: 'initializeWorkspace'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  207:8   warning  React Hook useEffect has a missing dependency: 'generateImage'. Either include it or remove the dependency array        react-hooks/exhaustive-deps
+  687:19  error    'workspaceImage' is assigned a value but never used                                                                     @typescript-eslint/no-unused-vars
+
+C:\Users\wumbl\Documents\DEV\viteui\stable-diffusion-viteui-forge\client\src\components\InpaintCanvas\components\CanvasArea.tsx
+  106:8   warning  React Hook useEffect has a missing dependency: 'supportedBrushTools'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      react-hooks/exhaustive-deps
+  386:46  error    Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\wumbl\Documents\DEV\viteui\stable-diffusion-viteui-forge\client\src\components\InpaintCanvas\components\CanvasArea.tsx:386:46
+  384 |                                         ? 'rgba(239, 68, 68, 0.1)' // Red with opacity
+  385 |                                         : 'rgba(59, 130, 246, 0.1)', // Light blue with opacity
+> 386 |                                     opacity: isMouseOverCanvas.current ? 1 : 0.7,
+      |                                              ^^^^^^^^^^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  387 |                                 }}
+  388 |                             />
+  389 |                         </div>  react-hooks/refs
+
+C:\Users\wumbl\Documents\DEV\viteui\stable-diffusion-viteui-forge\client\src\components\InpaintCanvas\components\InpaintCanvas.tsx
+  339:41  error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\wumbl\Documents\DEV\viteui\stable-diffusion-viteui-forge\client\src\components\InpaintCanvas\components\InpaintCanvas.tsx:339:41
+  337 |                         handleResetZoom={canvasState.handleResetZoom}
+  338 |                         handleFitToScreen={canvasState.handleFitToScreen}
+> 339 |                         openFileDialog={fileHandling.openFileDialog}
+      |                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  340 |                         uiVisible={uiVisible}
+  341 |                         setUiVisible={setUiVisible}
+  342 |                     />  react-hooks/refs
+  378:29  error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\wumbl\Documents\DEV\viteui\stable-diffusion-viteui-forge\client\src\components\InpaintCanvas\components\InpaintCanvas.tsx:378:29
+  376 |                 isDrawing={canvasState.isDrawing}
+  377 |                 setLastDrawPos={canvasState.setLastDrawPos}
+> 378 |                 isDragOver={fileHandling.isDragOver}
+      |                             ^^^^^^^^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  379 |                 handleDragOver={fileHandling.handleDragOver}
+  380 |                 handleDragLeave={fileHandling.handleDragLeave}
+  381 |                 handleDrop={fileHandling.handleDrop}            react-hooks/refs
+  379:33  error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\wumbl\Documents\DEV\viteui\stable-diffusion-viteui-forge\client\src\components\InpaintCanvas\components\InpaintCanvas.tsx:379:33
+  377 |                 setLastDrawPos={canvasState.setLastDrawPos}
+  378 |                 isDragOver={fileHandling.isDragOver}
+> 379 |                 handleDragOver={fileHandling.handleDragOver}
+      |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  380 |                 handleDragLeave={fileHandling.handleDragLeave}
+  381 |                 handleDrop={fileHandling.handleDrop}
+  382 |                 handleMouseDown={handleMouseDown}    react-hooks/refs
+  380:34  error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\wumbl\Documents\DEV\viteui\stable-diffusion-viteui-forge\client\src\components\InpaintCanvas\components\InpaintCanvas.tsx:380:34
+  378 |                 isDragOver={fileHandling.isDragOver}
+  379 |                 handleDragOver={fileHandling.handleDragOver}
+> 380 |                 handleDragLeave={fileHandling.handleDragLeave}
+      |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  381 |                 handleDrop={fileHandling.handleDrop}
+  382 |                 handleMouseDown={handleMouseDown}
+  383 |                 handleMouseMove={handleMouseMove}            react-hooks/refs
+  381:29  error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\wumbl\Documents\DEV\viteui\stable-diffusion-viteui-forge\client\src\components\InpaintCanvas\components\InpaintCanvas.tsx:381:29
+  379 |                 handleDragOver={fileHandling.handleDragOver}
+  380 |                 handleDragLeave={fileHandling.handleDragLeave}
+> 381 |                 handleDrop={fileHandling.handleDrop}
+      |                             ^^^^^^^^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  382 |                 handleMouseDown={handleMouseDown}
+  383 |                 handleMouseMove={handleMouseMove}
+  384 |                 handleMouseUp={handleMouseUp}                             react-hooks/refs
+  391:33  error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\wumbl\Documents\DEV\viteui\stable-diffusion-viteui-forge\client\src\components\InpaintCanvas\components\InpaintCanvas.tsx:391:33
+  389 |                 setBrushHardness={setBrushHardness}
+  390 |                 drawingMode={drawingMode}
+> 391 |                 openFileDialog={fileHandling.openFileDialog}
+      |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  392 |                 maskBlur={maskBlur}
+  393 |                 setMaskBlur={setMaskBlur}
+  394 |                 inpaintingFill={inpaintingFill}                                                               react-hooks/refs
+  429:22  error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\wumbl\Documents\DEV\viteui\stable-diffusion-viteui-forge\client\src\components\InpaintCanvas\components\InpaintCanvas.tsx:429:22
+  427 |             {/* Hidden file input */}
+  428 |             <input
+> 429 |                 ref={fileHandling.fileInputRef}
+      |                      ^^^^^^^^^^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  430 |                 type="file"
+  431 |                 accept="image/*"
+  432 |                 onChange={handleFileInput}                                                                                                                                                    react-hooks/refs
+
+C:\Users\wumbl\Documents\DEV\viteui\stable-diffusion-viteui-forge\client\src\components\InpaintCanvas\components\InpaintParametersPanel.tsx
+  2:10  error  'useState' is defined but never used  @typescript-eslint/no-unused-vars
+  4:10  error  'cn' is defined but never used        @typescript-eslint/no-unused-vars
+
+C:\Users\wumbl\Documents\DEV\viteui\stable-diffusion-viteui-forge\client\src\components\InpaintCanvas\components\ZoomToolbar.tsx
+  15:5  error  'uiVisible' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\wumbl\Documents\DEV\viteui\stable-diffusion-viteui-forge\client\src\components\InpaintCanvas\hooks\useCanvasState.tsx
+   63:46  error    Compilation Skipped: Existing memoization could not be preserved
+
+React Compiler has skipped optimizing this component because the existing manual memoization could not be preserved. The inferred dependencies did not match the manually specified dependencies, which could cause the value to change more or less frequently than expected. The inferred dependency was `imageRef`, but the source dependencies were [viewMode, inputImage, livePreview, generationWidth, generationHeight]. Inferred different dependency than source.
+
+C:\Users\wumbl\Documents\DEV\viteui\stable-diffusion-viteui-forge\client\src\components\InpaintCanvas\hooks\useCanvasState.tsx:63:46
+  61 |
+  62 |     // Utility functions
+> 63 |     const getDisplayDimensions = useCallback(() => {
+     |                                              ^^^^^^^
+> 64 |         if (!imageRef.current) {
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 65 |             return { width: 1, height: 1 };
+     ΓÇª
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 84 |         };
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 85 |     }, [viewMode, inputImage, livePreview, generationWidth, generationHeight]);
+     | ^^^^^^ Could not preserve existing manual memoization
+  86 |
+  87 |     const calculateFitToScreenScale = useCallback(() => {
+  88 |         if (!canvasRef.current || !imageRef.current) return 1;                                                                                                                                                                                                                                                                                                                                                                                           react-hooks/preserve-manual-memoization
+   85:8   warning  React Hook useCallback has a missing dependency: 'imageRef'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             react-hooks/exhaustive-deps
+   87:51  error    Compilation Skipped: Existing memoization could not be preserved
+
+React Compiler has skipped optimizing this component because the existing manual memoization could not be preserved. The inferred dependencies did not match the manually specified dependencies, which could cause the value to change more or less frequently than expected. The inferred dependency was `canvasRef`, but the source dependencies were [getDisplayDimensions, fitToScreenPadding]. Inferred different dependency than source.
+
+C:\Users\wumbl\Documents\DEV\viteui\stable-diffusion-viteui-forge\client\src\components\InpaintCanvas\hooks\useCanvasState.tsx:87:51
+   85 |     }, [viewMode, inputImage, livePreview, generationWidth, generationHeight]);
+   86 |
+>  87 |     const calculateFitToScreenScale = useCallback(() => {
+      |                                                   ^^^^^^^
+>  88 |         if (!canvasRef.current || !imageRef.current) return 1;
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+>  89 |
+      ΓÇª
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 107 |         return Math.max(0.01, Math.min(scale, 5.0));
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 108 |     }, [getDisplayDimensions, fitToScreenPadding]);
+      | ^^^^^^ Could not preserve existing manual memoization
+  109 |
+  110 |     const calculateCenterOffset = useCallback((_scale: number) => {
+  111 |         // The flexbox centering works for vertical alignment, but horizontal might need adjustment                                                                                                                                                                                            react-hooks/preserve-manual-memoization
+   87:51  error    Compilation Skipped: Existing memoization could not be preserved
+
+React Compiler has skipped optimizing this component because the existing manual memoization could not be preserved. The inferred dependencies did not match the manually specified dependencies, which could cause the value to change more or less frequently than expected. The inferred dependency was `imageRef`, but the source dependencies were [getDisplayDimensions, fitToScreenPadding]. Inferred different dependency than source.
+
+C:\Users\wumbl\Documents\DEV\viteui\stable-diffusion-viteui-forge\client\src\components\InpaintCanvas\hooks\useCanvasState.tsx:87:51
+   85 |     }, [viewMode, inputImage, livePreview, generationWidth, generationHeight]);
+   86 |
+>  87 |     const calculateFitToScreenScale = useCallback(() => {
+      |                                                   ^^^^^^^
+>  88 |         if (!canvasRef.current || !imageRef.current) return 1;
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+>  89 |
+      ΓÇª
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 107 |         return Math.max(0.01, Math.min(scale, 5.0));
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 108 |     }, [getDisplayDimensions, fitToScreenPadding]);
+      | ^^^^^^ Could not preserve existing manual memoization
+  109 |
+  110 |     const calculateCenterOffset = useCallback((_scale: number) => {
+  111 |         // The flexbox centering works for vertical alignment, but horizontal might need adjustment                                                                                                                                                                                             react-hooks/preserve-manual-memoization
+  108:8   warning  React Hook useCallback has missing dependencies: 'canvasRef' and 'imageRef'. Either include them or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           react-hooks/exhaustive-deps
+  110:48  error    '_scale' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        @typescript-eslint/no-unused-vars
+  162:8   warning  React Hook useEffect has a missing dependency: 'imageRef'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               react-hooks/exhaustive-deps
+  177:13  error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\wumbl\Documents\DEV\viteui\stable-diffusion-viteui-forge\client\src\components\InpaintCanvas\hooks\useCanvasState.tsx:177:13
+  175 |     useEffect(() => {
+  176 |         if (forceEditMode || livePreview) {
+> 177 |             setViewMode("edit");
+      |             ^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  178 |         } else if (displayImage) {
+  179 |             setViewMode("result");
+  180 |         } else if (inputImage) {                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     react-hooks/set-state-in-effect
+  190:17  error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\wumbl\Documents\DEV\viteui\stable-diffusion-viteui-forge\client\src\components\InpaintCanvas\hooks\useCanvasState.tsx:190:17
+  188 |             // When first entering preview mode, remember the canvas mask setting
+  189 |             if (!hasRememberedMaskSetting) {
+> 190 |                 setLastMaskVisibility(showMask);
+      |                 ^^^^^^^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  191 |                 setHasRememberedMaskSetting(true);
+  192 |             }
+  193 |             // Always hide mask in preview mode                                                                                                                                                                                                                                                                                                                                                                                                                                                                                react-hooks/set-state-in-effect
+  200:8   warning  React Hook useEffect has missing dependencies: 'hasRememberedMaskSetting', 'lastMaskVisibility', and 'showMask'. Either include them or remove the dependency array. You can also replace multiple useState variables with useReducer if 'setLastMaskVisibility' needs the current value of 'showMask'                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    react-hooks/exhaustive-deps
+  263:43  error    Compilation Skipped: Existing memoization could not be preserved
+
+React Compiler has skipped optimizing this component because the existing manual memoization could not be preserved. The inferred dependencies did not match the manually specified dependencies, which could cause the value to change more or less frequently than expected. The inferred dependency was `canvasRef`, but the source dependencies were [calculateFitToScreenScale, calculateCenterOffset]. Inferred different dependency than source.
+
+C:\Users\wumbl\Documents\DEV\viteui\stable-diffusion-viteui-forge\client\src\components\InpaintCanvas\hooks\useCanvasState.tsx:263:43
+  261 |     }, [calculateCenterOffset]);
+  262 |
+> 263 |     const handleFitToScreen = useCallback(() => {
+      |                                           ^^^^^^^
+> 264 |         if (!canvasRef.current || !imageRef.current) return;
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 265 |
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 266 |         const scale = calculateFitToScreenScale();
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 267 |         setZoom(scale);
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 268 |         setPanOffset(calculateCenterOffset(scale));
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 269 |         setFitToScreen(true);
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 270 |     }, [calculateFitToScreenScale, calculateCenterOffset]);
+      | ^^^^^^ Could not preserve existing manual memoization
+  271 |
+  272 |     // Pan functions
+  273 |     const startPan = useCallback((e: React.MouseEvent) => {  react-hooks/preserve-manual-memoization
+  263:43  error    Compilation Skipped: Existing memoization could not be preserved
+
+React Compiler has skipped optimizing this component because the existing manual memoization could not be preserved. The inferred dependencies did not match the manually specified dependencies, which could cause the value to change more or less frequently than expected. The inferred dependency was `imageRef`, but the source dependencies were [calculateFitToScreenScale, calculateCenterOffset]. Inferred different dependency than source.
+
+C:\Users\wumbl\Documents\DEV\viteui\stable-diffusion-viteui-forge\client\src\components\InpaintCanvas\hooks\useCanvasState.tsx:263:43
+  261 |     }, [calculateCenterOffset]);
+  262 |
+> 263 |     const handleFitToScreen = useCallback(() => {
+      |                                           ^^^^^^^
+> 264 |         if (!canvasRef.current || !imageRef.current) return;
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 265 |
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 266 |         const scale = calculateFitToScreenScale();
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 267 |         setZoom(scale);
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 268 |         setPanOffset(calculateCenterOffset(scale));
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 269 |         setFitToScreen(true);
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 270 |     }, [calculateFitToScreenScale, calculateCenterOffset]);
+      | ^^^^^^ Could not preserve existing manual memoization
+  271 |
+  272 |     // Pan functions
+  273 |     const startPan = useCallback((e: React.MouseEvent) => {   react-hooks/preserve-manual-memoization
+  270:8   warning  React Hook useCallback has missing dependencies: 'canvasRef' and 'imageRef'. Either include them or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           react-hooks/exhaustive-deps
+  273:34  error    Compilation Skipped: Existing memoization could not be preserved
+
+React Compiler has skipped optimizing this component because the existing manual memoization could not be preserved. The inferred dependencies did not match the manually specified dependencies, which could cause the value to change more or less frequently than expected. The inferred dependency was `panTargetRef`, but the source dependencies were []. Inferred dependency not present in source.
+
+C:\Users\wumbl\Documents\DEV\viteui\stable-diffusion-viteui-forge\client\src\components\InpaintCanvas\hooks\useCanvasState.tsx:273:34
+  271 |
+  272 |     // Pan functions
+> 273 |     const startPan = useCallback((e: React.MouseEvent) => {
+      |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 274 |         if (!panTargetRef.current) return;
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 275 |         e.preventDefault();
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 276 |         setPanType('shift');
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 277 |         panTargetRef.current.requestPointerLock();
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 278 |     }, []);
+      | ^^^^^^ Could not preserve existing manual memoization
+  279 |
+  280 |     const stopPan = useCallback(() => {
+  281 |         if (document.pointerLockElement) {                                                                                                                                                                                                                                                                                                                                                                                          react-hooks/preserve-manual-memoization
+  278:8   warning  React Hook useCallback has a missing dependency: 'panTargetRef'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         react-hooks/exhaustive-deps
+  336:8   warning  React Hook useEffect has a missing dependency: 'panTargetRef'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           react-hooks/exhaustive-deps
+
+C:\Users\wumbl\Documents\DEV\viteui\stable-diffusion-viteui-forge\client\src\components\InpaintCanvas\hooks\useDrawing.tsx
+  106:51  error    Error: Cannot access variable before it is declared
+
+`getMaskDataUrl` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+C:\Users\wumbl\Documents\DEV\viteui\stable-diffusion-viteui-forge\client\src\components\InpaintCanvas\hooks\useDrawing.tsx:106:51
+  104 |
+  105 |                         // Update the parent's inpaint mask state with the scaled mask
+> 106 |                         const scaledMaskDataUrl = getMaskDataUrl();
+      |                                                   ^^^^^^^^^^^^^^ `getMaskDataUrl` accessed before it is declared
+  107 |                         if (scaledMaskDataUrl) {
+  108 |                             setInpaintMask(scaledMaskDataUrl);
+  109 |                         }
+
+C:\Users\wumbl\Documents\DEV\viteui\stable-diffusion-viteui-forge\client\src\components\InpaintCanvas\hooks\useDrawing.tsx:182:5
+  180 |
+  181 |
+> 182 |     const getMaskDataUrl = useCallback(() => {
+      |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 183 |         if (!maskCanvasRef.current) return null;
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 184 |
+      ΓÇª
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 212 |         return exportCanvas.toDataURL("image/png");
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 213 |     }, []);
+      | ^^^^^^^^^^^^ `getMaskDataUrl` is declared here
+  214 |
+  215 |     // Calculate bounding box of mask pixels for padding visualization
+  216 |     const getMaskBounds = useCallback(() => {  react-hooks/immutability
+  134:8   warning  React Hook useEffect has missing dependencies: 'getMaskDataUrl', 'imageRef', 'maskCanvasRef', and 'setInpaintMask'. Either include them or remove the dependency array. If 'setInpaintMask' changes too often, find the parent component that defines it and wrap that definition in useCallback                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      react-hooks/exhaustive-deps
+  151:8   warning  React Hook useCallback has a missing dependency: 'imageRef'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         react-hooks/exhaustive-deps
+  179:8   warning  React Hook useCallback has a missing dependency: 'maskCanvasRef'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    react-hooks/exhaustive-deps
+  213:8   warning  React Hook useCallback has a missing dependency: 'maskCanvasRef'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    react-hooks/exhaustive-deps
+  257:8   warning  React Hook useCallback has a missing dependency: 'maskCanvasRef'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    react-hooks/exhaustive-deps
+  284:8   warning  React Hook useCallback has a missing dependency: 'maskCanvasRef'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    react-hooks/exhaustive-deps
+  294:8   warning  React Hook useCallback has a missing dependency: 'maskCanvasRef'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    react-hooks/exhaustive-deps
+  508:8   warning  React Hook useCallback has a missing dependency: 'maskCanvasRef'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    react-hooks/exhaustive-deps
+  547:8   warning  React Hook useCallback has a missing dependency: 'maskCanvasRef'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    react-hooks/exhaustive-deps
+  566:8   warning  React Hook useCallback has a missing dependency: 'maskCanvasRef'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    react-hooks/exhaustive-deps
+
+C:\Users\wumbl\Documents\DEV\viteui\stable-diffusion-viteui-forge\client\src\components\OptionPicker.tsx
+   27:9   error  'newPosition' is never reassigned. Use 'const' instead                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   prefer-const
+   39:5   error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\wumbl\Documents\DEV\viteui\stable-diffusion-viteui-forge\client\src\components\OptionPicker.tsx:39:5
+  37 |     }
+  38 |
+> 39 |     setPosition(newPosition);
+     |     ^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  40 |   }, [isOpen, triggerRef]);
+  41 |
+  42 |   return position;  react-hooks/set-state-in-effect
+  132:48  error  Error: Cannot call impure function during render
+
+`Math.random` is an impure function. Calling an impure function can produce unstable results that update unpredictably when the component happens to re-render. (https://react.dev/reference/rules/components-and-hooks-must-be-pure#components-and-hooks-must-be-idempotent).
+
+C:\Users\wumbl\Documents\DEV\viteui\stable-diffusion-viteui-forge\client\src\components\OptionPicker.tsx:132:48
+  130 |   const selectedOption = options.find(option => option.value === value);
+  131 |   const displayText = selectedOption ? selectedOption.label : placeholder;
+> 132 |   const dropdownId = `option-picker-dropdown-${Math.random().toString(36).substr(2, 9)}`;
+      |                                                ^^^^^^^^^^^^^ Cannot call impure function
+  133 |
+  134 |   // Measure the text width to set the container width
+  135 |   const textWidth = displayText.length * 8; // Rough estimate: 8px per character                                                 react-hooks/purity
+
+C:\Users\wumbl\Documents\DEV\viteui\stable-diffusion-viteui-forge\client\src\components\PromptComposer\PromptComposer.tsx
+  339:42  error    Compilation Skipped: Existing memoization could not be preserved
+
+React Compiler has skipped optimizing this component because the existing manual memoization could not be preserved. The inferred dependencies did not match the manually specified dependencies, which could cause the value to change more or less frequently than expected. The inferred dependency was `setNodes`, but the source dependencies were [jsonImportText]. Inferred different dependency than source.
+
+C:\Users\wumbl\Documents\DEV\viteui\stable-diffusion-viteui-forge\client\src\components\PromptComposer\PromptComposer.tsx:339:42
+  337 |     }, []);
+  338 |
+> 339 |     const handleJsonImport = useCallback(() => {
+      |                                          ^^^^^^^
+> 340 |         if (!jsonImportText.trim()) {
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 341 |             console.error("Please enter JSON data");
+      ΓÇª
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 355 |         }
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 356 |     }, [jsonImportText]);
+      | ^^^^^^ Could not preserve existing manual memoization
+  357 |
+  358 |     // Function to load data from a prompt that contains embedded data
+  359 |     const loadFromPrompt = useCallback((promptText: string) => {                                                                                             react-hooks/preserve-manual-memoization
+  356:8   warning  React Hook useCallback has a missing dependency: 'setNodes'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     react-hooks/exhaustive-deps
+  359:40  error    Compilation Skipped: Existing memoization could not be preserved
+
+React Compiler has skipped optimizing this component because the existing manual memoization could not be preserved. The inferred dependencies did not match the manually specified dependencies, which could cause the value to change more or less frequently than expected. The inferred dependency was `setNodes`, but the source dependencies were []. Inferred dependency not present in source.
+
+C:\Users\wumbl\Documents\DEV\viteui\stable-diffusion-viteui-forge\client\src\components\PromptComposer\PromptComposer.tsx:359:40
+  357 |
+  358 |     // Function to load data from a prompt that contains embedded data
+> 359 |     const loadFromPrompt = useCallback((promptText: string) => {
+      |                                        ^^^^^^^^^^^^^^^^^^^^^^^^^
+> 360 |         const match = promptText.match(/<betterpromptexport:([^>]+)>/);
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 361 |         if (match) {
+      ΓÇª
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 370 |         return false;
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 371 |     }, []);
+      | ^^^^^^ Could not preserve existing manual memoization
+  372 |
+  373 |     // Keyboard shortcuts
+  374 |     useEffect(() => {  react-hooks/preserve-manual-memoization
+  371:8   warning  React Hook useCallback has a missing dependency: 'setNodes'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     react-hooks/exhaustive-deps
+  390:36  error    Compilation Skipped: Existing memoization could not be preserved
+
+React Compiler has skipped optimizing this component because the existing manual memoization could not be preserved. The inferred dependencies did not match the manually specified dependencies, which could cause the value to change more or less frequently than expected. The inferred dependency was `setNodes`, but the source dependencies were []. Inferred dependency not present in source.
+
+C:\Users\wumbl\Documents\DEV\viteui\stable-diffusion-viteui-forge\client\src\components\PromptComposer\PromptComposer.tsx:390:36
+  388 |     }, [exportToJson, importFromJson]);
+  389 |
+> 390 |     const clearNodes = useCallback(() => {
+      |                                    ^^^^^^^
+> 391 |         setNodes([]);
+      | ^^^^^^^^^^^^^^^^^^^^^
+> 392 |     }, []);
+      | ^^^^^^ Could not preserve existing manual memoization
+  393 |
+  394 |     // Extract text chunks from PNG files
+  395 |     const extractPNGTextChunks = (arrayBuffer: ArrayBuffer): string => {                                                                                                                                                                                                                                                                                                                                                 react-hooks/preserve-manual-memoization
+  392:8   warning  React Hook useCallback has a missing dependency: 'setNodes'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     react-hooks/exhaustive-deps
+  520:38  error    Compilation Skipped: Existing memoization could not be preserved
+
+React Compiler has skipped optimizing this component because the existing manual memoization could not be preserved. The inferred dependencies did not match the manually specified dependencies, which could cause the value to change more or less frequently than expected. The inferred dependency was `setNodes`, but the source dependencies were [generateId, loadFromPrompt]. Inferred different dependency than source.
+
+C:\Users\wumbl\Documents\DEV\viteui\stable-diffusion-viteui-forge\client\src\components\PromptComposer\PromptComposer.tsx:520:38
+  518 |     };
+  519 |
+> 520 |     const loadFromFile = useCallback(() => {
+      |                                      ^^^^^^^
+> 521 |         const input = document.createElement("input");
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 522 |         input.type = "file";
+      ΓÇª
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 633 |         input.click();
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 634 |     }, [generateId, loadFromPrompt]);
+      | ^^^^^^ Could not preserve existing manual memoization
+  635 |
+  636 |     const simplePositiveNode = nodes.find(
+  637 |         (node) => node.type === 'text' && (node as TextNode).mode === 'simple-positive'                              react-hooks/preserve-manual-memoization
+  634:8   warning  React Hook useCallback has a missing dependency: 'setNodes'. Either include it or remove the dependency array. Outer scope values like 'generateId' aren't valid dependencies because mutating them doesn't re-render the component                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               react-hooks/exhaustive-deps
+
+C:\Users\wumbl\Documents\DEV\viteui\stable-diffusion-viteui-forge\client\src\components\PromptComposer\components\NodeComponent.tsx
+  16:67  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\wumbl\Documents\DEV\viteui\stable-diffusion-viteui-forge\client\src\components\PromptComposer\components\NodeField.tsx
+  14:11  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\wumbl\Documents\DEV\viteui\stable-diffusion-viteui-forge\client\src\components\PromptComposer\components\TagComponent.tsx
+  26:30  error  Error: Cannot access variable before it is declared
+
+`adjustInputWidth` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+C:\Users\wumbl\Documents\DEV\viteui\stable-diffusion-viteui-forge\client\src\components\PromptComposer\components\TagComponent.tsx:26:30
+  24 |             setInputValue(tag.value);
+  25 |             // Adjust width when tag value changes from props
+> 26 |             setTimeout(() => adjustInputWidth(tag.value), 0);
+     |                              ^^^^^^^^^^^^^^^^ `adjustInputWidth` accessed before it is declared
+  27 |         }, [tag.value]);
+  28 |
+  29 |         useEffect(() => {
+
+C:\Users\wumbl\Documents\DEV\viteui\stable-diffusion-viteui-forge\client\src\components\PromptComposer\components\TagComponent.tsx:35:9
+  33 |         }, [shouldFocus]);
+  34 |
+> 35 |         const adjustInputWidth = (value: string) => {
+     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 36 |             if (measureRef.current && inputRef.current) {
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 37 |                 // Measure the text width
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 38 |                 measureRef.current.textContent = value || "placeholder";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 39 |                 const width = measureRef.current.offsetWidth + 4; // Add some padding
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 40 |                 const clampedWidth = Math.max(40, width); // Clamp between min and max
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 41 |                 inputRef.current.style.width = `${clampedWidth}px`;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 42 |             }
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 43 |         };
+     | ^^^^^^^^^^^ `adjustInputWidth` is declared here
+  44 |
+  45 |         const handleInputChange = (value: string) => {
+  46 |             setInputValue(value);  react-hooks/immutability
+
+C:\Users\wumbl\Documents\DEV\viteui\stable-diffusion-viteui-forge\client\src\components\PromptComposer\node-contents\TagsNodeContent.tsx
+  53:25  error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\wumbl\Documents\DEV\viteui\stable-diffusion-viteui-forge\client\src\components\PromptComposer\node-contents\TagsNodeContent.tsx:53:25
+  51 |     <div className="tags-node-container">
+  52 |       <div className="tags-node">
+> 53 |         {node.value.map((tag, index) => {
+     |                         ^^^^^^^^^^^^^^^^^
+> 54 |           const shouldFocus = index === 0 && tag.value === '' && !hasFocusedInitialTag.current
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 55 |           if (shouldFocus) {
+     ΓÇª
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 68 |           )
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 69 |         })}
+     | ^^^^^^^^^^ Cannot access ref value during render
+  70 |         <button
+  71 |           className="button add-tag-button"
+  72 |           onClick={() => addTag('', true)}  react-hooks/refs
+
+C:\Users\wumbl\Documents\DEV\viteui\stable-diffusion-viteui-forge\client\src\components\PromptComposer\utils\legacyEncoding.ts
+    4:38  error  Unexpected any. Specify a different type                                   @typescript-eslint/no-explicit-any
+    4:55  error  Unexpected any. Specify a different type                                   @typescript-eslint/no-explicit-any
+    5:9   error  'globalKeys' is never reassigned. Use 'const' instead                      prefer-const
+    8:28  error  Unexpected any. Specify a different type                                   @typescript-eslint/no-explicit-any
+    8:34  error  Unexpected any. Specify a different type                                   @typescript-eslint/no-explicit-any
+   12:17  error  'newObj' is never reassigned. Use 'const' instead                          prefer-const
+   12:25  error  Unexpected any. Specify a different type                                   @typescript-eslint/no-explicit-any
+   13:22  error  'key' is never reassigned. Use 'const' instead                             prefer-const
+   14:25  error  Do not access Object.prototype method 'hasOwnProperty' from target object  no-prototype-builtins
+   33:58  error  Unexpected any. Specify a different type                                   @typescript-eslint/no-explicit-any
+   33:65  error  Unexpected any. Specify a different type                                   @typescript-eslint/no-explicit-any
+   34:9   error  'globalKeys' is never reassigned. Use 'const' instead                      prefer-const
+   37:28  error  Unexpected any. Specify a different type                                   @typescript-eslint/no-explicit-any
+   37:34  error  Unexpected any. Specify a different type                                   @typescript-eslint/no-explicit-any
+   41:17  error  'newObj' is never reassigned. Use 'const' instead                          prefer-const
+   41:25  error  Unexpected any. Specify a different type                                   @typescript-eslint/no-explicit-any
+   42:22  error  'keyIndex' is never reassigned. Use 'const' instead                        prefer-const
+   43:25  error  Do not access Object.prototype method 'hasOwnProperty' from target object  no-prototype-builtins
+   44:25  error  'key' is never reassigned. Use 'const' instead                             prefer-const
+   59:37  error  Unexpected any. Specify a different type                                   @typescript-eslint/no-explicit-any
+   71:31  error  Unexpected any. Specify a different type                                   @typescript-eslint/no-explicit-any
+   71:39  error  Unexpected any. Specify a different type                                   @typescript-eslint/no-explicit-any
+   85:58  error  Unexpected any. Specify a different type                                   @typescript-eslint/no-explicit-any
+  104:52  error  Unexpected any. Specify a different type                                   @typescript-eslint/no-explicit-any
+  112:73  error  Unexpected any. Specify a different type                                   @typescript-eslint/no-explicit-any
+  116:14  error  'e' is defined but never used                                              @typescript-eslint/no-unused-vars
+
+C:\Users\wumbl\Documents\DEV\viteui\stable-diffusion-viteui-forge\client\src\components\PromptComposer\utils\promptUtils.ts
+  13:9  error  Unexpected lexical declaration in case block         no-case-declarations
+  14:9  error  Unexpected lexical declaration in case block         no-case-declarations
+  15:9  error  Unexpected lexical declaration in case block         no-case-declarations
+  47:9  error  Unexpected lexical declaration in case block         no-case-declarations
+  48:9  error  Unexpected lexical declaration in case block         no-case-declarations
+  66:9  error  Unexpected lexical declaration in case block         no-case-declarations
+  72:9  error  Unexpected lexical declaration in case block         no-case-declarations
+  81:7  error  'positive' is never reassigned. Use 'const' instead  prefer-const
+  87:7  error  'negative' is never reassigned. Use 'const' instead  prefer-const
+
+C:\Users\wumbl\Documents\DEV\viteui\stable-diffusion-viteui-forge\client\src\components\PropertiesPanel.tsx
+   3:10  error  'ChevronRight' is defined but never used      @typescript-eslint/no-unused-vars
+   3:24  error  'Settings' is defined but never used          @typescript-eslint/no-unused-vars
+   3:43  error  'ImageIcon' is defined but never used         @typescript-eslint/no-unused-vars
+  24:5   error  'clipSkip' is defined but never used          @typescript-eslint/no-unused-vars
+  25:5   error  'onClipSkipChange' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\wumbl\Documents\DEV\viteui\stable-diffusion-viteui-forge\client\src\components\Sidebar.tsx
+   6:3  error  'Trash2' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               @typescript-eslint/no-unused-vars
+  56:7  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\wumbl\Documents\DEV\viteui\stable-diffusion-viteui-forge\client\src\components\Sidebar.tsx:56:7
+  54 |       }
+  55 |     } else if (!currentImage) {
+> 56 |       setCanvasDimensions({ width: 0, height: 0 })
+     |       ^^^^^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  57 |     }
+  58 |   }, [currentImage])
+  59 |  react-hooks/set-state-in-effect
+
+C:\Users\wumbl\Documents\DEV\viteui\stable-diffusion-viteui-forge\client\src\components\UpscaleDialog.tsx
+  24:7  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\wumbl\Documents\DEV\viteui\stable-diffusion-viteui-forge\client\src\components\UpscaleDialog.tsx:24:7
+  22 |   useEffect(() => {
+  23 |     if (selectedUpscaler) {
+> 24 |       setCurrentUpscaler(selectedUpscaler)
+     |       ^^^^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  25 |     }
+  26 |   }, [selectedUpscaler])
+  27 |                                                                                                   react-hooks/set-state-in-effect
+  32:7  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\wumbl\Documents\DEV\viteui\stable-diffusion-viteui-forge\client\src\components\UpscaleDialog.tsx:32:7
+  30 |     const savedUpscaler = localStorage.getItem('lastUpscaler')
+  31 |     if (savedUpscaler && availableUpscalers.find(u => u.name === savedUpscaler)) {
+> 32 |       setCurrentUpscaler(savedUpscaler)
+     |       ^^^^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  33 |     }
+  34 |   }, [availableUpscalers])
+  35 |  react-hooks/set-state-in-effect
+
+C:\Users\wumbl\Documents\DEV\viteui\stable-diffusion-viteui-forge\client\src\components\Welcome.tsx
+  13:9  error  'features' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\wumbl\Documents\DEV\viteui\stable-diffusion-viteui-forge\client\src\components\WorkspaceBrowser.tsx
+  29:9  error  Error: Cannot access variable before it is declared
+
+`loadStructure` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+C:\Users\wumbl\Documents\DEV\viteui\stable-diffusion-viteui-forge\client\src\components\WorkspaceBrowser.tsx:29:9
+  27 |
+  28 |     useEffect(() => {
+> 29 |         loadStructure();
+     |         ^^^^^^^^^^^^^ `loadStructure` accessed before it is declared
+  30 |     }, []);
+  31 |
+  32 |     useEffect(() => {
+
+C:\Users\wumbl\Documents\DEV\viteui\stable-diffusion-viteui-forge\client\src\components\WorkspaceBrowser.tsx:39:5
+  37 |
+  38 |     // Data loading
+> 39 |     const loadStructure = async (): Promise<void> => {
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 40 |         try {
+     | ^^^^^^^^^^^^^
+> 41 |             const data = await api.getWorkspaceStructure();
+     | ^^^^^^^^^^^^^
+> 42 |             setStructure(data.structure);
+     | ^^^^^^^^^^^^^
+> 43 |             setExpanded(new Set([data.structure?.path || "workspaces"]));
+     | ^^^^^^^^^^^^^
+> 44 |         } catch (error) {
+     | ^^^^^^^^^^^^^
+> 45 |             console.error("Failed to load workspace structure:", error);
+     | ^^^^^^^^^^^^^
+> 46 |         }
+     | ^^^^^^^^^^^^^
+> 47 |     };
+     | ^^^^^^^ `loadStructure` is declared here
+  48 |
+  49 |     // Tree expansion
+  50 |     const toggleExpanded = (path: string): void => {  react-hooks/immutability
+
+C:\Users\wumbl\Documents\DEV\viteui\stable-diffusion-viteui-forge\client\src\hooks\useWebSocketProgress.ts
+   13:18  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             @typescript-eslint/no-explicit-any
+  198:7   error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\wumbl\Documents\DEV\viteui\stable-diffusion-viteui-forge\client\src\hooks\useWebSocketProgress.ts:198:7
+  196 |     if (!taskId) {
+  197 |       console.log('Clearing progress and live preview')
+> 198 |       setProgress(null)
+      |       ^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  199 |       setLivePreview(null)
+  200 |     }
+  201 |   }, [taskId])  react-hooks/set-state-in-effect
+
+C:\Users\wumbl\Documents\DEV\viteui\stable-diffusion-viteui-forge\client\src\hooks\useWorkspaceTabs.ts
+  36:13  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\wumbl\Documents\DEV\viteui\stable-diffusion-viteui-forge\client\src\hooks\useWorkspaceTabs.ts:36:13
+  34 |             }
+  35 |
+> 36 |             setOpenWorkspaces(openWorkspacesData);
+     |             ^^^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  37 |
+  38 |             if (storedCurrent) {
+  39 |                 setCurrentWorkspace(storedCurrent);  react-hooks/set-state-in-effect
+
+C:\Users\wumbl\Documents\DEV\viteui\stable-diffusion-viteui-forge\client\src\types\components.ts
+  21:18  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\wumbl\Documents\DEV\viteui\stable-diffusion-viteui-forge\client\vite.config.js
+  12:11  error  'process' is not defined  no-undef
+  12:39  error  'process' is not defined  no-undef
+
+122 problems (98 errors, 24 warnings)
+  10 errors and 0 warnings potentially fixable with the `--fix` option.
+

@@ -17,7 +17,7 @@ import { composePromptsFromNodes, generateId } from "./components/PromptComposer
 import { encodeLegacy } from "./components/PromptComposer/utils/legacyEncoding";
 import type { Generation, ModelInfo, SamplerInfo, UpscalerInfo, WorkspaceInfo } from "./Api";
 import type { PromptNode } from "./components/PromptComposer/types";
-import type { Timeline, GenerationMode, Progress } from "./types/components";
+import type { Timeline, GenerationMode } from "./types/components";
 
 function App() {
     const [composerNodes, setComposerNodes] = useState<PromptNode[]>([]);
@@ -59,7 +59,7 @@ function App() {
     ];
 
     // WebSocket progress tracking
-    const { progress, isConnected, livePreview } = useWebSocketProgress(currentTaskId);
+    const { progress, livePreview } = useWebSocketProgress(currentTaskId);
 
     // Model and sampler settings
     const [models, setModels] = useState<ModelInfo[]>([]);
@@ -80,13 +80,10 @@ function App() {
             setTimeout(() => setForceInpaintEditMode(false), 100);
             // If there's a current image, use it as input for inpainting
             if (currentImage) {
-                setPreserveInpaintMask(true); // Preserve existing mask
                 setInputImage(currentImage);
-                setInputImageData(null);
             }
         } else {
             setForceInpaintEditMode(false);
-            setPreserveInpaintMask(false); // Don't preserve mask when not in inpaint mode
         }
     };
 
@@ -101,7 +98,6 @@ function App() {
     const [inpaintFullRes, setInpaintFullRes] = useState<boolean>(true);
     const [inpaintFullResPadding, setInpaintFullResPadding] = useState<number>(64);
     const [inpaintingMaskInvert, setInpaintingMaskInvert] = useState<boolean>(false);
-    const [canvasPadding, setCanvasPadding] = useState<number>(64);
     const [steps, setSteps] = useState<number>(20);
     const [cfgScale, setCfgScale] = useState<number>(7);
     const [width, setWidth] = useState<number>(512);
@@ -131,7 +127,6 @@ function App() {
 
     const [workspaces, setWorkspaces] = useState<WorkspaceInfo[]>([]);
     const [workspaceBrowserOpen, setWorkspaceBrowserOpen] = useState<boolean>(false);
-    const [inputImageData, setInputImageData] = useState<string | null>(null);
 
     // Save settings
     const [saveImages, setSaveImages] = useState(false);
@@ -141,7 +136,6 @@ function App() {
     const [propertiesCollapsed, setPropertiesCollapsed] = useState(true);
     const [showWelcome, setShowWelcome] = useState(true);
     const [forceInpaintEditMode, setForceInpaintEditMode] = useState(false);
-    const [preserveInpaintMask, setPreserveInpaintMask] = useState(false);
     const [pageLocked, setPageLocked] = useState(false);
 
     // Upscale dialog state
@@ -382,7 +376,6 @@ function App() {
         workspaceChangingRef.current = true;
         setCurrentImage(null);
         setInputImage(null);
-        setInputImageData(null);
         setWorkspacePromptLoaded(false);
         setComposerNodes([]);
         await loadWorkspaceGenerations(workspaceName);
@@ -405,7 +398,6 @@ function App() {
 
                 setCurrentImage(null);
                 setInputImage(null);
-                setInputImageData(null);
                 setWorkspacePromptLoaded(false);
                 setComposerNodes([]);
                 await loadWorkspaceGenerations(result.name);
@@ -426,7 +418,6 @@ function App() {
         if (currentWorkspace === workspaceName) {
             setCurrentImage(null);
             setInputImage(null);
-            setInputImageData(null);
             setWorkspacePromptLoaded(false);
             setComposerNodes([]);
             setTimeline({
@@ -609,7 +600,6 @@ function App() {
                     alert("Failed to load input image. The image may no longer be available. Please select a different input image.");
                     // Clear the invalid input image
                     setInputImage(null);
-                    setInputImageData(null);
                 } else {
                     alert("Network error occurred. Please check your connection and try again.");
                 }
@@ -719,7 +709,6 @@ function App() {
             const committedGeneration = { ...uploadedGeneration, status: 'commit' };
 
             setInputImage(getGenerationImageUrl(committedGeneration, 'full'));
-            setInputImageData(imageSrc);
 
             setTimeline((prev) => {
                 let committedHistory = prev.committedHistory;
@@ -791,10 +780,8 @@ function App() {
             // Update current image if it was the committed one
             const committedImageUrl = getGenerationImageUrl({ ...preview, status: 'commit' });
             setCurrentImage(committedImageUrl);
-            setInputImageData(null);
 
             if (generationMode === "inpaint") {
-                setPreserveInpaintMask(true);
                 setInputImage(committedImageUrl);
             } else if (generationMode !== "txt2img") {
                 setInputImage(committedImageUrl);
@@ -1166,7 +1153,6 @@ function App() {
                         setDenoisingStrength={setDenoisingStrength}
                         inpaintingMaskInvert={inpaintingMaskInvert}
                         setInpaintingMaskInvert={setInpaintingMaskInvert}
-                        canvasPadding={canvasPadding}
                         generationMode={generationMode}
                         canvasRefreshKey={canvasRefreshKey}
                     />
@@ -1193,7 +1179,6 @@ function App() {
                         setInpaintFullRes={() => { }}
                         inpaintingMaskInvert={inpaintingMaskInvert}
                         setInpaintingMaskInvert={setInpaintingMaskInvert}
-                        canvasPadding={canvasPadding}
                         // Image upload props for img2img mode
                         inputImage={generationMode === "img2img" ? inputImage : null}
                         onImageUpload={generationMode === "img2img" ? handleCanvasImageUpload : null}

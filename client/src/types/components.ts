@@ -246,7 +246,6 @@ export interface InpaintCanvasProps {
   setInpaintFullRes: (value: boolean) => void
   inpaintingMaskInvert: boolean
   setInpaintingMaskInvert: (value: boolean) => void
-  canvasPadding?: number
   generationMode?: GenerationMode
   canvasRefreshKey?: number
 }

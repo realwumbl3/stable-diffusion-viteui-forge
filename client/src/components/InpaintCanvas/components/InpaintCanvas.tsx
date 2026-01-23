@@ -47,7 +47,6 @@ const InpaintCanvas = ({
     setInpaintFullRes,
     inpaintingMaskInvert,
     setInpaintingMaskInvert,
-    canvasPadding,
     // Generation mode
     generationMode = "txt2img",
     // Canvas refresh key
@@ -89,7 +88,6 @@ const InpaintCanvas = ({
         canvasRef,
         imageRef,
         panTargetRef,
-        canvasPadding,
     });
 
     const drawing = useDrawing({
