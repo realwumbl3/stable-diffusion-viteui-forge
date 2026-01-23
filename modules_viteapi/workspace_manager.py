@@ -197,6 +197,25 @@ class WorkspaceManager:
         prompt_path.write_text(json.dumps(prompt_data, indent=2), encoding="utf-8")
         return prompt_data
 
+    def get_workspace_state(self, name: str) -> dict:
+        workspace_path = self._resolve_workspace_path(name)
+        state_path = self._state_file_path(workspace_path)
+        if state_path.exists():
+            try:
+                data = json.loads(state_path.read_text(encoding="utf-8"))
+            except Exception:
+                data = {}
+        else:
+            data = {}
+        return data
+
+    def save_workspace_state(self, name: str, payload: dict) -> dict:
+        workspace_path = self._resolve_workspace_path(name)
+        state_path = self._state_file_path(workspace_path)
+        state_path.parent.mkdir(parents=True, exist_ok=True)
+        state_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+        return payload
+
     def save_generation_images(self, workspace_name: str, images: list, mask_image: Optional[object] = None, generation_metadata: Optional[dict] = None, destination: str = "candidates") -> list[str]:
         workspace_path = self._resolve_workspace_path(workspace_name)
         destination_root = workspace_path / destination
@@ -559,6 +578,9 @@ class WorkspaceManager:
     def _prompt_file_path(self, workspace_path: Path) -> Path:
         return workspace_path / "prompt.json"
 
+    def _state_file_path(self, workspace_path: Path) -> Path:
+        return workspace_path / "state.json"
+
     def register_routes(self, api):
         """Register workspace API routes with the given API instance"""
         # Workspace routes
@@ -576,6 +598,10 @@ class WorkspaceManager:
 
         # Generations endpoint: /workspaces/{name}/generations
         api.add_api_route("/workspaces/{name:path}/generations", self.list_generations, methods=["GET"])
+
+        # State endpoint: /workspaces/{name}/state
+        api.add_api_route("/workspaces/{name:path}/state", self.get_workspace_state, methods=["GET"])
+        api.add_api_route("/workspaces/{name:path}/state", self.save_workspace_state, methods=["POST"])
 
         # Action routes
         api.add_api_route("/workspaces/{name:path}/commit", self.commit_workspace_image, methods=["POST"])

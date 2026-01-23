@@ -47,7 +47,7 @@ const Header = ({
   setWidth,
   height,
   setHeight,
-  inputImage
+  referenceImage
 }) => {
   return (
     <header className="studio-toolbar border-b-studio-border">
@@ -84,7 +84,7 @@ const Header = ({
             setWidth={setWidth}
             height={height}
             setHeight={setHeight}
-            inputImage={inputImage}
+            referenceImage={referenceImage}
           />
 
           <button

@@ -382,6 +382,17 @@ class StableDiffusionAPI {
     return this.request<Generation[]>(`/workspaces/${encodeURIComponent(workspaceName)}/generations`);
   }
 
+  async getWorkspaceState(workspaceName: string): Promise<Record<string, any>> {
+    return this.request<Record<string, any>>(`/workspaces/${encodeURIComponent(workspaceName)}/state`);
+  }
+
+  async saveWorkspaceState(workspaceName: string, state: Record<string, any>): Promise<Record<string, any>> {
+    return this.request<Record<string, any>>(`/workspaces/${encodeURIComponent(workspaceName)}/state`, {
+      method: 'POST',
+      body: JSON.stringify(state),
+    });
+  }
+
   // Move workspace or folder
   async moveWorkspaceItem(sourcePath: string, destinationPath: string): Promise<{ success: boolean; source_path: string; destination_path: string }> {
     return this.request(`/workspaces/move`, {

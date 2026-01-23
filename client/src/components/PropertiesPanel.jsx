@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { ChevronRight, Settings, Image as ImageIcon, Sliders } from "lucide-react";
 import { cn } from "../lib/utils";
-import ResolutionPicker from "./ResolutionPicker.jsx";
 import NumberSelector from "./NumberSelector.jsx";
 
 const PropertiesPanel = ({
@@ -9,10 +8,6 @@ const PropertiesPanel = ({
     onToggle,
     // Generation settings
     generationMode,
-    width,
-    setWidth,
-    height,
-    setHeight,
     batchSize,
     setBatchSize,
     denoisingStrength,
@@ -117,20 +112,7 @@ const PropertiesPanel = ({
                                             <div>
                                                 <label className="studio-label">Input Image</label>
                                                 <div className="space-y-2">
-                                                    <input
-                                                        type="file"
-                                                        accept="image/*"
-                                                        onChange={(e) => {
-                                                            const file = e.target.files[0];
-                                                            if (file) {
-                                                                const reader = new FileReader();
-                                                                reader.onload = (e) => onImageUpload(e.target.result);
-                                                                reader.readAsDataURL(file);
-                                                            }
-                                                        }}
-                                                        className="w-full text-sm text-studio-text file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-studio-accent file:text-studio-bg hover:file:bg-studio-accent/80"
-                                                    />
-                                                    {inputImage && (
+                                                    {inputImage ? (
                                                         <div className="relative">
                                                             <img
                                                                 src={inputImage}
@@ -138,12 +120,13 @@ const PropertiesPanel = ({
                                                                 alt="Input"
                                                                 className="w-full h-32 object-cover rounded-lg border border-studio-border"
                                                             />
-                                                            <button
-                                                                onClick={() => onImageUpload(null)}
-                                                                className="absolute top-2 right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600"
-                                                            >
-                                                                ×
-                                                            </button>
+                                                            <div className="mt-2 text-xs text-studio-textSecondary">
+                                                                Using current workspace image as input
+                                                            </div>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="w-full h-32 border-2 border-dashed border-studio-border rounded-lg flex items-center justify-center text-studio-textSecondary text-sm">
+                                                            No image selected for img2img
                                                         </div>
                                                     )}
                                                 </div>
@@ -211,14 +194,6 @@ const PropertiesPanel = ({
                                         </p>
                                     </div>
 
-                                    {/* Resolution Picker */}
-                                    <ResolutionPicker
-                                        width={width}
-                                        setWidth={setWidth}
-                                        height={height}
-                                        setHeight={setHeight}
-                                        inputImage={inputImage}
-                                    />
 
                                 </div>
                             )}

@@ -55,7 +55,7 @@ const Sidebar = ({
     }
   }, [currentImage])
 
-  const previewImage = getGenerationImageUrl ? getGenerationImageUrl(timeline.currentPreview) : timeline.currentPreview?.image
+  const previewImage = getGenerationImageUrl ? getGenerationImageUrl(timeline.currentPreview, "preview") : timeline.currentPreview?.image
   const hasQueueItems = timeline.generationQueue.length > 0
   const hasCommitted = timeline.committedHistory.length > 0
   const hasDiscarded = timeline.discarded.length > 0

@@ -39,7 +39,7 @@ export function resolveImageSrc(value?: string | null, kind: "full" | "preview" 
   if (value.startsWith("data:") || value.startsWith("http")) return value
   const workspaceInfo = parseWorkspaceImage(value)
   if (!workspaceInfo) return value
-
+  
   // Extract category and genid from path
   const pathParts = workspaceInfo.path.split('/')
   if (pathParts.length >= 2 && ['candidates', 'commits', 'rejects'].includes(pathParts[0])) {

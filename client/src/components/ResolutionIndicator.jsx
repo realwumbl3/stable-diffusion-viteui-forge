@@ -10,7 +10,7 @@ const ResolutionIndicator = ({
   setWidth,
   height,
   setHeight,
-  inputImage
+  referenceImage
 }) => {
   const [isOpen, setIsOpen] = useState(false)
   const indicatorRef = useRef(null)
@@ -71,7 +71,7 @@ const ResolutionIndicator = ({
               setWidth={setWidth}
               height={height}
               setHeight={setHeight}
-              inputImage={inputImage}
+              referenceImage={referenceImage}
             />
           </div>
         </div>

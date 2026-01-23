@@ -25,7 +25,6 @@ const useMemoryUsage = () => {
 
 const StatusBar = ({
     displayImage,
-    inputImage,
     zoom,
     brushSize,
     brushHardness,
@@ -38,20 +37,16 @@ const StatusBar = ({
         <div className="studio-toolbar justify-between text-xs text-studio-textSecondary ps-2 pe-2">
             <div className="flex items-center gap-4">
                 <span>Inpaint Canvas</span>
-                {(displayImage || inputImage) && (
+                {displayImage && (
                     <>
                         <span>•</span>
                         <span>{zoom !== 1 ? `${Math.round(zoom * 100)}%` : "Fit to screen"}</span>
-                        {inputImage && (
-                            <>
-                                <span>•</span>
-                                <span>Brush: {brushSize}px</span>
-                                <span>•</span>
-                                <span>Hardness: {Math.round(brushHardness * 100)}%</span>
-                                <span>•</span>
-                                <span>Mode: {drawingMode}</span>
-                            </>
-                        )}
+                        <span>•</span>
+                        <span>Brush: {brushSize}px</span>
+                        <span>•</span>
+                        <span>Hardness: {Math.round(brushHardness * 100)}%</span>
+                        <span>•</span>
+                        <span>Mode: {drawingMode}</span>
                     </>
                 )}
                 {progress && loading && (

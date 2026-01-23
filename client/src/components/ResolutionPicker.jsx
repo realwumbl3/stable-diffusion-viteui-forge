@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { ChevronDown, ChevronUp, Lock, Unlock } from 'lucide-react'
-import { cn } from '../lib/utils'
+import { cn, parseWorkspaceImage, resolveMetaSrc } from '../lib/utils'
 
 const ResolutionPicker = ({
   width,
@@ -10,7 +10,7 @@ const ResolutionPicker = ({
   collapsed: externalCollapsed,
   onToggleCollapsed,
   className,
-  inputImage
+  referenceImage
 }) => {
   const [selectedAspectRatio, setSelectedAspectRatio] = useState('1:1')
   const [internalCollapsed, setInternalCollapsed] = useState(false)
@@ -76,19 +76,35 @@ const ResolutionPicker = ({
   const availableResolutions = currentAspectRatio ? getResolutionsForAspectRatio(currentAspectRatio) : []
 
   // Function to match source image resolution
-  const matchSourceResolution = () => {
-    if (!inputImage) return
+  const matchSourceResolution = async () => {
+    if (!referenceImage) return
 
-    const img = new Image()
-    img.onload = () => {
-      // Ensure dimensions are divisible by 64 (common SD requirement)
-      const sourceWidth = Math.round(img.width / 64) * 64
-      const sourceHeight = Math.round(img.height / 64) * 64
+    // Try to get metadata from workspace first (fast)
+    const workspaceInfo = parseWorkspaceImage(referenceImage)
 
-      setWidth(sourceWidth)
-      setHeight(sourceHeight)
+    if (workspaceInfo) {
+      try {
+        const metaUrl = resolveMetaSrc(referenceImage)
+        if (metaUrl) {
+          const response = await fetch(metaUrl)
+          if (response.ok) {
+            const metadata = await response.json()
+            // Ensure dimensions are divisible by 64 (common SD requirement)
+            const sourceWidth = Math.round(metadata.full_width / 64) * 64
+            const sourceHeight = Math.round(metadata.full_height / 64) * 64
+            if (sourceWidth !== width || sourceHeight !== height) {
+              console.log('Source resolution is not divisible by 64, resolution was altered.');
+            }
+            setWidth(sourceWidth)
+            setHeight(sourceHeight)
+            return
+          }
+        }
+      } catch (error) {
+        console.warn('Failed to fetch workspace metadata, falling back to image loading:', error)
+      }
     }
-    img.src = inputImage
+    debugger;
   }
 
   // Handle aspect ratio lock toggle
@@ -229,7 +245,7 @@ const ResolutionPicker = ({
           </div>
 
           {/* Match Source Resolution Button */}
-          {inputImage && (
+          {referenceImage && (
             <button
               onClick={(e) => {
                 e.stopPropagation() // Prevent toggling when clicking button
@@ -238,7 +254,7 @@ const ResolutionPicker = ({
               className="studio-btn-secondary w-full py-2 px-3 text-sm transition-all duration-200 hover:bg-studio-panelHover"
               title="Match the resolution of the input image"
             >
-              Match Source Resolution
+              Match Image Resolution
             </button>
           )}
         </div>
@@ -304,20 +320,18 @@ const ResolutionPicker = ({
           </div>
 
           {/* Match Source Resolution Button */}
-          {inputImage && (
-            <div>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation() // Prevent toggling when clicking button
-                  matchSourceResolution()
-                }}
-                className="studio-btn-secondary w-full py-2 px-3 text-sm transition-all duration-200 hover:bg-studio-panelHover"
-                title="Match the resolution of the input image"
-              >
-                Match Source Resolution
-              </button>
-            </div>
-          )}
+          {
+            <button
+              onClick={(e) => {
+                e.stopPropagation() // Prevent toggling when clicking button
+                matchSourceResolution()
+              }}
+              className="studio-btn-secondary w-full py-2 px-3 text-sm transition-all duration-200 hover:bg-studio-panelHover"
+              title="Match the resolution of the input image"
+            >
+              Match Image Resolution
+            </button>
+          }
 
           {/* Aspect Ratio Picker */}
           <div>

@@ -9,7 +9,6 @@ const CanvasArea = ({
     maskCanvasRef,
     imageRef,
     displayImage,
-    inputImage,
     livePreview,
     loading,
     progress,
@@ -56,8 +55,8 @@ const CanvasArea = ({
     maskBounds = null,
     canvasRefreshKey = 0,
 }) => {
-    // Always use input image for canvas layout in edit mode - livePreview is purely cosmetic
-    const baseImageSrc = viewMode === "edit" ? inputImage || displayImage : displayImage || inputImage;
+    // Always use display image for canvas layout in edit mode - livePreview is purely cosmetic
+    const baseImageSrc = displayImage;
     const mainImageSrc = baseImageSrc && canvasRefreshKey > 0 
         ? `${baseImageSrc}?refresh=${canvasRefreshKey}` 
         : baseImageSrc;
@@ -95,14 +94,14 @@ const CanvasArea = ({
     // Supported tools that show brush indicator
     const supportedBrushTools = ["brush", "erase"];
 
-    // Show brush indicator when input image is available, drawing mode is supported, and we're in inpaint mode
+    // Show brush indicator when display image is available, drawing mode is supported, and we're in inpaint mode
     useEffect(() => {
-        if (inputImage && supportedBrushTools.includes(drawingMode) && generationMode === "inpaint") {
+        if (displayImage && supportedBrushTools.includes(drawingMode) && generationMode === "inpaint") {
             setShowBrushIndicator(true);
         } else {
             setShowBrushIndicator(false);
         }
-    }, [inputImage, drawingMode, generationMode]);
+    }, [displayImage, drawingMode, generationMode]);
 
     // Alt + scroll for brush size adjustment
     useEffect(() => {
@@ -184,7 +183,7 @@ const CanvasArea = ({
     }, [zoom]);
 
     // Loading State - Show when generating
-    if (loading && !displayImage && !inputImage) {
+    if (loading && !displayImage) {
         return (
             <div className="flex-1 overflow-hidden min-h-0" style={{ minHeight: "400px" }}>
                 <div className="relative w-full h-full flex items-center justify-center p-8">
@@ -219,7 +218,7 @@ const CanvasArea = ({
     }
 
     // Image Display with Mask Overlay
-    if (displayImage || inputImage) {
+    if (displayImage) {
         return (
             <div className="flex-1 overflow-hidden min-h-0" style={{ minHeight: "400px" }}>
                 <div
@@ -285,13 +284,7 @@ const CanvasArea = ({
 
                         {/* Main Image */}
                         <img
-                            key={
-                                viewMode === "edit"
-                                    ? inputImage
-                                        ? "input-image"
-                                        : "current-image"
-                                    : "result-image"
-                            }
+                            key={viewMode === "edit" ? "edit-image" : "result-image"}
                             ref={imageRef}
                             src={mainImageSrc}
                             crossOrigin="anonymous"

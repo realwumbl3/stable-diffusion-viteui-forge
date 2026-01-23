@@ -9,7 +9,7 @@ interface Bounds {
 
 
 interface UseDrawingParams {
-    inputImage: string | null;
+    image: string | null;
     setInpaintMask: React.Dispatch<React.SetStateAction<string | null>>;
     inpaintFullRes: boolean;
     inpaintFullResPadding: number;
@@ -26,7 +26,7 @@ interface UseDrawingParams {
 }
 
 export function useDrawing({
-    inputImage,
+    image,
     setInpaintMask,
     inpaintFullRes,
     inpaintFullResPadding,
@@ -51,7 +51,7 @@ export function useDrawing({
 
     // Initialize canvases when input image loads (not when result changes)
     useEffect(() => {
-        if (!inputImage || !imageRef.current) return;
+        if (!image || !imageRef.current) return;
 
         const img = imageRef.current;
 
@@ -131,7 +131,7 @@ export function useDrawing({
         return () => {
             img.removeEventListener("load", initializeCanvases);
         };
-    }, [inputImage]);
+    }, [image]);
 
     // Drawing functions
     const getCanvasCoordinates = useCallback((e: React.MouseEvent<HTMLImageElement>) => {

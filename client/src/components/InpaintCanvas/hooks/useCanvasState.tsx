@@ -2,7 +2,6 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 
 interface UseCanvasStateProps {
     displayImage: string | null;
-    inputImage: string | null;
     livePreview: boolean;
     generationWidth: number | null;
     generationHeight: number | null;
@@ -18,7 +17,6 @@ interface UseCanvasStateProps {
 export function useCanvasState(props: UseCanvasStateProps) {
     const {
         displayImage,
-        inputImage,
         livePreview,
         generationWidth,
         generationHeight,
@@ -66,9 +64,9 @@ export function useCanvasState(props: UseCanvasStateProps) {
             return { width: 1, height: 1 };
         }
 
-        // Always use input image dimensions for canvas sizing in edit mode
+        // Always use display image dimensions for canvas sizing in edit mode
         // Live preview should be purely cosmetic and not affect canvas layout
-        if (viewMode === "edit" && inputImage) {
+        if (viewMode === "edit" && displayImage) {
             return {
                 width: imageRef.current.naturalWidth || 1,
                 height: imageRef.current.naturalHeight || 1,
@@ -83,7 +81,7 @@ export function useCanvasState(props: UseCanvasStateProps) {
             width: imageRef.current.naturalWidth || 1,
             height: imageRef.current.naturalHeight || 1,
         };
-    }, [viewMode, inputImage, livePreview, generationWidth, generationHeight]);
+    }, [viewMode, displayImage, livePreview, generationWidth, generationHeight]);
 
     const calculateFitToScreenScale = useCallback(() => {
         if (!canvasRef.current || !imageRef.current) return 1;
@@ -117,7 +115,7 @@ export function useCanvasState(props: UseCanvasStateProps) {
     // Auto-fit to screen when image changes
     useEffect(() => {
         // Only fit when the actual displayed image changes, not when livePreview appears as overlay
-        const shouldFit = (displayImage || inputImage) && fitToScreen && !livePreview;
+        const shouldFit = displayImage && fitToScreen && !livePreview;
         if (shouldFit) {
             const attemptFitToScreen = () => {
                 // Check if image is loaded and has valid dimensions
@@ -162,7 +160,6 @@ export function useCanvasState(props: UseCanvasStateProps) {
         }
     }, [
         displayImage,
-        inputImage,
         generationWidth,
         generationHeight,
         fitToScreen,
@@ -178,10 +175,8 @@ export function useCanvasState(props: UseCanvasStateProps) {
             setViewMode("edit");
         } else if (displayImage) {
             setViewMode("result");
-        } else if (inputImage) {
-            setViewMode("edit");
         }
-    }, [displayImage, inputImage, forceEditMode, livePreview]);
+    }, [displayImage, forceEditMode, livePreview]);
 
     // Manage mask visibility during preview mode
     useEffect(() => {

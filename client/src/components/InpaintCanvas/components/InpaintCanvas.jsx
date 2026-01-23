@@ -28,7 +28,6 @@ const InpaintCanvas = ({
     brushSize: initialBrushSize = 16,
     drawingMode: initialDrawingMode = "brush",
     // Image upload props
-    inputImage,
     onImageUpload,
     // Full resolution inpainting props
     inpaintFullRes,
@@ -54,7 +53,6 @@ const InpaintCanvas = ({
 }) => {
     const displayImage = previewImage || currentImage;
     const resolvedDisplayImage = resolveImageSrc(displayImage, "full");
-    const resolvedInputImage = resolveImageSrc(inputImage, "full");
     const resolvedPreviewImage = resolveImageSrc(previewImage, "full");
     const resolvedCurrentImage = resolveImageSrc(currentImage, "full");
 
@@ -79,7 +77,6 @@ const InpaintCanvas = ({
     // Initialize hooks
     const canvasState = useCanvasState({
         displayImage: resolvedDisplayImage,
-        inputImage: resolvedInputImage,
         livePreview,
         generationWidth,
         generationHeight,
@@ -92,7 +89,7 @@ const InpaintCanvas = ({
     });
 
     const drawing = useDrawing({
-        inputImage: resolvedInputImage,
+        image: resolvedDisplayImage,
         setInpaintMask,
         inpaintFullRes,
         inpaintFullResPadding,
@@ -157,7 +154,7 @@ const InpaintCanvas = ({
     useEffect(() => {
         const panElement = panTargetRef.current;
         const canvasElement = canvasRef.current;
-        if (!panElement || !canvasElement || (!displayImage && !inputImage && !livePreview)) return;
+        if (!panElement || !canvasElement || (!displayImage && !livePreview)) return;
 
         const handleWheelEvent = (e) => {
             // Skip zoom if Alt is held (reserved for brush size adjustment)
@@ -212,7 +209,7 @@ const InpaintCanvas = ({
 
     // Mouse event handlers that use the hooks
     const handleMouseDown = (e) => {
-        if (!(inputImage || displayImage || livePreview)) return;
+        if (!(displayImage || livePreview)) return;
 
         // Handle right-click panning
         if (e.button === 2) {
@@ -261,7 +258,7 @@ const InpaintCanvas = ({
             canvasState.mouseButtonDown &&
             !canvasState.isDrawing &&
             canvasState.drawingStartedOnCanvas &&
-            inputImage &&
+            displayImage &&
             generationMode === "inpaint"
         ) {
             // Only resume if entering over a valid target
@@ -296,7 +293,7 @@ const InpaintCanvas = ({
     return (
         <main className="studio-canvas relative flex flex-col min-h-0">
             {/* Left Toolbar - Mask Controls */}
-            {isInpaintMode && (displayImage || inputImage) && !canvasState.isDrawing && (
+            {isInpaintMode && displayImage && !canvasState.isDrawing && (
                 <div className={`absolute top-4 left-4 z-10 transition-opacity duration-200 ${uiVisible ? 'opacity-100' : 'opacity-0'}`}>
                     <InpaintToolbar
                         drawingMode={drawingMode}
@@ -326,7 +323,7 @@ const InpaintCanvas = ({
             )}
 
             {/* Right Toolbar - Image Controls */}
-            {(displayImage || inputImage) && !canvasState.isDrawing && (
+            {displayImage && !canvasState.isDrawing && (
                 <div className={`absolute top-4 right-4 z-10 transition-opacity duration-200 ${uiVisible ? 'opacity-100' : 'opacity-0'}`}>
                     <ZoomToolbar
                         zoom={canvasState.zoom}
@@ -353,7 +350,6 @@ const InpaintCanvas = ({
                 overlayCanvasRef={overlayCanvasRef}
                 imageRef={imageRef}
                 displayImage={resolvedDisplayImage}
-                inputImage={resolvedInputImage}
                 previewImage={resolvedPreviewImage}
                 currentImage={resolvedCurrentImage}
                 livePreview={livePreview}
@@ -416,7 +412,6 @@ const InpaintCanvas = ({
             {/* Status Bar */}
             <StatusBar
                 displayImage={displayImage}
-                inputImage={inputImage}
                 zoom={canvasState.zoom}
                 brushSize={brushSize}
                 brushHardness={brushHardness}
