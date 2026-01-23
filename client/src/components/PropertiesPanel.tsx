@@ -1,6 +1,6 @@
 // VITE UI
 import { useState } from "react";
-import { ChevronRight, Settings, Image as ImageIcon, Sliders } from "lucide-react";
+import { Sliders } from "lucide-react";
 import { cn } from "../lib/utils";
 import ResolutionPicker from "./ResolutionPicker";
 import NumberSelector from "./NumberSelector";
@@ -21,8 +21,6 @@ const PropertiesPanel = ({
     setDenoisingStrength,
     inputImage,
     onImageUpload,
-    clipSkip,
-    onClipSkipChange,
     saveImages,
     setSaveImages,
 }: PropertiesPanelProps) => {

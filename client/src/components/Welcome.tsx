@@ -1,21 +1,10 @@
 // VITE UI
 import {
-  Wand2,
-  Zap,
-  Palette,
-  Layers,
-  Download
+  Wand2
 } from 'lucide-react'
 import type { WelcomeProps } from '../types/components';
 
 const Welcome = ({ onGetStarted }: WelcomeProps) => {
-
-  const features = [
-    { icon: Zap, title: 'Fast Generation', desc: 'Generate images in seconds with advanced AI' },
-    { icon: Palette, title: 'Professional Quality', desc: 'Studio-grade results with fine-tuned controls' },
-    { icon: Layers, title: 'Advanced Controls', desc: 'Full control over prompts, models, and parameters' },
-    { icon: Download, title: 'Easy Export', desc: 'Save and export your creations instantly' }
-  ]
 
   return (
     <div className="studio-canvas flex items-center justify-center p-8">

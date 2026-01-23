@@ -13,7 +13,7 @@ interface NodeComponentProps {
   index: number
   onUpdate: (updates: Partial<PromptNode>) => void
   onRemove: () => void
-  onAddNode: (type: NodeType, index?: number, options?: { value?: any }) => void
+  onAddNode: (type: NodeType, index?: number, options?: { value?: unknown }) => void
   generateId: () => string
 }
 

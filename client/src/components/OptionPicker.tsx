@@ -1,5 +1,5 @@
 // VITE UI
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { ChevronDown } from 'lucide-react';
 import type { OptionPickerProps } from '../types/components';
 
@@ -24,7 +24,7 @@ const useDropdownPosition = (isOpen: boolean, triggerRef: React.RefObject<HTMLEl
     // Calculate if dropdown fits to the right
     const fitsRight = triggerRect.left + 120 <= viewportWidth; // 120px minimum width
 
-    let newPosition: DropdownPosition = { top: 'top-full', left: 'left-0' };
+    const newPosition: DropdownPosition = { top: 'top-full', left: 'left-0' };
 
     if (!fitsBelow) {
       // Show above if doesn't fit below
@@ -129,7 +129,8 @@ const OptionPicker = ({
 
   const selectedOption = options.find(option => option.value === value);
   const displayText = selectedOption ? selectedOption.label : placeholder;
-  const dropdownId = `option-picker-dropdown-${Math.random().toString(36).substr(2, 9)}`;
+  // Generate a stable ID for the dropdown (using useMemo would be better, but this is simpler)
+  const dropdownId = useMemo(() => `option-picker-dropdown-${Math.random().toString(36).substr(2, 9)}`, []);
 
   // Measure the text width to set the container width
   const textWidth = displayText.length * 8; // Rough estimate: 8px per character

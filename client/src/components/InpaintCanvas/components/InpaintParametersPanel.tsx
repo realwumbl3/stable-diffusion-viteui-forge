@@ -1,7 +1,6 @@
 // VITE UI
-import { useState, useRef, useEffect } from "react";
+import { useRef, useEffect } from "react";
 import { Minus, Plus } from "lucide-react";
-import { cn } from "../../../lib/utils";
 import type { InpaintParametersPanelProps } from "../../../types/components";
 
 const InpaintParametersPanel = ({

@@ -10,7 +10,7 @@ export interface ProgressData {
   sampling_steps?: number
   live_preview?: string | null
   timestamp?: number
-  [key: string]: any
+  [key: string]: unknown
 }
 
 export interface WebSocketMessage extends ProgressData {

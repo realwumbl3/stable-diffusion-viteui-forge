@@ -18,7 +18,7 @@ export interface Progress {
   progress: number
   current_batch?: number
   total_batches?: number
-  [key: string]: any
+  [key: string]: unknown
 }
 
 // Header component props
@@ -34,7 +34,7 @@ export interface HeaderProps {
   currentWorkspace: string | null
   onWorkspaceChange: (workspace: string) => void
   onWorkspaceClose: (workspace: string) => void
-  onCreateWorkspace: () => void
+  onCreateWorkspace: (name: string) => void
   onOpenWorkspaceBrowser: () => void
   pageLocked: boolean
   onToggleLock: () => void
@@ -100,7 +100,7 @@ export interface WorkspaceTabsProps {
   currentWorkspace: string | null
   onWorkspaceChange: (workspace: string) => void
   onWorkspaceClose: (workspace: string) => void
-  onCreateWorkspace: () => void
+  onCreateWorkspace: (name: string) => void
   onOpenWorkspaceBrowser: () => void
 }
 
@@ -168,6 +168,7 @@ export interface PropertiesPanelProps {
   collapsed: boolean
   onToggle: () => void
   generationMode: GenerationMode
+  setGenerationMode: (mode: GenerationMode) => void
   width: number
   setWidth: (value: number) => void
   height: number
@@ -232,7 +233,7 @@ export interface InpaintCanvasProps {
   brushSize?: number
   drawingMode?: string
   inputImage?: string | null
-  onImageUpload: (image: string) => void
+  onImageUpload?: (image: string) => void
   inpaintFullRes: boolean
   inpaintFullResPadding: number
   setInpaintFullResPadding: (value: number) => void

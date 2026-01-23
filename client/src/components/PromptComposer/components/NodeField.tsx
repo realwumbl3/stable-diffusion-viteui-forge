@@ -11,7 +11,7 @@ interface NodeFieldProps {
 }
 
 interface AddNodeOptions {
-  value?: any
+  value?: unknown
 }
 
 function NodeField({

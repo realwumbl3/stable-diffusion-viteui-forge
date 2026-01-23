@@ -9,7 +9,7 @@ export function composePromptsFromNodes(nodes: PromptNode[]): { positive: string
     if (node.hidden) return
 
     switch (node.type) {
-      case 'tags':
+      case 'tags': {
         const tagsNode = node as TagsNode
         const positiveTags: string[] = []
         const negativeTags: string[] = []
@@ -42,8 +42,9 @@ export function composePromptsFromNodes(nodes: PromptNode[]): { positive: string
           negativeParts.push(negativeTags.join(', ') + ', ')
         }
         break
+      }
 
-      case 'text':
+      case 'text': {
         const textNode = node as TextNode
         const processedText = textNode.value
           .replace(/\n/g, ' ')
@@ -61,30 +62,33 @@ export function composePromptsFromNodes(nodes: PromptNode[]): { positive: string
           positiveParts.push(formattedText)
         }
         break
+      }
 
-      case 'group':
+      case 'group': {
         const groupResult = composePromptsFromNodes((node as GroupNode).value)
         if (groupResult.positive) positiveParts.push(groupResult.positive)
         if (groupResult.negative) negativeParts.push(groupResult.negative)
         break
+      }
 
-      case 'break':
+      case 'break': {
         const breakValue = `${(node as BreakNode).value.toUpperCase()}\n`
         positiveParts.push(breakValue)
         negativeParts.push(breakValue)
         break
+      }
     }
   }
 
   nodes.forEach(processNode)
 
-  let positive = positiveParts
+  const positive = positiveParts
     .join('')
     .replace(/, ,/g, ', ')
     .replace(/,+$/, '')
     .trim()
 
-  let negative = negativeParts
+  const negative = negativeParts
     .join('')
     .replace(/, ,/g, ', ')
     .replace(/,+$/, '')

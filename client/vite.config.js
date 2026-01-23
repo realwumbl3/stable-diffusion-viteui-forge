@@ -9,7 +9,7 @@ export default defineConfig({
     sourcemap: 'inline'
   },
   server: {
-    port: process.env.PORT ? parseInt(process.env.PORT) : 5173,
+    port: import.meta.env.PORT ? parseInt(import.meta.env.PORT) : 5173,
     host: true,
     watch: {
       ignored: ['**/venv/**', '**/node_modules/**', '**/backend/**', '**/models/**', '**/extensions/**', '**/k_diffusion/**', '**/scripts/**']

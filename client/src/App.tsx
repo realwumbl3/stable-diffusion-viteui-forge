@@ -1,5 +1,5 @@
 // VITE UI
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import api from "./Api";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { useWebSocketProgress } from "./hooks/useWebSocketProgress";
@@ -12,12 +12,12 @@ import UpscaleDialog from "./components/UpscaleDialog";
 import WorkspaceBrowser from "./components/WorkspaceBrowser";
 import { useTitleIconAnimation } from "./hooks/useTitleIconAnimation";
 import { useWorkspaceTabs } from "./hooks/useWorkspaceTabs";
-import { WORKSPACE_PREFIX, parseWorkspaceImage, resolveImageSrc, API_BASE_URL } from "./lib/utils";
+import { parseWorkspaceImage, resolveImageSrc, API_BASE_URL } from "./lib/utils";
 import { composePromptsFromNodes, generateId } from "./components/PromptComposer/utils/promptUtils";
 import { encodeLegacy } from "./components/PromptComposer/utils/legacyEncoding";
-import type { Generation, ModelInfo, SamplerInfo, UpscalerInfo, WorkspaceInfo } from "./Api";
+import type { Generation, ModelInfo, SamplerInfo, UpscalerInfo } from "./Api";
 import type { PromptNode } from "./components/PromptComposer/types";
-import type { Timeline, GenerationMode } from "./types/components";
+import type { Timeline, GenerationMode, Progress } from "./types/components";
 
 function App() {
     const [composerNodes, setComposerNodes] = useState<PromptNode[]>([]);
@@ -59,7 +59,13 @@ function App() {
     ];
 
     // WebSocket progress tracking
-    const { progress, livePreview } = useWebSocketProgress(currentTaskId);
+    const { progress: progressData, livePreview } = useWebSocketProgress(currentTaskId);
+
+    // Convert ProgressData to Progress type (ensure progress is number, not number | undefined)
+    const progress: Progress | null = progressData ? {
+        progress: progressData.progress ?? 0,
+        ...progressData
+    } : null;
 
     // Model and sampler settings
     const [models, setModels] = useState<ModelInfo[]>([]);
@@ -125,7 +131,6 @@ function App() {
         switchWorkspace
     } = useWorkspaceTabs();
 
-    const [workspaces, setWorkspaces] = useState<WorkspaceInfo[]>([]);
     const [workspaceBrowserOpen, setWorkspaceBrowserOpen] = useState<boolean>(false);
 
     // Save settings
@@ -156,158 +161,6 @@ function App() {
     });
 
     useTitleIconAnimation(loading);
-
-    useEffect(() => {
-        if (initialLoadRef.current) return;
-        initialLoadRef.current = true;
-        loadInitialData();
-        initializeWorkspace();
-    }, []);
-
-    // Debug logging for loading state changes
-    useEffect(() => {
-        console.log("Loading state changed:", loading);
-    }, [loading]);
-
-    // Handle page lock functionality
-    useEffect(() => {
-        const handleBeforeUnload = (e: BeforeUnloadEvent): string | undefined => {
-            if (pageLocked) {
-                e.preventDefault();
-                e.returnValue = ''; // Chrome requires returnValue to be set
-                return '';
-            }
-        };
-
-        if (pageLocked) {
-            window.addEventListener('beforeunload', handleBeforeUnload);
-        }
-
-        return () => {
-            window.removeEventListener('beforeunload', handleBeforeUnload);
-        };
-    }, [pageLocked]);
-
-    // Reset refresh key when currentImage changes
-    useEffect(() => {
-        setCanvasRefreshKey(0);
-    }, [currentImage]);
-
-    useEffect(() => {
-        if (!loading && pendingRestart) {
-            if (!composerPrompt.trim()) {
-                console.warn("Pending restart aborted because prompt is empty.");
-                setPendingRestart(false);
-                return;
-            }
-
-            setPendingRestart(false);
-            generateImage();
-        }
-    }, [loading, pendingRestart, composerPrompt]);
-
-    const loadInitialData = async (): Promise<void> => {
-        try {
-            const [modelsData, samplersData, optionsData] = await Promise.all([
-                api.getModels(),
-                api.getSamplers(),
-                api.getOptions(),
-            ]);
-
-            setModels(modelsData);
-            setSamplers(samplersData);
-
-            // Set currently loaded model
-            const currentModelTitle = optionsData.sd_model_checkpoint;
-            if (currentModelTitle) {
-                // Find the model in the list that matches the current title (which includes hash)
-                const currentModel = modelsData.find((model) => model.title === currentModelTitle);
-                if (currentModel) {
-                    setSelectedModel(currentModel.title);
-                } else {
-                    // If we can't find the exact match, try to find by hash or model name
-                    const hashMatch = currentModelTitle.match(/\[([a-f0-9]+)\]$/);
-                    if (hashMatch) {
-                        const hash = hashMatch[1];
-                        const fallbackModel = modelsData.find(
-                            (model) => model.hash === hash || model.title.includes(hash)
-                        );
-                        if (fallbackModel) {
-                            setSelectedModel(fallbackModel.title);
-                        } else if (modelsData.length > 0) {
-                            // Last resort: use first model
-                            setSelectedModel(modelsData[0].title);
-                        }
-                    } else if (modelsData.length > 0) {
-                        // Last resort: use first model
-                        setSelectedModel(modelsData[0].title);
-                    }
-                }
-            } else if (modelsData.length > 0) {
-                // Fallback to first model if no current model is set
-                setSelectedModel(modelsData[0].title);
-            }
-
-            // Set currently loaded clip skip
-            const currentClipSkip = optionsData.CLIP_stop_at_last_layers;
-            console.log("currentClipSkip", currentClipSkip);
-            if (currentClipSkip !== undefined && currentClipSkip !== null) {
-                setClipSkip(parseInt(currentClipSkip));
-            }
-        } catch (error) {
-            console.error("Error loading initial data:", error);
-        }
-    };
-
-    const initializeWorkspace = async (): Promise<void> => {
-        try {
-            workspaceChangingRef.current = true;
-            const data = await api.listWorkspaces();
-            const workspaces = data.workspaces || [];
-            setWorkspaces(workspaces);
-            if (workspaces.length > 0) {
-                // Check for stored workspace in localStorage
-                const lastWorkspace = localStorage.getItem('viteui-current-workspace');
-                let selectedWorkspace;
-
-                if (lastWorkspace && workspaces.find(ws => ws.name === lastWorkspace)) {
-                    // Use the stored workspace if it still exists
-                    selectedWorkspace = workspaces.find(ws => ws.name === lastWorkspace);
-                } else {
-                    // Fall back to most recently created workspace
-                    const sorted = [...workspaces].sort((a, b) => {
-                        const aTime = a.created ? new Date(a.created).getTime() : 0;
-                        const bTime = b.created ? new Date(b.created).getTime() : 0;
-                        return bTime - aTime;
-                    });
-                    selectedWorkspace = sorted[0];
-                }
-
-                openWorkspace(selectedWorkspace.name);
-                await loadWorkspaceGenerations(selectedWorkspace.name);
-                await loadWorkspacePrompt(selectedWorkspace.name);
-                setTimeout(() => {
-                    workspaceChangingRef.current = false;
-                }, 100);
-                return;
-            }
-
-            const created = await api.createWorkspace("untitled");
-            if (created?.name) {
-                openWorkspace(created.name);
-                // Add the newly created workspace to the list
-                setWorkspaces([created]);
-                await loadWorkspaceGenerations(created.name);
-                await loadWorkspacePrompt(created.name);
-                setTimeout(() => {
-                    workspaceChangingRef.current = false;
-                }, 100);
-            }
-        } catch (error) {
-            console.error("Failed to initialize workspace:", error);
-            workspaceChangingRef.current = false;
-        }
-    };
 
     const loadWorkspaceGenerations = async (workspaceName: string): Promise<void> => {
         if (!workspaceName) return;
@@ -362,129 +215,14 @@ function App() {
         }
     }
 
-    const handleWorkspaceChange = async (workspaceName: string): Promise<void> => {
-        if (!workspaceName) return;
-
-        // Ensure workspace is in tabs (should be handled by openWorkspace, but being safe)
-        if (!openWorkspaces.includes(workspaceName)) {
-            openWorkspace(workspaceName);
-        } else {
-            switchWorkspace(workspaceName);
-        }
-
-        // Load workspace data
-        workspaceChangingRef.current = true;
-        setCurrentImage(null);
-        setInputImage(null);
-        setWorkspacePromptLoaded(false);
-        setComposerNodes([]);
-        await loadWorkspaceGenerations(workspaceName);
-        await loadWorkspacePrompt(workspaceName);
-        // Small delay to ensure all state updates have settled
-        setTimeout(() => {
-            workspaceChangingRef.current = false;
-        }, 100);
+    const resetGenerationState = (): void => {
+        console.log("Resetting generation state: loading=false, currentTaskId=null");
+        setLoading(false);
+        setCurrentTaskId(null);
+        sessionStorage.removeItem('currentTaskId'); // Clear stored task ID
     };
 
-    const handleCreateWorkspace = async (name: string): Promise<void> => {
-        try {
-            workspaceChangingRef.current = true;
-            const result = await api.createWorkspace(name);
-            if (result?.name) {
-                // Add the new workspace to the list
-                setWorkspaces(prev => [...prev, result]);
-                // Open it in a new tab
-                openWorkspace(result.name);
-
-                setCurrentImage(null);
-                setInputImage(null);
-                setWorkspacePromptLoaded(false);
-                setComposerNodes([]);
-                await loadWorkspaceGenerations(result.name);
-                await loadWorkspacePrompt(result.name);
-                setTimeout(() => {
-                    workspaceChangingRef.current = false;
-                }, 100);
-            }
-        } catch (error) {
-            console.error("Failed to create workspace:", error);
-            workspaceChangingRef.current = false;
-        }
-    };
-
-    const handleWorkspaceClose = (workspaceName: string): void => {
-        closeWorkspace(workspaceName);
-        // If closing the current workspace, clear the workspace data
-        if (currentWorkspace === workspaceName) {
-            setCurrentImage(null);
-            setInputImage(null);
-            setWorkspacePromptLoaded(false);
-            setComposerNodes([]);
-            setTimeline({
-                generationQueue: [],
-                currentPreview: null,
-                committedHistory: [],
-                discarded: [],
-            });
-        }
-    };
-
-    const handleComposerNodesChange = (nodes: PromptNode[]): void => {
-        setComposerNodes(nodes);
-    };
-
-    useEffect(() => {
-        if (!currentWorkspace || !workspacePromptLoaded || workspaceChangingRef.current) return;
-        if (programmaticComposerUpdateRef.current) {
-            programmaticComposerUpdateRef.current = false;
-            return;
-        }
-        const payload = {
-            nodes: composerNodes,
-        };
-        const timer = setTimeout(() => {
-            api.saveWorkspacePrompt(currentWorkspace, payload).catch((error) => {
-                console.error("Failed to save workspace prompt:", error);
-            });
-        }, 500);
-        return () => clearTimeout(timer);
-    }, [composerNodes, currentWorkspace, workspacePromptLoaded]);
-
-    const toWorkspaceImage = (workspaceName: string, relativePath: string): string =>
-        `${WORKSPACE_PREFIX}${encodeURIComponent(workspaceName)}/${relativePath}`;
-
-    // Get image URL for a generation
-    const getGenerationImageUrl = (generation: Generation | null, size: 'preview' | 'full' = 'full'): string | null => {
-        if (!generation) return null;
-        const asset = size === 'preview' ? '512.png' : 'full.png';
-        const category = generation.status === 'commit' ? 'commits' : generation.status === 'reject' ? 'rejects' : 'candidates';
-        return `${API_BASE_URL}/api/workspaces/${encodeURIComponent(generation.workspace)}/${category}/${generation.genid}/${asset}`;
-    };
-
-    const fetchImageAsDataUrl = async (imageValue: string): Promise<string> => {
-        const imageUrl = resolveImageSrc(imageValue, "full");
-        const response = await fetch(imageUrl);
-        if (!response.ok) {
-            throw new Error(`Failed to fetch image: ${response.status}`);
-        }
-        const blob = await response.blob();
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result);
-            reader.onerror = reject;
-            reader.readAsDataURL(blob);
-        });
-    };
-
-    const getBase64Payload = async (imageValue: string | null): Promise<string | null> => {
-        if (!imageValue) return null;
-        if (typeof imageValue === "string" && imageValue.startsWith("data:")) {
-            return imageValue;
-        }
-        return await fetchImageAsDataUrl(imageValue);
-    };
-
-    const generateImage = async (): Promise<void> => {
+    const generateImage = useCallback(async (): Promise<void> => {
         setPendingRestart(false);
         if (!composerPrompt.trim()) return;
         if ((generationMode === "img2img" || generationMode === "inpaint") && timeline.committedHistory.length === 0) {
@@ -563,7 +301,7 @@ function App() {
                 };
                 data = await api.img2img(img2imgParams);
             } else if (generationMode === "inpaint") {
-                const maskBase64Data = inpaintMask.split(",")[1];
+                const maskBase64Data = inpaintMask!.split(",")[1];
                 const inpaintParams = {
                     ...baseParams,
                     genid: timeline.committedHistory[0].genid,
@@ -617,6 +355,303 @@ function App() {
             console.log("Finally block: resetting generation state");
             resetGenerationState();
         }
+    }, [
+        composerPrompt,
+        generationMode,
+        timeline.committedHistory,
+        inpaintMask,
+        currentWorkspace,
+        composerNodes,
+        composerNegativePrompt,
+        steps,
+        width,
+        height,
+        cfgScale,
+        selectedSampler,
+        batchSize,
+        count,
+        clipSkip,
+        saveImages,
+        denoisingStrength,
+        maskBlur,
+        inpaintingFill,
+        inpaintFullRes,
+        inpaintFullResPadding,
+        inpaintingMaskInvert,
+        loadWorkspaceGenerations,
+        resetGenerationState,
+    ]);
+
+    const initializeWorkspace = useCallback(async (): Promise<void> => {
+        try {
+            workspaceChangingRef.current = true;
+            const data = await api.listWorkspaces();
+            const workspaces = data.workspaces || [];
+            if (workspaces.length > 0) {
+                // Check for stored workspace in localStorage
+                const lastWorkspace = localStorage.getItem('viteui-current-workspace');
+                let selectedWorkspace;
+
+                if (lastWorkspace) {
+                    // Use the stored workspace if it still exists
+                    selectedWorkspace = workspaces.find(ws => ws.name === lastWorkspace);
+                }
+
+                if (!selectedWorkspace) {
+                    // Fall back to most recently created workspace
+                    const sorted = [...workspaces].sort((a, b) => {
+                        const aTime = a.created ? new Date(a.created).getTime() : 0;
+                        const bTime = b.created ? new Date(b.created).getTime() : 0;
+                        return bTime - aTime;
+                    });
+                    selectedWorkspace = sorted[0];
+                }
+
+                // selectedWorkspace is guaranteed to be defined at this point
+                openWorkspace(selectedWorkspace!.name);
+                await loadWorkspaceGenerations(selectedWorkspace!.name);
+                await loadWorkspacePrompt(selectedWorkspace!.name);
+                setTimeout(() => {
+                    workspaceChangingRef.current = false;
+                }, 100);
+                return;
+            }
+
+            const created = await api.createWorkspace("untitled");
+            if (created?.name) {
+                openWorkspace(created.name);
+                await loadWorkspaceGenerations(created.name);
+                await loadWorkspacePrompt(created.name);
+                setTimeout(() => {
+                    workspaceChangingRef.current = false;
+                }, 100);
+            }
+        } catch (error) {
+            console.error("Failed to initialize workspace:", error);
+            workspaceChangingRef.current = false;
+        }
+    }, [openWorkspace, loadWorkspaceGenerations, loadWorkspacePrompt]);
+
+    useEffect(() => {
+        if (initialLoadRef.current) return;
+        initialLoadRef.current = true;
+        loadInitialData();
+        initializeWorkspace();
+    }, [initializeWorkspace]);
+
+    // Debug logging for loading state changes
+    useEffect(() => {
+        console.log("Loading state changed:", loading);
+    }, [loading]);
+
+    // Handle page lock functionality
+    useEffect(() => {
+        const handleBeforeUnload = (e: BeforeUnloadEvent): string | undefined => {
+            if (pageLocked) {
+                e.preventDefault();
+                e.returnValue = ''; // Chrome requires returnValue to be set
+                return '';
+            }
+        };
+
+        if (pageLocked) {
+            window.addEventListener('beforeunload', handleBeforeUnload);
+        }
+
+        return () => {
+            window.removeEventListener('beforeunload', handleBeforeUnload);
+        };
+    }, [pageLocked]);
+
+    // Reset refresh key when currentImage changes
+    useEffect(() => {
+        setCanvasRefreshKey(0);
+    }, [currentImage]);
+
+    useEffect(() => {
+        if (!loading && pendingRestart) {
+            if (!composerPrompt.trim()) {
+                console.warn("Pending restart aborted because prompt is empty.");
+                setPendingRestart(false);
+                return;
+            }
+
+            setPendingRestart(false);
+            generateImage();
+        }
+    }, [loading, pendingRestart, composerPrompt, generateImage]);
+
+    const loadInitialData = async (): Promise<void> => {
+        try {
+            const [modelsData, samplersData, optionsData] = await Promise.all([
+                api.getModels(),
+                api.getSamplers(),
+                api.getOptions(),
+            ]);
+
+            setModels(modelsData);
+            setSamplers(samplersData);
+
+            // Set currently loaded model
+            const currentModelTitle = optionsData.sd_model_checkpoint;
+            if (currentModelTitle) {
+                // Find the model in the list that matches the current title (which includes hash)
+                const currentModel = modelsData.find((model) => model.title === currentModelTitle);
+                if (currentModel) {
+                    setSelectedModel(currentModel.title);
+                } else {
+                    // If we can't find the exact match, try to find by hash or model name
+                    const hashMatch = typeof currentModelTitle === 'string' ? currentModelTitle.match(/\[([a-f0-9]+)\]$/) : null;
+                    if (hashMatch) {
+                        const hash = hashMatch[1];
+                        const fallbackModel = modelsData.find(
+                            (model) => model.hash === hash || model.title.includes(hash)
+                        );
+                        if (fallbackModel) {
+                            setSelectedModel(fallbackModel.title);
+                        } else if (modelsData.length > 0) {
+                            // Last resort: use first model
+                            setSelectedModel(modelsData[0].title);
+                        }
+                    } else if (modelsData.length > 0) {
+                        // Last resort: use first model
+                        setSelectedModel(modelsData[0].title);
+                    }
+                }
+            } else if (modelsData.length > 0) {
+                // Fallback to first model if no current model is set
+                setSelectedModel(modelsData[0].title);
+            }
+
+            // Set currently loaded clip skip
+            const currentClipSkip = optionsData.CLIP_stop_at_last_layers;
+            console.log("currentClipSkip", currentClipSkip);
+            if (currentClipSkip !== undefined && currentClipSkip !== null) {
+                setClipSkip(parseInt(currentClipSkip as string));
+            }
+        } catch (error) {
+            console.error("Error loading initial data:", error);
+        }
+    };
+
+    const handleWorkspaceChange = async (workspaceName: string): Promise<void> => {
+        if (!workspaceName) return;
+
+        // Ensure workspace is in tabs (should be handled by openWorkspace, but being safe)
+        if (!openWorkspaces.includes(workspaceName)) {
+            openWorkspace(workspaceName);
+        } else {
+            switchWorkspace(workspaceName);
+        }
+
+        // Load workspace data
+        workspaceChangingRef.current = true;
+        setCurrentImage(null);
+        setInputImage(null);
+        setWorkspacePromptLoaded(false);
+        setComposerNodes([]);
+        await loadWorkspaceGenerations(workspaceName);
+        await loadWorkspacePrompt(workspaceName);
+        // Small delay to ensure all state updates have settled
+        setTimeout(() => {
+            workspaceChangingRef.current = false;
+        }, 100);
+    };
+
+    const handleCreateWorkspace = async (name: string): Promise<void> => {
+        try {
+            workspaceChangingRef.current = true;
+            const result = await api.createWorkspace(name);
+            if (result?.name) {
+                // Open it in a new tab
+                openWorkspace(result.name);
+
+                setCurrentImage(null);
+                setInputImage(null);
+                setWorkspacePromptLoaded(false);
+                setComposerNodes([]);
+                await loadWorkspaceGenerations(result.name);
+                await loadWorkspacePrompt(result.name);
+                setTimeout(() => {
+                    workspaceChangingRef.current = false;
+                }, 100);
+            }
+        } catch (error) {
+            console.error("Failed to create workspace:", error);
+            workspaceChangingRef.current = false;
+        }
+    };
+
+    const handleWorkspaceClose = (workspaceName: string): void => {
+        closeWorkspace(workspaceName);
+        // If closing the current workspace, clear the workspace data
+        if (currentWorkspace === workspaceName) {
+            setCurrentImage(null);
+            setInputImage(null);
+            setWorkspacePromptLoaded(false);
+            setComposerNodes([]);
+            setTimeline({
+                generationQueue: [],
+                currentPreview: null,
+                committedHistory: [],
+                discarded: [],
+            });
+        }
+    };
+
+    const handleComposerNodesChange = (nodes: PromptNode[]): void => {
+        setComposerNodes(nodes);
+    };
+
+    useEffect(() => {
+        if (!currentWorkspace || !workspacePromptLoaded || workspaceChangingRef.current) return;
+        if (programmaticComposerUpdateRef.current) {
+            programmaticComposerUpdateRef.current = false;
+            return;
+        }
+        const payload = {
+            nodes: composerNodes,
+        };
+        const timer = setTimeout(() => {
+            api.saveWorkspacePrompt(currentWorkspace, payload).catch((error) => {
+                console.error("Failed to save workspace prompt:", error);
+            });
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [composerNodes, currentWorkspace, workspacePromptLoaded]);
+
+    // Get image URL for a generation
+    const getGenerationImageUrl = (generation: Generation | null, size: 'preview' | 'full' = 'full'): string | null => {
+        if (!generation) return null;
+        const asset = size === 'preview' ? '512.png' : 'full.png';
+        const category = generation.status === 'commit' ? 'commits' : generation.status === 'reject' ? 'rejects' : 'candidates';
+        return `${API_BASE_URL}/api/workspaces/${encodeURIComponent(generation.workspace)}/${category}/${generation.genid}/${asset}`;
+    };
+
+    const fetchImageAsDataUrl = async (imageValue: string): Promise<string> => {
+        const imageUrl = resolveImageSrc(imageValue, "full");
+        if (!imageUrl) {
+            throw new Error("Invalid image URL");
+        }
+        const response = await fetch(imageUrl);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch image: ${response.status}`);
+        }
+        const blob = await response.blob();
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+        });
+    };
+
+    const getBase64Payload = async (imageValue: string | null): Promise<string | null> => {
+        if (!imageValue) return null;
+        if (typeof imageValue === "string" && imageValue.startsWith("data:")) {
+            return imageValue;
+        }
+        return await fetchImageAsDataUrl(imageValue);
     };
 
     const handleModelChange = async (modelTitle: string): Promise<void> => {
@@ -645,13 +680,6 @@ function App() {
         } catch (error) {
             console.error("Error skipping generation:", error);
         }
-    };
-
-    const resetGenerationState = (): void => {
-        console.log("Resetting generation state: loading=false, currentTaskId=null");
-        setLoading(false);
-        setCurrentTaskId(null);
-        sessionStorage.removeItem('currentTaskId'); // Clear stored task ID
     };
 
     const handleInterrupt = async (): Promise<void> => {
@@ -684,18 +712,17 @@ function App() {
         if (!currentWorkspace) return;
         try {
             const result = await api.importWorkspaceImage(currentWorkspace, imageSrc);
-            const workspaceImage = toWorkspaceImage(currentWorkspace, result.image_path);
 
             // Extract genid from the path (candidates/{genid}/full.png)
             const pathParts = result.image_path.split('/');
             const genid = pathParts.length >= 2 ? pathParts[1] : 'unknown';
 
             // Create a Generation object for the uploaded image
-            const uploadedGeneration = {
+            const uploadedGeneration: Generation = {
                 genid,
-                status: 'candidate',
+                status: 'candidate' as const,
                 timestamp: Date.now(),
-                source: 'upload',
+                source: 'upload' as const,
                 workspace: currentWorkspace,
                 prompt: 'Uploaded image',
                 negativePrompt: '',
@@ -706,7 +733,7 @@ function App() {
             await api.commitWorkspaceImage(currentWorkspace, `candidates/${genid}/full.png`);
 
             // Update the uploaded generation to reflect it's now committed
-            const committedGeneration = { ...uploadedGeneration, status: 'commit' };
+            const committedGeneration: Generation = { ...uploadedGeneration, status: 'commit' as const };
 
             setInputImage(getGenerationImageUrl(committedGeneration, 'full'));
 
@@ -737,6 +764,15 @@ function App() {
         }
     };
 
+    // Wrapper for PropertiesPanel that handles null values and async calls
+    const handlePropertiesImageUpload = (image: string | null): void => {
+        if (image === null) {
+            setInputImage(null);
+        } else {
+            handleCanvasImageUpload(image);
+        }
+    };
+
     const handlePreviewSelect = (generation: Generation | null): void => {
         setTimeline((prev) => ({
             ...prev,
@@ -751,7 +787,9 @@ function App() {
         try {
             await api.rejectWorkspaceImage(preview.workspace, `candidates/${preview.genid}/full.png`);
             // Reload generations to get updated status
-            await loadWorkspaceGenerations(currentWorkspace);
+            if (currentWorkspace) {
+                await loadWorkspaceGenerations(currentWorkspace);
+            }
         } catch (error) {
             console.error("Failed to reject generation:", error);
         }
@@ -775,7 +813,9 @@ function App() {
             // Commit the selected preview
             await api.commitWorkspaceImage(preview.workspace, `candidates/${preview.genid}/full.png`);
             // Reload generations to get updated status
-            await loadWorkspaceGenerations(currentWorkspace);
+            if (currentWorkspace) {
+                await loadWorkspaceGenerations(currentWorkspace);
+            }
 
             // Update current image if it was the committed one
             const committedImageUrl = getGenerationImageUrl({ ...preview, status: 'commit' });
@@ -795,7 +835,9 @@ function App() {
         try {
             await api.deleteWorkspaceImage(generation.workspace, `${generation.status === 'candidate' ? 'candidates' : generation.status === 'commit' ? 'commits' : 'rejects'}/${generation.genid}/full.png`);
             // Reload generations to get updated status
-            await loadWorkspaceGenerations(currentWorkspace);
+            if (currentWorkspace) {
+                await loadWorkspaceGenerations(currentWorkspace);
+            }
         } catch (error) {
             console.error("Failed to delete generation:", error);
         }
@@ -805,7 +847,9 @@ function App() {
         try {
             await api.restoreWorkspaceImage(generation.workspace, `${generation.status === 'reject' ? 'rejects' : 'commits'}/${generation.genid}/full.png`);
             // Reload generations to get updated status
-            await loadWorkspaceGenerations(currentWorkspace);
+            if (currentWorkspace) {
+                await loadWorkspaceGenerations(currentWorkspace);
+            }
         } catch (error) {
             console.error("Failed to restore generation:", error);
         }
@@ -815,7 +859,9 @@ function App() {
         try {
             await api.uncommitWorkspaceImage(generation.workspace, `commits/${generation.genid}/full.png`);
             // Reload generations to get updated status
-            await loadWorkspaceGenerations(currentWorkspace);
+            if (currentWorkspace) {
+                await loadWorkspaceGenerations(currentWorkspace);
+            }
         } catch (error) {
             console.error("Failed to uncommit generation:", error);
         }
@@ -917,7 +963,7 @@ function App() {
             // Try to get workspace_image_path first
             const workspaceImagePath = getWorkspaceImagePath(upscaleDialog.sourceImage);
             
-            const params = {
+            const params: any = {
                 upscaler_1: upscaler,
                 upscaling_resize: scaleFactor,
                 resize_mode: 0, // Scale by factor
@@ -947,8 +993,8 @@ function App() {
             if (result.generation) {
                 setTimeline((prev) => ({
                     ...prev,
-                    generationQueue: [result.generation, ...prev.generationQueue],
-                    currentPreview: result.generation,
+                    generationQueue: [result.generation!, ...prev.generationQueue],
+                    currentPreview: result.generation!,
                 }));
             }
 
@@ -1017,8 +1063,10 @@ function App() {
                     onSkip={handleSkip}
                     onRestart={handleRestart}
                     onInterrupt={handleEnd}
+                    openWorkspaces={openWorkspaces}
                     currentWorkspace={currentWorkspace}
                     onWorkspaceChange={handleWorkspaceChange}
+                    onWorkspaceClose={handleWorkspaceClose}
                     onCreateWorkspace={handleCreateWorkspace}
                     onOpenWorkspaceBrowser={() => setWorkspaceBrowserOpen(true)}
                     pageLocked={pageLocked}
@@ -1119,7 +1167,7 @@ function App() {
                     generationMode={generationMode}
                     onUpscale={handleOpenUpscaleDialog}
                     getGenerationImageUrl={getGenerationImageUrl}
-                    onRefreshTimeline={() => loadWorkspaceGenerations(currentWorkspace)}
+                    onRefreshTimeline={() => currentWorkspace && loadWorkspaceGenerations(currentWorkspace)}
                     onRefreshCanvas={handleRefreshCanvas}
                     canvasRefreshKey={canvasRefreshKey}
                 />
@@ -1137,7 +1185,6 @@ function App() {
                         generationHeight={height}
                         composerNodes={composerNodes}
                         onComposerNodesChange={handleComposerNodesChange}
-                        inpaintMask={inpaintMask}
                         setInpaintMask={setInpaintMask}
                         onImageUpload={handleCanvasImageUpload}
                         inpaintFullRes={inpaintFullRes}
@@ -1181,7 +1228,7 @@ function App() {
                         setInpaintingMaskInvert={setInpaintingMaskInvert}
                         // Image upload props for img2img mode
                         inputImage={generationMode === "img2img" ? inputImage : null}
-                        onImageUpload={generationMode === "img2img" ? handleCanvasImageUpload : null}
+                        onImageUpload={generationMode === "img2img" ? handleCanvasImageUpload : undefined}
                         // Full resolution inpainting props - defaults for non-inpaint modes
                         inpaintFullRes={false}
                         inpaintFullResPadding={0}
@@ -1207,7 +1254,7 @@ function App() {
                     denoisingStrength={denoisingStrength}
                     setDenoisingStrength={setDenoisingStrength}
                     inputImage={inputImage}
-                    onImageUpload={handleCanvasImageUpload}
+                    onImageUpload={handlePropertiesImageUpload}
                     clipSkip={clipSkip}
                     onClipSkipChange={handleClipSkipChange}
                     saveImages={saveImages}

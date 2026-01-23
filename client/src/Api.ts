@@ -1,6 +1,7 @@
 // VITE UI
 // API Types
 import type { WorkspaceStructureNode } from './types/components';
+import type { PromptNode } from './components/PromptComposer/types';
 
 export interface Txt2ImgParams {
   prompt: string;
@@ -42,7 +43,7 @@ export interface ModelInfo {
 export interface SamplerInfo {
   name: string;
   aliases: string[];
-  options: Record<string, any>;
+  options: Record<string, unknown>;
 }
 
 export interface UpscalerInfo {
@@ -96,14 +97,14 @@ export interface WorkspaceInfo {
 }
 
 export interface WorkspacePrompt {
-  nodes: any[];
+  nodes: PromptNode[];
 }
 
 export interface GenerationResponse {
   images: string[];
   filesystem_paths?: string[];
-  workspace_info?: Record<string, any>;
-  parameters: Record<string, any>;
+  workspace_info?: Record<string, unknown>;
+  parameters: Record<string, unknown>;
   info: string;
   taskId?: string;
 }
@@ -119,10 +120,10 @@ export interface Generation {
   genid: string;
   status: 'candidate' | 'commit' | 'reject';
   timestamp: number;
-  source: 'txt2img' | 'img2img' | 'inpaint' | 'upscale';
+  source: 'txt2img' | 'img2img' | 'inpaint' | 'upscale' | 'upload';
   prompt?: string;
   negativePrompt?: string;
-  parameters?: Record<string, any>;
+  parameters?: Record<string, unknown>;
   workspace: string;
 }
 
@@ -131,7 +132,7 @@ import { API_BASE_URL as BASE_URL } from './lib/utils';
 class StableDiffusionAPI {
   constructor(private baseUrl: string = `${BASE_URL}/api`) {}
 
-  async request<T = any>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  async request<T = unknown>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
     const config: RequestInit = {
       headers: {
@@ -194,8 +195,8 @@ class StableDiffusionAPI {
   }
 
   // Get current options
-  async getOptions(): Promise<Record<string, any>> {
-    return this.request<Record<string, any>>('/sdapi/v1/options');
+  async getOptions(): Promise<Record<string, unknown>> {
+    return this.request<Record<string, unknown>>('/sdapi/v1/options');
   }
 
   // Set current model
@@ -209,7 +210,7 @@ class StableDiffusionAPI {
   }
 
   // Set options
-  async setOptions(options: Record<string, any>): Promise<void> {
+  async setOptions(options: Record<string, unknown>): Promise<void> {
     return this.request<void>('/sdapi/v1/options', {
       method: 'POST',
       body: JSON.stringify(options),
@@ -261,8 +262,8 @@ class StableDiffusionAPI {
   }
 
   // PNG Info (get metadata from image)
-  async getPngInfo(imageBase64: string): Promise<{ info: string; items: Record<string, any> }> {
-    return this.request<{ info: string; items: Record<string, any> }>('/sdapi/v1/png-info', {
+  async getPngInfo(imageBase64: string): Promise<{ info: string; items: Record<string, unknown> }> {
+    return this.request<{ info: string; items: Record<string, unknown> }>('/sdapi/v1/png-info', {
       method: 'POST',
       body: JSON.stringify({
         image: imageBase64,
@@ -366,7 +367,7 @@ class StableDiffusionAPI {
   }
 
   // Get generation asset (meta.json, full.png, 512.png)
-  async getGenerationAsset(workspaceName: string, category: string, genid: string, asset: string): Promise<any> {
+  async getGenerationAsset(workspaceName: string, category: string, genid: string, asset: string): Promise<unknown> {
     const url = `/workspaces/${encodeURIComponent(workspaceName)}/${category}/${genid}/${asset}`;
     if (asset.endsWith('.json')) {
       return this.request(url);

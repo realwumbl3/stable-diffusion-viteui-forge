@@ -3,7 +3,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Image as ImageIcon,
-  Trash2,
   Maximize2,
   Type,
   Edit,

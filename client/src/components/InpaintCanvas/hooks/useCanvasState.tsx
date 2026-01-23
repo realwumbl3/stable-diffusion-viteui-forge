@@ -107,7 +107,7 @@ export function useCanvasState(props: UseCanvasStateProps) {
         return Math.max(0.01, Math.min(scale, 5.0));
     }, [getDisplayDimensions, fitToScreenPadding]);
 
-    const calculateCenterOffset = useCallback((_scale: number) => {
+    const calculateCenterOffset = useCallback(() => {
         // The flexbox centering works for vertical alignment, but horizontal might need adjustment
         // Try offsetting by half the fit-to-screen padding amount to compensate
         return { x: -(fitToScreenPadding / 2), y: 0 };
@@ -132,7 +132,7 @@ export function useCanvasState(props: UseCanvasStateProps) {
 
                 const scale = calculateFitToScreenScale();
                 setZoom(scale);
-                setPanOffset(calculateCenterOffset(scale));
+                setPanOffset(calculateCenterOffset());
                 return true;
             };
 
@@ -256,7 +256,7 @@ export function useCanvasState(props: UseCanvasStateProps) {
 
     const handleResetZoom = useCallback(() => {
         setZoom(1);
-        setPanOffset(calculateCenterOffset(1));
+        setPanOffset(calculateCenterOffset());
         setFitToScreen(true);
     }, [calculateCenterOffset]);
 
@@ -265,7 +265,7 @@ export function useCanvasState(props: UseCanvasStateProps) {
 
         const scale = calculateFitToScreenScale();
         setZoom(scale);
-        setPanOffset(calculateCenterOffset(scale));
+        setPanOffset(calculateCenterOffset());
         setFitToScreen(true);
     }, [calculateFitToScreenScale, calculateCenterOffset]);
 
