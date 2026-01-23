@@ -1,5 +1,5 @@
 // VITE UI
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Folder, FolderPlus, ChevronRight, ChevronDown, Briefcase } from "lucide-react";
 import api from "../Api";
 import type { WorkspaceBrowserProps, WorkspaceStructureNode } from "../types/components";
@@ -25,18 +25,7 @@ const WorkspaceBrowser = ({ currentWorkspace, onSelectWorkspace, onClose }: Work
     // Click handling state
     const [clickTimeout, setClickTimeout] = useState<ReturnType<typeof setTimeout> | null>(null);
 
-    useEffect(() => {
-        loadStructure();
-    }, []);
-
-    useEffect(() => {
-        return () => {
-            if (clickTimeout) clearTimeout(clickTimeout);
-        };
-    }, [clickTimeout]);
-
-    // Data loading
-    const loadStructure = async (): Promise<void> => {
+    const loadStructure = useCallback(async (): Promise<void> => {
         try {
             const data = await api.getWorkspaceStructure();
             setStructure(data.structure);
@@ -44,7 +33,17 @@ const WorkspaceBrowser = ({ currentWorkspace, onSelectWorkspace, onClose }: Work
         } catch (error) {
             console.error("Failed to load workspace structure:", error);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        loadStructure();
+    }, [loadStructure]);
+
+    useEffect(() => {
+        return () => {
+            if (clickTimeout) clearTimeout(clickTimeout);
+        };
+    }, [clickTimeout]);
 
     // Tree expansion
     const toggleExpanded = (path: string): void => {

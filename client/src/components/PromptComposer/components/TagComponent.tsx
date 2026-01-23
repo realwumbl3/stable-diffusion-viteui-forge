@@ -17,6 +17,16 @@ const TagComponent = React.forwardRef<HTMLInputElement, TagComponentProps>(
         const inputRef = useRef<HTMLInputElement>(null);
         const measureRef = useRef<HTMLSpanElement>(null);
 
+        const adjustInputWidth = (value: string) => {
+            if (measureRef.current && inputRef.current) {
+                // Measure the text width
+                measureRef.current.textContent = value || "placeholder";
+                const width = measureRef.current.offsetWidth + 4; // Add some padding
+                const clampedWidth = Math.max(40, width); // Clamp between min and max
+                inputRef.current.style.width = `${clampedWidth}px`;
+            }
+        };
+
         // Forward the ref to the input element
         React.useImperativeHandle(ref, () => inputRef.current!);
 
@@ -31,16 +41,6 @@ const TagComponent = React.forwardRef<HTMLInputElement, TagComponentProps>(
                 setTimeout(() => inputRef.current?.focus(), 0);
             }
         }, [shouldFocus]);
-
-        const adjustInputWidth = (value: string) => {
-            if (measureRef.current && inputRef.current) {
-                // Measure the text width
-                measureRef.current.textContent = value || "placeholder";
-                const width = measureRef.current.offsetWidth + 4; // Add some padding
-                const clampedWidth = Math.max(40, width); // Clamp between min and max
-                inputRef.current.style.width = `${clampedWidth}px`;
-            }
-        };
 
         const handleInputChange = (value: string) => {
             setInputValue(value);
