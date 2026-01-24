@@ -258,26 +258,19 @@ export function useCanvasState(props: UseCanvasStateProps) {
             const newZoom = Math.min(prev * zoomFactor, 5.0); // Cap at 500%
             setFitToScreen(false);
 
-            // Zoom towards center of viewport for button zoom
-            const centerX = 0; // Center of viewport (relative to canvas center)
-            const centerY = 0;
-
-            // Calculate the position in the untransformed coordinate system
-            const imageX = (centerX - panOffset.x) / prev;
-            const imageY = (centerY - panOffset.y) / prev;
-
-            // Calculate new pan offset so the center point stays centered
-            const newPanX = centerX - imageX * newZoom;
-            const newPanY = centerY - imageY * newZoom;
-
-            setPanOffset({
-                x: newPanX,
-                y: newPanY,
+            setPanOffset((prevPan) => {
+                const centerX = 0;
+                const centerY = 0;
+                const imageX = (centerX - prevPan.x) / prev;
+                const imageY = (centerY - prevPan.y) / prev;
+                const newPanX = centerX - imageX * newZoom;
+                const newPanY = centerY - imageY * newZoom;
+                return { x: newPanX, y: newPanY };
             });
 
             return newZoom;
         });
-    }, [panOffset.x, panOffset.y]);
+    }, [setFitToScreen, setPanOffset, setZoom]);
 
     const handleZoomOut = useCallback(() => {
         const zoomFactor = 1.2;
@@ -285,26 +278,19 @@ export function useCanvasState(props: UseCanvasStateProps) {
             const newZoom = Math.max(prev / zoomFactor, 0.01); // Minimum 1%
             setFitToScreen(false);
 
-            // Zoom towards center of viewport for button zoom
-            const centerX = 0; // Center of viewport (relative to canvas center)
-            const centerY = 0;
-
-            // Calculate the position in the untransformed coordinate system
-            const imageX = (centerX - panOffset.x) / prev;
-            const imageY = (centerY - panOffset.y) / prev;
-
-            // Calculate new pan offset so the center point stays centered
-            const newPanX = centerX - imageX * newZoom;
-            const newPanY = centerY - imageY * newZoom;
-
-            setPanOffset({
-                x: newPanX,
-                y: newPanY,
+            setPanOffset((prevPan) => {
+                const centerX = 0;
+                const centerY = 0;
+                const imageX = (centerX - prevPan.x) / prev;
+                const imageY = (centerY - prevPan.y) / prev;
+                const newPanX = centerX - imageX * newZoom;
+                const newPanY = centerY - imageY * newZoom;
+                return { x: newPanX, y: newPanY };
             });
 
             return newZoom;
         });
-    }, [panOffset.x, panOffset.y]);
+    }, [setFitToScreen, setPanOffset, setZoom]);
 
     const handleResetZoom = useCallback(() => {
         setZoom(1);

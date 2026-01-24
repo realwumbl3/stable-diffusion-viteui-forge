@@ -31,7 +31,7 @@ todos:
     status: completed
   - id: phase3-6-memoization
     content: "Phase 3.6: Fix preserve manual memoization issues (useCanvasState, PromptComposer)"
-    status: pending
+    status: completed
   - id: phase4-code-quality
     content: "Phase 4: Fix impure functions, code style issues (Math.random, case declarations, hasOwnProperty)"
     status: pending
