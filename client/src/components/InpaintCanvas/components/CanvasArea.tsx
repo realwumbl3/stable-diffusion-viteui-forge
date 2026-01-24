@@ -405,7 +405,7 @@ const CanvasArea = ({
 
                     {/* Zoom Toolbar - Bottom Left */}
                     {(displayImage || inputImage) && !isDrawing && setShowGrid && setUiVisible && (
-                        <div className={`absolute bottom-4 left-4 z-20 transition-opacity duration-200 ${uiVisible ? 'opacity-100' : 'opacity-0'}`}>
+                        <div className={`absolute bottom-1 left-1 z-20 transition-opacity duration-200 ${uiVisible ? 'opacity-100' : 'opacity-0'}`}>
                             <ZoomToolbar
                                 zoom={zoom}
                                 showGrid={showGrid}
@@ -424,7 +424,7 @@ const CanvasArea = ({
 
                     {/* Inpaint Parameters Panel - Bottom Right */}
                     {generationMode === "inpaint" && (
-                        <div className={`absolute bottom-4 right-4 z-20 transition-opacity duration-200 ${uiVisible ? 'opacity-100' : 'opacity-0'}`}>
+                        <div className={`absolute bottom-1 right-1 z-20 transition-opacity duration-200 ${uiVisible ? 'opacity-100' : 'opacity-0'}`}>
                             <InpaintParametersPanel
                                 maskBlur={maskBlur}
                                 setMaskBlur={setMaskBlur}

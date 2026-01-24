@@ -9,19 +9,19 @@ export default {
       colors: {
         // Professional dark studio theme
         studio: {
-          bg: '#0f0f0f',
-          surface: '#1a1a1a',
-          panel: '#252525',
-          panelHover: '#2a2a2a',
-          border: '#333333',
-          accent: '#00d4ff',
-          'accent-hover': '#33ddff',
-          text: '#ffffff',
-          textSecondary: '#cccccc',
-          textMuted: '#888888',
-          success: '#00ff88',
-          warning: '#ffaa00',
-          error: '#ff4444',
+          bg: 'hsl(0, 0.00%, 1%)',
+          surface: 'hsl(0, 0.00%, 3%)',
+          panel: 'hsl(0, 0.00%, 6%)',
+          panelHover: 'hsl(0, 0%, 16%)',
+          border: 'hsl(0, 0%, 20%)',
+          accent: 'hsl(350, 95%, 32%)',
+          'accent-hover': 'hsl(350, 95%, 52%)',
+          text: 'hsl(0, 0%, 100%)',
+          textSecondary: 'hsl(0, 0%, 80%)',
+          textMuted: 'hsl(0, 0%, 53%)',
+          success: 'hsl(152, 100%, 50%)',
+          warning: 'hsl(39, 100%, 50%)',
+          error: 'hsl(0, 75%, 51%)',
         }
       },
       fontFamily: {

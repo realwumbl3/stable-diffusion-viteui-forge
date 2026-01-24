@@ -7,13 +7,12 @@ import Header from "./components/Header";
 import Sidebar from "./components/Sidebar";
 import InpaintCanvas from "./components/InpaintCanvas/components/InpaintCanvas";
 import PropertiesPanel from "./components/PropertiesPanel";
-import Welcome from "./components/Welcome";
 import UpscaleDialog from "./components/UpscaleDialog";
 import WorkspaceBrowser from "./components/WorkspaceBrowser";
 import { useTitleIconAnimation } from "./hooks/useTitleIconAnimation";
 import { useWorkspaceTabs } from "./hooks/useWorkspaceTabs";
 import { parseWorkspaceImage, resolveImageSrc, API_BASE_URL } from "./lib/utils";
-import { composePromptsFromNodes, generateId } from "./components/PromptComposer/utils/promptUtils";
+import { composePromptsFromNodes } from "./components/PromptComposer/utils/promptUtils";
 import { encodeLegacy } from "./components/PromptComposer/utils/legacyEncoding";
 import type { Generation, ModelInfo, SamplerInfo, UpscalerInfo, ExtrasSingleImageParams } from "./Api";
 import type { PromptNode } from "./components/PromptComposer/types";
@@ -36,27 +35,6 @@ function App() {
     const [currentTaskId, setCurrentTaskId] = useState<string | null>(null);
     const [canvasRefreshKey, setCanvasRefreshKey] = useState<number>(0);
     const [pendingRestart, setPendingRestart] = useState<boolean>(false);
-
-    const createSimpleTextNodes = (positiveText = "", negativeText = ""): PromptNode[] => [
-        {
-            id: generateId(),
-            type: "text",
-            name: "Positive Prompt",
-            hidden: false,
-            weight: 1,
-            value: positiveText,
-            mode: "simple-positive",
-        },
-        {
-            id: generateId(),
-            type: "text",
-            name: "Negative Prompt",
-            hidden: false,
-            weight: -1,
-            value: negativeText,
-            mode: "simple-negative",
-        },
-    ];
 
     // WebSocket progress tracking
     const { progress: progressData, livePreview } = useWebSocketProgress(currentTaskId);
@@ -139,7 +117,6 @@ function App() {
     // UI state
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
     const [propertiesCollapsed, setPropertiesCollapsed] = useState(true);
-    const [showWelcome, setShowWelcome] = useState(true);
     const [forceInpaintEditMode, setForceInpaintEditMode] = useState(false);
     const [pageLocked, setPageLocked] = useState(false);
 
@@ -1011,12 +988,7 @@ function App() {
         }
     };
 
-    const handleGetStarted = (templatePrompt = ""): void => {
-        if (templatePrompt) {
-            setComposerNodes(createSimpleTextNodes(templatePrompt));
-        }
-        setShowWelcome(false);
-    };
+
 
     // Keyboard shortcuts
     useKeyboardShortcuts({
@@ -1041,45 +1013,6 @@ function App() {
         "ctrl+b": () => setSidebarCollapsed(!sidebarCollapsed),
         "ctrl+p": () => setPropertiesCollapsed(!propertiesCollapsed),
     });
-
-    // Show welcome screen if no images have been generated and user hasn't dismissed it
-    const hasTimelineContent = Boolean(
-        currentImage ||
-        timeline.currentPreview ||
-        timeline.generationQueue.length ||
-        timeline.committedHistory.length ||
-        timeline.discarded.length
-    );
-
-    if (showWelcome && !hasTimelineContent) {
-        return (
-            <div className="h-screen flex flex-col bg-studio-bg">
-                {/* Header Toolbar */}
-                <Header
-                    openWorkspaces={openWorkspaces}
-                    currentWorkspace={currentWorkspace}
-                    onWorkspaceChange={handleWorkspaceChange}
-                    onWorkspaceClose={handleWorkspaceClose}
-                    onCreateWorkspace={handleCreateWorkspace}
-                    onOpenWorkspaceBrowser={() => setWorkspaceBrowserOpen(true)}
-                />
-
-                {/* Welcome Screen */}
-                <Welcome onGetStarted={handleGetStarted} />
-
-                {workspaceBrowserOpen && (
-                    <WorkspaceBrowser
-                        currentWorkspace={currentWorkspace}
-                        onSelectWorkspace={(name) => {
-                            handleWorkspaceChange(name);
-                            setWorkspaceBrowserOpen(false);
-                        }}
-                        onClose={() => setWorkspaceBrowserOpen(false)}
-                    />
-                )}
-            </div>
-        );
-    }
 
     const canvasControls = {
         loading,
@@ -1121,6 +1054,16 @@ function App() {
                 onWorkspaceClose={handleWorkspaceClose}
                 onCreateWorkspace={handleCreateWorkspace}
                 onOpenWorkspaceBrowser={() => setWorkspaceBrowserOpen(true)}
+                pageLocked={pageLocked}
+                onToggleLock={() => setPageLocked(!pageLocked)}
+                models={models}
+                selectedModel={selectedModel}
+                onModelChange={handleModelChange}
+                samplers={samplers}
+                selectedSampler={selectedSampler}
+                setSelectedSampler={setSelectedSampler}
+                cfgScale={cfgScale}
+                setCfgScale={setCfgScale}
             />
 
             {/* Main Content Area */}

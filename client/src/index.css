@@ -6,19 +6,19 @@
 @layer base {
   :root {
     /* Professional Dark Studio Theme */
-    --studio-bg: #0f0f0f;
-    --studio-surface: #1a1a1a;
-    --studio-panel: #252525;
-    --studio-panel-hover: #2a2a2a;
-    --studio-border: #333333;
-    --studio-accent: #23098f;
-    --studio-accent-hover: #4d28e4;
-    --studio-text: #ffffff;
-    --studio-text-secondary: #cccccc;
-    --studio-text-muted: #888888;
-    --studio-success: #00ff88;
-    --studio-warning: #ffaa00;
-    --studio-error: #ff4444;
+    --studio-bg: hsl(0, 0%, 1%);
+    --studio-surface: hsl(0, 0%, 3%);
+    --studio-panel: hsl(0, 0%, 6%);
+    --studio-panel-hover: hsl(0, 0%, 16%);
+    --studio-border: hsl(0, 0%, 20%);
+    --studio-accent: hsl(350, 95%, 32%);
+    --studio-accent-hover: hsl(350, 95%, 42%);
+    --studio-text: hsl(0, 0%, 100%);
+    --studio-text-secondary: hsl(0, 0%, 80%);
+    --studio-text-muted: hsl(0, 0%, 53%);
+    --studio-success: hsl(152, 100%, 50%);
+    --studio-warning: hsl(39, 100%, 50%);
+    --studio-error: hsl(0, 75%, 51%);
   }
 
   html,
@@ -304,7 +304,8 @@
   }
 
   /* Enable text selection for code blocks and preformatted text */
-  code, pre {
+  code,
+  pre {
     user-select: text;
   }
 

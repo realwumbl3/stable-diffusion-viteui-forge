@@ -94,7 +94,7 @@ const PropertiesPanel = ({
                                 className={cn(
                                     "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors",
                                     activeSection === section.id
-                                        ? "bg-studio-accent/20 text-studio-accent border border-studio-accent/30"
+                                        ? "bg-studio-accent/60 border border-studio-accent/30"
                                         : "text-studio-textSecondary hover:text-studio-text hover:bg-studio-surface"
                                 )}
                                 type="button"
@@ -134,7 +134,7 @@ const PropertiesPanel = ({
                                                                 reader.readAsDataURL(file);
                                                             }
                                                         }}
-                                                        className="w-full text-sm text-studio-text file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-studio-accent file:text-studio-bg hover:file:bg-studio-accent/80"
+                                                        className="w-full text-sm text-studio-text file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-studio-accent file:text-white"
                                                     />
                                                     {inputImage && (
                                                         <div className="relative">
@@ -188,7 +188,7 @@ const PropertiesPanel = ({
                                             onChange={setBatchSize}
                                             min={1}
                                             max={8}
-                                            step={1}
+                                            step={1} 
                                         />
                                     </div>
 

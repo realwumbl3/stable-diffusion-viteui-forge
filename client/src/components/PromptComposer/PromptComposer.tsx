@@ -20,7 +20,6 @@ import {
     insertNode,
     findNodeById
 } from "./utils/promptUtils";
-import { decodeLegacy } from "./utils/legacyEncoding";
 import NodeField from "./components/NodeField";
 import PromptControls from "./components/PromptControls";
 import { usePromptComposerStore } from "./store";
@@ -355,20 +354,6 @@ function PromptComposer({
         }
     }, [jsonImportText, setNodes, setShowJsonImport]);
 
-    // Function to load data from a prompt that contains embedded data
-    const loadFromPrompt = useCallback((promptText: string) => {
-        const match = promptText.match(/<betterpromptexport:([^>]+)>/);
-        if (match) {
-            const encodedData = match[1];
-            // Try legacy format first (LZString + keyEncodeObject)
-            const legacyData = decodeLegacy(encodedData);
-            if (legacyData && Array.isArray(legacyData)) {
-                setNodes(legacyData);
-                return true;
-            }
-        }
-        return false;
-    }, [setNodes]);
 
     // Keyboard shortcuts
     useEffect(() => {
@@ -533,11 +518,7 @@ function PromptComposer({
                         const arrayBuffer = e.target?.result as ArrayBuffer;
                         const metadata = extractPNGTextChunks(arrayBuffer);
 
-                        if (metadata && loadFromPrompt(metadata)) {
-                            // Successfully loaded from embedded prompt data
-                            return;
-                        }
-
+    
                         // Fallback: try to parse metadata as JSON
                         try {
                             const data = JSON.parse(metadata);
@@ -568,10 +549,6 @@ function PromptComposer({
                         const arrayBuffer = e.target?.result as ArrayBuffer;
                         const metadata = extractJPEGMetadata(arrayBuffer);
 
-                        if (metadata && loadFromPrompt(metadata)) {
-                            // Successfully loaded from embedded prompt data
-                            return;
-                        }
 
                         // Fallback: try to parse metadata as JSON
                         try {
@@ -602,11 +579,6 @@ function PromptComposer({
                     reader.onload = (e) => {
                         const content = e.target?.result as string;
 
-                        // First try to load from embedded prompt data
-                        if (loadFromPrompt(content)) {
-                            return;
-                        }
-
                         try {
                             // Try to parse as JSON first
                             const data = JSON.parse(content);
@@ -631,7 +603,7 @@ function PromptComposer({
             }
         };
         input.click();
-    }, [loadFromPrompt, setNodes]);
+    }, [setNodes]);
 
     const simplePositiveNode = nodes.find(
         (node) => node.type === 'text' && (node as TextNode).mode === 'simple-positive'
@@ -741,22 +713,20 @@ function PromptComposer({
                         ) : (
                             <div className="composer-container">
                                 <div className={cn("prompt-composer", className)}>
-                                    <div className="better-prompt-container">
-                                        <div className="better-prompt">
-                                            <div
-                                                className="main-editor"
-                                                ref={editorRef}
-                                                onDragStart={handleDragStart}
-                                                onDragEnter={handleDragEnter}
-                                                onDragOver={handleDragOver}
-                                                onDragEnd={handleDragEnd}
-                                            >
-                                                <NodeField
-                                                    nodes={nodes}
-                                                    onChange={handleNodesChange}
-                                                    generateId={generateId}
-                                                />
-                                            </div>
+                                    <div className="better-prompt">
+                                        <div
+                                            className="main-editor"
+                                            ref={editorRef}
+                                            onDragStart={handleDragStart}
+                                            onDragEnter={handleDragEnter}
+                                            onDragOver={handleDragOver}
+                                            onDragEnd={handleDragEnd}
+                                        >
+                                            <NodeField
+                                                nodes={nodes}
+                                                onChange={handleNodesChange}
+                                                generateId={generateId}
+                                            />
                                         </div>
                                     </div>
                                 </div>

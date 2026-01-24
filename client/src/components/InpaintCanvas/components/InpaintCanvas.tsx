@@ -304,7 +304,7 @@ const InpaintCanvas = ({
         <main className="studio-canvas relative flex flex-col min-h-0">
             {/* Left Toolbar - Mask Controls */}
             {isInpaintMode && (displayImage || inputImage) && !canvasState.isDrawing && (
-                <div className={`absolute top-2 left-2 z-10 transition-opacity duration-200 ${uiVisible ? 'opacity-100' : 'opacity-0'}`}>
+                <div className={`absolute top-1 left-1 z-10 transition-opacity duration-200 ${uiVisible ? 'opacity-100' : 'opacity-0'}`}>
                     <InpaintToolbar
                         drawingMode={drawingMode}
                         setDrawingMode={setDrawingMode}

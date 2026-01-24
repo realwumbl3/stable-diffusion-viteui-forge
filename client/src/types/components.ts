@@ -1,5 +1,5 @@
 // VITE UI
-import type { Generation, ModelInfo, SamplerInfo } from '../Api'
+import type { Generation } from '../Api'
 import type { PromptNode } from '../components/PromptComposer/types'
 
 // Timeline types
@@ -21,16 +21,6 @@ export interface Progress {
   [key: string]: unknown
 }
 
-// Header component props
-export interface HeaderProps {
-  openWorkspaces: string[]
-  currentWorkspace: string | null
-  onWorkspaceChange: (workspace: string) => void
-  onWorkspaceClose: (workspace: string) => void
-  onCreateWorkspace: (name: string) => void
-  onOpenWorkspaceBrowser: () => void
-}
-
 export interface CanvasTopControlsProps {
   loading: boolean
   progress: Progress | null
@@ -44,14 +34,6 @@ export interface CanvasTopControlsProps {
   setSteps: (value: number) => void
   count: number
   setCount: (value: number) => void
-  selectedSampler: string
-  setSelectedSampler: (value: string) => void
-  cfgScale: number
-  setCfgScale: (value: number) => void
-  models: ModelInfo[]
-  selectedModel: string
-  onModelChange: (value: string) => void
-  samplers: SamplerInfo[]
   width: number
   setWidth: (value: number) => void
   height: number

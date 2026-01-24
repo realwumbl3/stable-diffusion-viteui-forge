@@ -1,58 +1,75 @@
 // VITE UI
 import { useState, useRef, useEffect, useLayoutEffect, useMemo, useId } from 'react';
+import type { CSSProperties, RefObject } from 'react';
 import { ChevronDown } from 'lucide-react';
 import type { OptionPickerProps } from '../types/components';
 
-interface DropdownPosition {
-  top: string;
-  left: string;
-}
+const DROPDOWN_ESTIMATED_HEIGHT = 240;
+const DROPDOWN_MARGIN = 8;
+const DROPDOWN_MAX_WIDTH_OFFSET = DROPDOWN_MARGIN * 2;
 
-const useDropdownPosition = (isOpen: boolean, triggerRef: React.RefObject<HTMLElement>): DropdownPosition => {
-  const [position, setPosition] = useState<DropdownPosition>({ top: 'top-full', left: 'left-0' });
+const clamp = (value: number, min: number, max: number): number => Math.max(min, Math.min(max, value));
+
+const useDropdownPosition = (
+  isOpen: boolean,
+  triggerRef: RefObject<HTMLElement>,
+  dropdownRef: RefObject<HTMLElement>,
+  optionCount: number
+): CSSProperties => {
+  const [style, setStyle] = useState<CSSProperties>({});
 
   useLayoutEffect(() => {
     if (!isOpen || !triggerRef.current) {
-      // Defer setState to avoid synchronous setState warning
-      requestAnimationFrame(() => {
-        setPosition({ top: 'top-full', left: 'left-0' });
-      });
+      setStyle({});
       return;
     }
 
     const updatePosition = () => {
       if (!triggerRef.current) return;
-      
+
       const triggerRect = triggerRef.current.getBoundingClientRect();
       const viewportHeight = window.innerHeight;
       const viewportWidth = window.innerWidth;
+      const dropdownHeight = dropdownRef.current?.offsetHeight ?? DROPDOWN_ESTIMATED_HEIGHT;
+      const dropdownWidth = dropdownRef.current?.offsetWidth ?? triggerRect.width;
+      const spaceBelow = viewportHeight - triggerRect.bottom;
 
-      // Calculate if dropdown fits below
-      const fitsBelow = triggerRect.bottom + 200 <= viewportHeight; // 200px estimated dropdown height
+      const openUpwards = dropdownHeight > spaceBelow && triggerRect.top > dropdownHeight + DROPDOWN_MARGIN;
+      const bottomLimit = viewportHeight - dropdownHeight - DROPDOWN_MARGIN;
+      const computedTop = openUpwards
+        ? Math.max(DROPDOWN_MARGIN, triggerRect.top - dropdownHeight - DROPDOWN_MARGIN)
+        : Math.max(DROPDOWN_MARGIN, Math.min(bottomLimit, triggerRect.bottom + DROPDOWN_MARGIN));
 
-      // Calculate if dropdown fits to the right
-      const fitsRight = triggerRect.left + 120 <= viewportWidth; // 120px minimum width
+      const computedLeft = clamp(
+        triggerRect.left,
+        DROPDOWN_MARGIN,
+        Math.max(DROPDOWN_MARGIN, viewportWidth - dropdownWidth - DROPDOWN_MARGIN)
+      );
 
-      const newPosition: DropdownPosition = { top: 'top-full', left: 'left-0' };
+      const maxWidth = Math.max(viewportWidth - DROPDOWN_MAX_WIDTH_OFFSET, DROPDOWN_MARGIN * 2);
+      const maxHeight = Math.max(viewportHeight - DROPDOWN_MAX_WIDTH_OFFSET, DROPDOWN_MARGIN * 2);
 
-      if (!fitsBelow) {
-        // Show above if doesn't fit below
-        newPosition.top = 'bottom-full';
-      }
-
-      if (!fitsRight && triggerRect.right >= 120) {
-        // Show to the left if doesn't fit to the right
-        newPosition.left = 'right-0';
-      }
-
-      setPosition(newPosition);
+      setStyle({
+        position: 'fixed',
+        top: computedTop,
+        left: computedLeft,
+        minWidth: triggerRect.width,
+        maxWidth,
+        maxHeight,
+      });
     };
-    
-    // Defer setState to avoid synchronous setState warning
-    requestAnimationFrame(updatePosition);
-  }, [isOpen, triggerRef]);
 
-  return position;
+    updatePosition();
+    window.addEventListener('resize', updatePosition);
+    window.addEventListener('scroll', updatePosition);
+
+    return () => {
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition);
+    };
+  }, [isOpen, triggerRef, dropdownRef, optionCount]);
+
+  return style;
 };
 
 const OptionPicker = ({
@@ -70,7 +87,7 @@ const OptionPicker = ({
   const selectRef = useRef<HTMLSelectElement>(null);
   const triggerRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const dropdownPosition = useDropdownPosition(isOpen, triggerRef);
+  const dropdownStyle = useDropdownPosition(isOpen, triggerRef, dropdownRef, options.length);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -153,7 +170,7 @@ const OptionPicker = ({
   // Measure the text width to set the container width
   const textWidth = displayText.length * 8; // Rough estimate: 8px per character
   const minWidth = 60; // Minimum width to prevent too narrow
-  const containerWidth = Math.max(textWidth + 50, minWidth); // Add padding
+  const containerWidth = Math.max(textWidth + 30, minWidth); // Add padding
 
   const handleTriggerClick = (): void => {
     if (!disabled) {
@@ -212,7 +229,7 @@ const OptionPicker = ({
           }
         }}
         className={`
-          relative flex items-center justify-between px-2 pb-3 text-sm bg-studio-surface border border-studio-border rounded
+          relative flex items-center justify-between px-2 pb-2 text-sm bg-studio-surface border border-studio-border rounded
           ${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:bg-studio-surface/80'}
           focus:outline-none focus:ring-2 focus:ring-studio-accent focus:ring-offset-2 focus:ring-offset-studio-surface transition-all duration-200
         `}
@@ -224,14 +241,15 @@ const OptionPicker = ({
           className={`text-studio-textSecondary transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
           aria-hidden="true"
         />
+        {/* Title positioned absolutely over the selector */}
+        {title && (
+          <div className="absolute bottom-0 text-[8px] bottom-0 right-0 leading-none h-[1em] pr-1 pl-1 text-studio-textSecondary font-medium whitespace-nowrap pointer-events-none">
+            {title}
+          </div>
+        )}
       </div>
 
-      {/* Title positioned absolutely over the selector */}
-      {title && (
-        <div className="relative h-0 w-[100%] bottom-[1.4em] text-[10px] text-right pr-1 pl-1 text-studio-textSecondary font-medium whitespace-nowrap pointer-events-none">
-          {title}
-        </div>
-      )}
+
 
       {/* Dropdown menu */}
       {isOpen && !disabled && (
@@ -239,7 +257,8 @@ const OptionPicker = ({
           ref={dropdownRef}
           id={dropdownId}
           role="listbox"
-          className={`absolute ${dropdownPosition.top} ${dropdownPosition.left} mt-1 bg-studio-panel border border-studio-border rounded shadow-lg z-50 max-h-48 overflow-y-auto`}
+          className="bg-studio-panel border border-studio-border rounded shadow-lg z-50 overflow-y-auto"
+          style={dropdownStyle}
         >
           {options.map((option, index) => (
             <div
@@ -248,7 +267,7 @@ const OptionPicker = ({
               aria-selected={option.value === value}
               onClick={() => handleOptionClick(option.value)}
               className={`
-                px-3 py-2 text-sm cursor-pointer hover:bg-studio-surface whitespace-nowrap
+                px-3 py-1 text-sm cursor-pointer hover:bg-studio-surface whitespace-nowrap
                 ${option.value === value ? 'bg-studio-accent/20 text-studio-accent' : 'text-studio-text'}
                 ${index === focusedIndex ? 'bg-studio-accent/30' : ''}
               `}
