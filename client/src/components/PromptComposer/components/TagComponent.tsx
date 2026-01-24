@@ -1,4 +1,10 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, {
+    useState,
+    useRef,
+    useEffect,
+    useLayoutEffect,
+    useCallback,
+} from "react";
 import { cn } from "../../../lib/utils";
 import type { Tag } from "../types";
 
@@ -18,15 +24,14 @@ const TagComponent = React.forwardRef<HTMLInputElement, TagComponentProps>(
         const measureRef = useRef<HTMLSpanElement>(null);
         const prevTagValueRef = useRef<string>(tag.value);
 
-        const adjustInputWidth = (value: string) => {
+        const adjustInputWidth = useCallback((value: string) => {
             if (measureRef.current && inputRef.current) {
-                // Measure the text width
                 measureRef.current.textContent = value || "placeholder";
-                const width = measureRef.current.offsetWidth + 4; // Add some padding
-                const clampedWidth = Math.max(40, width); // Clamp between min and max
+                const width = measureRef.current.offsetWidth + 4;
+                const clampedWidth = Math.max(40, width);
                 inputRef.current.style.width = `${clampedWidth}px`;
             }
-        };
+        }, []);
 
         // Forward the ref to the input element
         React.useImperativeHandle(ref, () => inputRef.current!);
@@ -35,11 +40,8 @@ const TagComponent = React.forwardRef<HTMLInputElement, TagComponentProps>(
         useEffect(() => {
             if (tag.value !== prevTagValueRef.current && tag.value !== inputValue) {
                 prevTagValueRef.current = tag.value;
-                // Defer setState to avoid synchronous setState warning
                 requestAnimationFrame(() => {
                     setInputValue(tag.value);
-                    // Adjust width when tag value changes from props
-                    setTimeout(() => adjustInputWidth(tag.value), 0);
                 });
             }
         }, [tag.value, inputValue]);
@@ -50,10 +52,13 @@ const TagComponent = React.forwardRef<HTMLInputElement, TagComponentProps>(
             }
         }, [shouldFocus]);
 
+        useLayoutEffect(() => {
+            adjustInputWidth(inputValue);
+        }, [adjustInputWidth, inputValue]);
+
         const handleInputChange = (value: string) => {
             setInputValue(value);
             onUpdate({ value });
-            adjustInputWidth(value);
         };
 
         const handleKeyDown = (e: React.KeyboardEvent) => {
