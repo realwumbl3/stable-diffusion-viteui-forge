@@ -261,7 +261,6 @@
     background-color: var(--studio-panel);
     border-right-width: 1px;
     border-color: var(--studio-border);
-    width: 24rem;
     display: flex;
     flex-direction: column;
   }

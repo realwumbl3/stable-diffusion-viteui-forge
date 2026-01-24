@@ -302,42 +302,6 @@ const InpaintCanvas = ({
 
     return (
         <main className="studio-canvas relative flex flex-col min-h-0">
-            {/* Left Toolbar - Mask Controls */}
-            {isInpaintMode && (displayImage || inputImage) && !canvasState.isDrawing && (
-                <div className={`absolute top-1 left-1 z-10 transition-opacity duration-200 ${uiVisible ? 'opacity-100' : 'opacity-0'}`}>
-                    <InpaintToolbar
-                        drawingMode={drawingMode}
-                        setDrawingMode={setDrawingMode}
-                        brushSize={brushSize}
-                        setBrushSize={setBrushSize}
-                        brushHardness={brushHardness}
-                        setBrushHardness={setBrushHardness}
-                        fillTarget={fillTarget}
-                        setFillTarget={setFillTarget}
-                        fillTolerance={fillTolerance}
-                        setFillTolerance={setFillTolerance}
-                        fillOverfill={fillOverfill}
-                        setFillOverfill={setFillOverfill}
-                        zoom={canvasState.zoom}
-                        showMask={canvasState.showMask}
-                        setShowMask={canvasState.setMaskVisibility}
-                        showBorder={canvasState.showBorder}
-                        setShowBorder={canvasState.setShowBorder}
-                        onClear={drawing.clearMask}
-                        onUndo={drawing.undoMask}
-                        onRedo={drawing.redoMask}
-                        canUndo={drawing.canUndo}
-                        canRedo={drawing.canRedo}
-                    />
-                </div>
-            )}
-
-            <div className="absolute top-1 right-1 z-20 pointer-events-auto">
-                {canvasControls && (
-                    <CanvasTopControls controls={canvasControls} visible={uiVisible} />
-                )}
-            </div>
-
             <CanvasArea
                 canvasRef={canvasRef}
                 panTargetRef={panTargetRef}
@@ -402,6 +366,41 @@ const InpaintCanvas = ({
                 focusBounds={drawing.focusBounds}
                 maskBounds={drawing.maskBounds}
             />
+            {/* Left Toolbar - Mask Controls */}
+            {isInpaintMode && (displayImage || inputImage) && !canvasState.isDrawing && (
+                <div className={`absolute top-1 left-1 z-10 transition-opacity duration-200 ${uiVisible ? 'opacity-100' : 'opacity-0'}`}>
+                    <InpaintToolbar
+                        drawingMode={drawingMode}
+                        setDrawingMode={setDrawingMode}
+                        brushSize={brushSize}
+                        setBrushSize={setBrushSize}
+                        brushHardness={brushHardness}
+                        setBrushHardness={setBrushHardness}
+                        fillTarget={fillTarget}
+                        setFillTarget={setFillTarget}
+                        fillTolerance={fillTolerance}
+                        setFillTolerance={setFillTolerance}
+                        fillOverfill={fillOverfill}
+                        setFillOverfill={setFillOverfill}
+                        zoom={canvasState.zoom}
+                        showMask={canvasState.showMask}
+                        setShowMask={canvasState.setMaskVisibility}
+                        showBorder={canvasState.showBorder}
+                        setShowBorder={canvasState.setShowBorder}
+                        onClear={drawing.clearMask}
+                        onUndo={drawing.undoMask}
+                        onRedo={drawing.redoMask}
+                        canUndo={drawing.canUndo}
+                        canRedo={drawing.canRedo}
+                    />
+                </div>
+            )}
+
+            <div className="absolute top-1 right-1 z-20 pointer-events-auto">
+                {canvasControls && (
+                    <CanvasTopControls controls={canvasControls} visible={uiVisible} />
+                )}
+            </div>
 
             {/* Prompt Footer */}
             <PromptComposer

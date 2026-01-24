@@ -40,7 +40,7 @@ const StatusBar = ({
     const [memoryPanelOpen, setMemoryPanelOpen] = useState(false)
     return (
         <div className="studio-toolbar justify-between text-xs text-studio-textSecondary ps-2 pe-2">
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
                 <span>Inpaint Canvas</span>
                 {(displayImage || inputImage) && (
                     <>

@@ -1058,7 +1058,7 @@ function App() {
                 onToggleLock={() => setPageLocked(!pageLocked)}
                 models={models}
                 selectedModel={selectedModel}
-                onModelChange={handleModelChange}
+                onModelChange={setSelectedModel}
                 samplers={samplers}
                 selectedSampler={selectedSampler}
                 setSelectedSampler={setSelectedSampler}
@@ -1158,7 +1158,7 @@ function App() {
                 )}
 
                 {/* Right Properties Panel */}
-                <PropertiesPanel
+                {/* <PropertiesPanel
                     collapsed={propertiesCollapsed}
                     onToggle={() => setPropertiesCollapsed(!propertiesCollapsed)}
                     // Generation settings
@@ -1178,7 +1178,7 @@ function App() {
                     onClipSkipChange={handleClipSkipChange}
                     saveImages={saveImages}
                     setSaveImages={setSaveImages}
-                />
+                /> */}
 
                 {/* Upscale Dialog */}
                 <UpscaleDialog

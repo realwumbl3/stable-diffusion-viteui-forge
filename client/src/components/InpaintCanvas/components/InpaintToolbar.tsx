@@ -22,76 +22,61 @@ const InpaintToolbar = ({
     canUndo = false,
     canRedo = false,
 }: InpaintToolbarProps) => {
-    const tools = [
-        {
-            id: "brush",
-            icon: Brush,
-            label: "Brush",
-            shortcut: "B",
-        },
-        {
-            id: "erase",
-            icon: Eraser,
-            label: "Eraser",
-            shortcut: "E",
-        },
-        {
-            id: "fill",
-            icon: PaintBucket,
-            label: "Fill",
-            shortcut: "F",
-        },
-        {
-            id: "clear",
-            icon: RotateCcw,
-            label: "Clear All",
-            shortcut: "C",
-        },
-    ];
 
     return (
-        <div className="p-2 w-48 rounded-2xl border border-studio-border bg-studio-bg/30 p-1 shadow-2xl backdrop-blur">
-            <div className="flex flex-col gap-2">
+        <div className="p-1 w-24 rounded-lg border border-studio-border bg-studio-bg/30 p-1 shadow-2xl backdrop-blur">
+            <div className="flex flex-col gap-1">
                 {/* Drawing Tools */}
                 <div className="flex flex-col gap-1">
-                    <div className="grid grid-cols-2 gap-1 bg-studio-surface rounded-lg p-1 border border-studio-border">
-                        {tools.map((tool) => (
-                            <button
-                                key={tool.id}
-                                onClick={() => {
-                                    if (tool.id === "clear") {
-                                        onClear();
-                                    } else {
-                                        setDrawingMode(tool.id);
-                                    }
-                                }}
-                                className={cn(
-                                    "flex flex-col items-center gap-1 p-2 rounded-md text-xs font-medium transition-all duration-200",
-                                    drawingMode === tool.id
-                                        ? "bg-studio-accent text-studio-bg shadow-sm"
-                                        : "text-studio-textSecondary hover:text-studio-text hover:bg-studio-surface"
-                                )}
-                                title={`${tool.label} (${tool.shortcut})`}
-                                type="button"
-                            >
-                                <tool.icon size={14} />
-                                <span className="text-center leading-tight">{tool.label}</span>
-                            </button>
-                        ))}
-                    </div>
-                </div>
-
-                {/* Fill Tool Settings */}
-                {drawingMode === "fill" && (
-                    <div className="flex flex-col gap-2">
-                        <div className="flex flex-col gap-1">
-                            <div className="grid grid-cols-3 gap-1 bg-studio-surface rounded-lg p-1 border border-studio-border">
+                    <button
+                        onClick={() => setDrawingMode("brush")}
+                        className={cn(
+                            "flex flex-col items-center gap-1 p-2 rounded-md text-xs font-medium transition-all duration-200",
+                            drawingMode === "brush"
+                                ? "bg-studio-accent text-studio-bg shadow-sm"
+                                : "text-studio-textSecondary hover:text-studio-text hover:bg-studio-surface"
+                        )}
+                        title="Brush"
+                        type="button"
+                    >
+                        <Brush size={14} />
+                        <span className="text-center leading-tight">Brush</span>
+                    </button>
+                    <button
+                        onClick={() => setDrawingMode("erase")}
+                        className={cn(
+                            "flex flex-col items-center gap-1 p-2 rounded-md text-xs font-medium transition-all duration-200",
+                            drawingMode === "erase"
+                                ? "bg-studio-accent text-studio-bg shadow-sm"
+                                : "text-studio-textSecondary hover:text-studio-text hover:bg-studio-surface"
+                        )}
+                        title="Eraser"
+                        type="button"
+                    >
+                        <Eraser size={14} />
+                        <span className="text-center leading-tight">Eraser</span>
+                    </button>
+                    <button
+                        onClick={() => setDrawingMode("fill")}
+                        className={cn(
+                            "flex flex-col items-center gap-1 p-2 rounded-md text-xs font-medium transition-all duration-200",
+                            drawingMode === "fill"
+                                ? "bg-studio-accent text-studio-bg shadow-sm"
+                                : "text-studio-textSecondary hover:text-studio-text hover:bg-studio-surface"
+                        )}
+                        title="Fill"
+                        type="button"
+                    >
+                        <PaintBucket size={14} />
+                        <span className="text-center leading-tight">Fill</span>
+                        {drawingMode === "fill" && (
+                            <>
                                 {(["canvas", "image", "both"] as const).map((mode) => (
                                     <button
                                         key={mode}
                                         onClick={() => setFillTarget(mode)}
                                         className={cn(
-                                            "flex items-center justify-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition-all duration-200",
+                                            "flex items-center justify-center gap-1 px-1 rounded-md text-xs font-medium transition-all duration-200",
                                             fillTarget === mode
                                                 ? "bg-studio-accent text-studio-bg shadow-sm"
                                                 : "text-studio-textSecondary hover:text-studio-text hover:bg-studio-surface"
@@ -102,46 +87,56 @@ const InpaintToolbar = ({
                                         {mode}
                                     </button>
                                 ))}
-                            </div>
-                            <span className="text-xs text-studio-textSecondary text-center">Fill Target</span>
-                        </div>
-                        <div className="flex flex-col gap-1">
-                            <input
-                                type="range"
-                                min="0"
-                                max="128"
-                                step="1"
-                                value={fillTolerance}
-                                onChange={(e) => setFillTolerance(parseInt(e.target.value, 10))}
-                                className="w-full h-2 bg-studio-surface rounded-lg appearance-none cursor-pointer slider"
-                                title={`Fill Tolerance: ${fillTolerance}`}
-                            />
-                            <div className="flex justify-between items-center">
-                                <span className="text-xs text-studio-textSecondary">Fill Tolerance</span>
-                                <span className="text-xs text-studio-textSecondary">{fillTolerance}</span>
-                            </div>
-                        </div>
-                        <div className="flex flex-col gap-1">
-                            <input
-                                type="range"
-                                min="0"
-                                max="32"
-                                step="1"
-                                value={fillOverfill}
-                                onChange={(e) => setFillOverfill(parseInt(e.target.value, 10))}
-                                className="w-full h-2 bg-studio-surface rounded-lg appearance-none cursor-pointer slider"
-                                title={`Fill Overfill: ${fillOverfill}px`}
-                            />
-                            <div className="flex justify-between items-center">
-                                <span className="text-xs text-studio-textSecondary">Fill Overfill</span>
-                                <span className="text-xs text-studio-textSecondary">{fillOverfill}px</span>
-                            </div>
-                        </div>
-                    </div>
-                )}
+                                <div className="flex flex-col gap-1">
+                                    <input
+                                        type="range"
+                                        min="0"
+                                        max="128"
+                                        step="1"
+                                        value={fillTolerance}
+                                        onChange={(e) => setFillTolerance(parseInt(e.target.value, 10))}
+                                        className="w-full h-2 bg-studio-surface rounded-lg appearance-none cursor-pointer slider"
+                                        title={`Fill Tolerance: ${fillTolerance}`}
+                                    />
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-xs text-studio-textSecondary">tolerance {fillTolerance}</span>
+                                    </div>
+                                </div>
+                                <div className="flex flex-col gap-1">
+                                    <input
+                                        type="range"
+                                        min="0"
+                                        max="32"
+                                        step="1"
+                                        value={fillOverfill}
+                                        onChange={(e) => setFillOverfill(parseInt(e.target.value, 10))}
+                                        className="w-full h-2 bg-studio-surface rounded-lg appearance-none cursor-pointer slider"
+                                        title={`Fill Overfill: ${fillOverfill}px`}
+                                    />
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-xs text-studio-textSecondary">overfill {fillOverfill}px</span>
+                                    </div>
+                                </div>
+                            </>)}
+                    </button>
+                    <button
+                        onClick={onClear}
+                        className={cn(
+                            "flex flex-col items-center gap-1 p-2 rounded-md text-xs font-medium transition-all duration-200",
+                            drawingMode === "clear"
+                                ? "bg-studio-accent text-studio-bg shadow-sm"
+                                : "text-studio-textSecondary hover:text-studio-text hover:bg-studio-surface"
+                        )}
+                        title="Clear All"
+                        type="button"
+                    >
+                        <RotateCcw size={14} />
+                        <span className="text-center leading-tight">Clear All</span>
+                    </button>
+                </div>
 
                 {/* Mask and Border Visibility Toggles */}
-                <div className="flex flex-row gap-1">
+                <div className="flex flex-col gap-1">
                     <button
                         onClick={() => setShowMask(!showMask)}
                         className={cn(

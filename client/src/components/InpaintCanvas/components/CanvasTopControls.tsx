@@ -109,16 +109,18 @@ const CanvasTopControls = ({ controls, visible }: Props) => {
             </button>
 
             {loading && !pendingRestart && (
-                <div className="flex items-center gap-2">
-                    <button
-                        onClick={onSkip}
-                        className="studio-btn-secondary flex flex-col items-center gap-1 px-3 py-1 text-sm hover:bg-studio-accent/20"
-                        title="Skip current generation"
-                        type="button"
-                    >
-                        <SkipForward size={16} />
-                        Skip
-                    </button>
+                <div className="flex items-center gap-1">
+                    {progress && progress.total_batches && progress.total_batches > 1 && (
+                        <button
+                            onClick={onSkip}
+                            className="studio-btn-secondary flex flex-col items-center gap-1 px-3 py-1 text-sm hover:bg-studio-accent/20"
+                            title="Skip current generation"
+                            type="button"
+                        >
+                            <SkipForward size={16} />
+                            Skip
+                        </button>
+                    )}
                     <button
                         onClick={onRestart}
                         className="studio-btn-secondary flex flex-col items-center gap-1 px-3 py-1 text-sm hover:bg-studio-accent/20"

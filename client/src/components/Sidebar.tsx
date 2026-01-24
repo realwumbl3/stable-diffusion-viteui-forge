@@ -78,10 +78,10 @@ const Sidebar = ({
   return (
     <aside className={cn(
       "studio-sidebar relative overflow-hidden transition-all duration-300 ease-in-out",
-      collapsed ? "w-12" : "w-90"
+      collapsed ? "w-12" : "w-min"
     )}>
       {/* Always-full-width Content Container */}
-      <div className="w-90 h-full">
+      <div className="w-min h-full">
         {/* Collapsed Icon List */}
         <div className={cn(
           "absolute inset-0 flex flex-col items-center gap-4 py-6 px-2 transition-opacity duration-300 ease-in-out",
