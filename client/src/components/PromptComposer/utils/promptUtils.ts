@@ -77,6 +77,9 @@ export function composePromptsFromNodes(nodes: PromptNode[]): { positive: string
         negativeParts.push(breakValue)
         break
       }
+      default: {
+        break
+      }
     }
   }
 

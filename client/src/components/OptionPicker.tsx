@@ -1,5 +1,5 @@
 // VITE UI
-import { useState, useRef, useEffect, useLayoutEffect, useMemo } from 'react';
+import { useState, useRef, useEffect, useLayoutEffect, useId } from 'react';
 import { ChevronDown } from 'lucide-react';
 import type { OptionPickerProps } from '../types/components';
 
@@ -129,8 +129,9 @@ const OptionPicker = ({
 
   const selectedOption = options.find(option => option.value === value);
   const displayText = selectedOption ? selectedOption.label : placeholder;
-  // Generate a stable ID for the dropdown (using useMemo would be better, but this is simpler)
-  const dropdownId = useMemo(() => `option-picker-dropdown-${Math.random().toString(36).substr(2, 9)}`, []);
+  // Generate a stable ID for the dropdown
+  const hookId = useId();
+  const dropdownId = `option-picker-dropdown-${hookId.replace(/[^a-zA-Z0-9_-]/g, '-')}`;
 
   // Measure the text width to set the container width
   const textWidth = displayText.length * 8; // Rough estimate: 8px per character
