@@ -50,7 +50,7 @@ const InpaintToolbar = ({
     ];
 
     return (
-        <div className="studio-panel p-2 w-48">
+        <div className="p-2 w-48 rounded-2xl border border-studio-border bg-studio-bg/30 p-1 shadow-2xl backdrop-blur">
             <div className="flex flex-col gap-2">
                 {/* Drawing Tools */}
                 <div className="flex flex-col gap-1">

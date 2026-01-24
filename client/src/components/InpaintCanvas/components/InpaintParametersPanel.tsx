@@ -46,9 +46,8 @@ const InpaintParametersPanel = ({
     }, [inpaintFullResPadding, setInpaintFullResPadding]);
 
     return (
-        <div className="absolute bottom-4 right-4 z-20">
-            <div className="studio-panel p-2 w-56">
-                <div className="flex flex-col gap-2">
+        <div className="p-2 w-56 rounded-2xl border border-studio-border bg-studio-bg/30 p-1 shadow-2xl backdrop-blur">
+            <div className="flex flex-col gap-2">
                     <div className="text-xs font-semibold text-studio-text border-b border-studio-border pb-1">
                         Inpaint Parameters
                     </div>
@@ -169,7 +168,6 @@ const InpaintParametersPanel = ({
                             </div>
                         </div>
                     )}
-                </div>
             </div>
         </div>
     );

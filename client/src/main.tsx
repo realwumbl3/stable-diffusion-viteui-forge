@@ -4,6 +4,8 @@ import ReactDOM from 'react-dom/client'
 import App from './App'
 import api from './Api'
 import './index.css'
+import './lib/memory-debug' // Memory debugging utilities
+import './lib/logger-test' // Logger testing utilities (dev only)
 
 // Make the API available globally as sd_backend
 declare global {

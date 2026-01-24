@@ -15,7 +15,7 @@ const ZoomToolbar = ({
     setUiVisible,
 }: ZoomToolbarProps) => {
     return (
-        <div className="studio-panel p-2">
+        <div className="p-2 rounded-2xl border border-studio-border bg-studio-bg/30 p-1 shadow-2xl backdrop-blur">
             <div className="flex gap-1">
                 <button onClick={handleZoomOut} className="studio-btn-ghost p-2" title="Zoom Out" type="button">
                     <ZoomOut size={16} />

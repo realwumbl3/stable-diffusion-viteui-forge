@@ -3,13 +3,13 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import PromptComposer from "../../PromptComposer";
 import InpaintToolbar from "./InpaintToolbar";
 import { resolveImageSrc } from "../../../lib/utils";
+import CanvasTopControls from "./CanvasTopControls";
 
 // Import our extracted hooks and components
 import { useCanvasState } from "../hooks/useCanvasState";
 import { useDrawing } from "../hooks/useDrawing";
 import { useFileHandling } from "../hooks/useFileHandling";
 import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
-import ZoomToolbar from "./ZoomToolbar";
 import CanvasArea from "./CanvasArea";
 import StatusBar from "./StatusBar";
 import type { InpaintCanvasProps } from "../../../types/components";
@@ -51,6 +51,7 @@ const InpaintCanvas = ({
     generationMode = "txt2img",
     // Canvas refresh key
     canvasRefreshKey = 0,
+    canvasControls,
 }: InpaintCanvasProps) => {
     const displayImage = previewImage || currentImage;
     const resolvedDisplayImage = resolveImageSrc(displayImage, "full");
@@ -80,9 +81,9 @@ const InpaintCanvas = ({
     const canvasState = useCanvasState({
         displayImage: resolvedDisplayImage,
         inputImage: resolvedInputImage,
-        livePreview,
-        generationWidth,
-        generationHeight,
+        livePreview: Boolean(livePreview),
+        generationWidth: generationWidth ?? null,
+        generationHeight: generationHeight ?? null,
         forceEditMode,
         previewImage: resolvedPreviewImage,
         canvasRef,
@@ -103,8 +104,8 @@ const InpaintCanvas = ({
         fillTarget,
         fillTolerance,
         fillOverfill,
-        generationWidth,
-        generationHeight,
+        generationWidth: generationWidth ?? null,
+        generationHeight: generationHeight ?? null,
     });
 
     const fileHandling = useFileHandling({ onImageUpload });
@@ -232,16 +233,16 @@ const InpaintCanvas = ({
         }
         if (generationMode === "inpaint") {
             if (drawingMode === "fill") {
-                const { x, y } = drawing.getCanvasCoordinates(e);
+                const { x, y } = drawing.getCanvasCoordinates(e as React.MouseEvent<HTMLImageElement>);
                 drawing.fillAtPoint(x, y);
                 return;
             }
             canvasState.setIsDrawing(true);
             canvasState.setMouseButtonDown(true);
             canvasState.setDrawingStartedOnCanvas(true);
-            const { x, y } = drawing.getCanvasCoordinates(e);
+            const { x, y } = drawing.getCanvasCoordinates(e as React.MouseEvent<HTMLImageElement>);
             canvasState.setLastDrawPos(null); // Reset last position for new stroke
-            drawing.drawBrush(x, y); // Start new stroke
+            drawing.drawBrush(x, y, null); // Start new stroke
             canvasState.setLastDrawPos({ x, y });
         }
     };
@@ -249,8 +250,13 @@ const InpaintCanvas = ({
     const handleMouseMove = (e: React.MouseEvent): void => {
         if (!canvasState.isDrawing || generationMode !== "inpaint") return;
 
-        const { x, y } = drawing.getCanvasCoordinates(e);
-        drawing.drawBrush(x, y, canvasState.lastDrawPosRef.current);
+        const { x, y } = drawing.getCanvasCoordinates(e as React.MouseEvent<HTMLImageElement>);
+        const lastPos = canvasState.lastDrawPosRef.current;
+        if (lastPos) {
+            drawing.drawBrush(x, y, lastPos);
+        } else {
+            drawing.drawBrush(x, y, null);
+        }
         canvasState.setLastDrawPos({ x, y });
     };
 
@@ -267,9 +273,9 @@ const InpaintCanvas = ({
         ) {
             // Only resume if entering over a valid target
             canvasState.setIsDrawing(true);
-            const { x, y } = drawing.getCanvasCoordinates(e);
+            const { x, y } = drawing.getCanvasCoordinates(e as React.MouseEvent<HTMLImageElement>);
             canvasState.setLastDrawPos(null); // Reset last position for resumed stroke
-            drawing.drawBrush(x, y); // Resume drawing at new position
+            drawing.drawBrush(x, y, null); // Resume drawing at new position
             canvasState.setLastDrawPos({ x, y });
         }
     };
@@ -298,7 +304,7 @@ const InpaintCanvas = ({
         <main className="studio-canvas relative flex flex-col min-h-0">
             {/* Left Toolbar - Mask Controls */}
             {isInpaintMode && (displayImage || inputImage) && !canvasState.isDrawing && (
-                <div className={`absolute top-4 left-4 z-10 transition-opacity duration-200 ${uiVisible ? 'opacity-100' : 'opacity-0'}`}>
+                <div className={`absolute top-2 left-2 z-10 transition-opacity duration-200 ${uiVisible ? 'opacity-100' : 'opacity-0'}`}>
                     <InpaintToolbar
                         drawingMode={drawingMode}
                         setDrawingMode={setDrawingMode}
@@ -326,27 +332,12 @@ const InpaintCanvas = ({
                 </div>
             )}
 
-            {/* Right Toolbar - Image Controls */}
-            {(displayImage || inputImage) && !canvasState.isDrawing && (
-                <div className={`absolute top-4 right-4 z-10 transition-opacity duration-200 ${uiVisible ? 'opacity-100' : 'opacity-0'}`}>
-                    <ZoomToolbar
-                        zoom={canvasState.zoom}
-                        showGrid={canvasState.showGrid}
-                        setShowGrid={canvasState.setShowGrid}
-                        fitToScreen={canvasState.fitToScreen}
-                        handleZoomOut={canvasState.handleZoomOut}
-                        handleZoomIn={canvasState.handleZoomIn}
-                        handleResetZoom={canvasState.handleResetZoom}
-                        handleFitToScreen={canvasState.handleFitToScreen}
-                        openFileDialog={openFileDialog}
-                        uiVisible={uiVisible}
-                        setUiVisible={setUiVisible}
-                    />
-                </div>
-            )}
+            <div className="absolute top-1 right-1 z-20 pointer-events-auto">
+                {canvasControls && (
+                    <CanvasTopControls controls={canvasControls} visible={uiVisible} />
+                )}
+            </div>
 
-
-            {/* Canvas Area */}
             <CanvasArea
                 canvasRef={canvasRef}
                 panTargetRef={panTargetRef}
@@ -368,8 +359,14 @@ const InpaintCanvas = ({
                 isPanning={canvasState.isPanning}
                 isRightClickPanning={canvasState.isRightClickPanning}
                 showGrid={canvasState.showGrid}
+                setShowGrid={canvasState.setShowGrid}
                 showMask={canvasState.showMask}
                 showBorder={canvasState.showBorder}
+                handleZoomOut={canvasState.handleZoomOut}
+                handleZoomIn={canvasState.handleZoomIn}
+                handleResetZoom={canvasState.handleResetZoom}
+                handleFitToScreen={canvasState.handleFitToScreen}
+                setUiVisible={setUiVisible}
                 inpaintFullRes={inpaintFullRes}
                 inpaintFullResPadding={inpaintFullResPadding}
                 setInpaintFullResPadding={setInpaintFullResPadding}

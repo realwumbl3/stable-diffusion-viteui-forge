@@ -23,6 +23,15 @@ export interface Progress {
 
 // Header component props
 export interface HeaderProps {
+  openWorkspaces: string[]
+  currentWorkspace: string | null
+  onWorkspaceChange: (workspace: string) => void
+  onWorkspaceClose: (workspace: string) => void
+  onCreateWorkspace: (name: string) => void
+  onOpenWorkspaceBrowser: () => void
+}
+
+export interface CanvasTopControlsProps {
   loading: boolean
   progress: Progress | null
   onGenerate: () => void
@@ -30,14 +39,6 @@ export interface HeaderProps {
   onSkip: () => void
   onRestart: () => void
   onInterrupt: () => void
-  openWorkspaces: string[]
-  currentWorkspace: string | null
-  onWorkspaceChange: (workspace: string) => void
-  onWorkspaceClose: (workspace: string) => void
-  onCreateWorkspace: (name: string) => void
-  onOpenWorkspaceBrowser: () => void
-  pageLocked: boolean
-  onToggleLock: () => void
   pendingRestart: boolean
   steps: number
   setSteps: (value: number) => void
@@ -56,6 +57,8 @@ export interface HeaderProps {
   height: number
   setHeight: (value: number) => void
   inputImage: string | null
+  pageLocked: boolean
+  onToggleLock: () => void
 }
 
 // Sidebar component props
@@ -229,7 +232,7 @@ export interface InpaintCanvasProps {
   generationHeight?: number
   composerNodes: PromptNode[]
   onComposerNodesChange: (nodes: PromptNode[]) => void
-  setInpaintMask: (mask: string) => void
+  setInpaintMask: React.Dispatch<React.SetStateAction<string | null>>
   brushSize?: number
   drawingMode?: string
   inputImage?: string | null
@@ -249,6 +252,7 @@ export interface InpaintCanvasProps {
   setInpaintingMaskInvert: (value: boolean) => void
   generationMode?: GenerationMode
   canvasRefreshKey?: number
+  canvasControls: CanvasTopControlsProps
 }
 
 // CanvasArea component props
@@ -273,6 +277,7 @@ export interface CanvasAreaProps {
   isPanning: boolean
   isRightClickPanning: boolean
   showGrid: boolean
+  setShowGrid: (show: boolean) => void
   showMask: boolean
   showBorder: boolean
   inpaintFullRes: boolean
@@ -305,11 +310,16 @@ export interface CanvasAreaProps {
   inpaintingMaskInvert: boolean
   setInpaintingMaskInvert: (value: boolean) => void
   uiVisible?: boolean
+  setUiVisible?: (visible: boolean) => void
   scrollWheelZoomIncrement?: number
   generationMode?: GenerationMode
   focusBounds?: { x: number; y: number; width: number; height: number } | null
   maskBounds?: { x: number; y: number; width: number; height: number } | null
   canvasRefreshKey?: number
+  handleZoomOut: () => void
+  handleZoomIn: () => void
+  handleResetZoom: () => void
+  handleFitToScreen: () => void
 }
 
 // InpaintToolbar component props

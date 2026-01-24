@@ -1056,40 +1056,12 @@ function App() {
             <div className="h-screen flex flex-col bg-studio-bg">
                 {/* Header Toolbar */}
                 <Header
-                    loading={loading}
-                    progress={progress}
-                    onGenerate={generateImage}
-                    canGenerate={!!composerPrompt.trim()}
-                    onSkip={handleSkip}
-                    onRestart={handleRestart}
-                    onInterrupt={handleEnd}
                     openWorkspaces={openWorkspaces}
                     currentWorkspace={currentWorkspace}
                     onWorkspaceChange={handleWorkspaceChange}
                     onWorkspaceClose={handleWorkspaceClose}
                     onCreateWorkspace={handleCreateWorkspace}
                     onOpenWorkspaceBrowser={() => setWorkspaceBrowserOpen(true)}
-                    pageLocked={pageLocked}
-                    onToggleLock={() => setPageLocked(!pageLocked)}
-                    pendingRestart={pendingRestart}
-                    // New header controls
-                    steps={steps}
-                    setSteps={setSteps}
-                    count={count}
-                    setCount={setCount}
-                    selectedSampler={selectedSampler}
-                    setSelectedSampler={setSelectedSampler}
-                    cfgScale={cfgScale}
-                    setCfgScale={setCfgScale}
-                    models={models}
-                    selectedModel={selectedModel}
-                    onModelChange={handleModelChange}
-                    samplers={samplers}
-                    width={width}
-                    setWidth={setWidth}
-                    height={height}
-                    setHeight={setHeight}
-                    inputImage={inputImage}
                 />
 
                 {/* Welcome Screen */}
@@ -1109,44 +1081,46 @@ function App() {
         );
     }
 
+    const canvasControls = {
+        loading,
+        progress,
+        onGenerate: generateImage,
+        canGenerate: !!composerPrompt.trim(),
+        onSkip: handleSkip,
+        onRestart: handleRestart,
+        onInterrupt: handleEnd,
+        pendingRestart,
+        steps,
+        setSteps,
+        count,
+        setCount,
+        selectedSampler,
+        setSelectedSampler,
+        cfgScale,
+        setCfgScale,
+        models,
+        selectedModel,
+        onModelChange: handleModelChange,
+        samplers,
+        width,
+        setWidth,
+        height,
+        setHeight,
+        inputImage,
+        pageLocked,
+        onToggleLock: () => setPageLocked(!pageLocked),
+    }
+
     return (
         <div className="h-screen flex flex-col bg-studio-bg">
             {/* Header Toolbar */}
             <Header
-                loading={loading}
-                progress={progress}
-                onGenerate={generateImage}
-                    canGenerate={!!composerPrompt.trim()}
-                onSkip={handleSkip}
-                onRestart={handleRestart}
-                onInterrupt={handleEnd}
                 openWorkspaces={openWorkspaces}
                 currentWorkspace={currentWorkspace}
                 onWorkspaceChange={handleWorkspaceChange}
                 onWorkspaceClose={handleWorkspaceClose}
                 onCreateWorkspace={handleCreateWorkspace}
                 onOpenWorkspaceBrowser={() => setWorkspaceBrowserOpen(true)}
-                pageLocked={pageLocked}
-                onToggleLock={() => setPageLocked(!pageLocked)}
-                pendingRestart={pendingRestart}
-                // New header controls
-                steps={steps}
-                setSteps={setSteps}
-                count={count}
-                setCount={setCount}
-                selectedSampler={selectedSampler}
-                setSelectedSampler={setSelectedSampler}
-                cfgScale={cfgScale}
-                setCfgScale={setCfgScale}
-                models={models}
-                selectedModel={selectedModel}
-                onModelChange={handleModelChange}
-                samplers={samplers}
-                width={width}
-                setWidth={setWidth}
-                height={height}
-                setHeight={setHeight}
-                inputImage={inputImage}
             />
 
             {/* Main Content Area */}
@@ -1202,6 +1176,7 @@ function App() {
                         setInpaintingMaskInvert={setInpaintingMaskInvert}
                         generationMode={generationMode}
                         canvasRefreshKey={canvasRefreshKey}
+                        canvasControls={canvasControls}
                     />
                 ) : (
                     <InpaintCanvas
@@ -1235,6 +1210,7 @@ function App() {
                         setInpaintFullResPadding={() => { }}
                         generationMode={generationMode}
                         canvasRefreshKey={canvasRefreshKey}
+                        canvasControls={canvasControls}
                     />
                 )}
 

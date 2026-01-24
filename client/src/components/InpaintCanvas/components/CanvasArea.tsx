@@ -3,6 +3,7 @@ import { Upload } from "lucide-react";
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { cn } from "../../../lib/utils";
 import InpaintParametersPanel from "./InpaintParametersPanel";
+import ZoomToolbar from "./ZoomToolbar";
 import type { CanvasAreaProps } from "../../../types/components";
 
 const CanvasArea = ({
@@ -21,6 +22,7 @@ const CanvasArea = ({
     isPanning,
     isRightClickPanning,
     showGrid,
+    setShowGrid,
     showMask,
     showBorder,
     inpaintFullRes,
@@ -52,11 +54,16 @@ const CanvasArea = ({
     inpaintingMaskInvert,
     setInpaintingMaskInvert,
     uiVisible = true,
+    setUiVisible,
     scrollWheelZoomIncrement = 4,
     generationMode = "txt2img",
     focusBounds = null,
     maskBounds = null,
     canvasRefreshKey = 0,
+    handleZoomOut,
+    handleZoomIn,
+    handleResetZoom,
+    handleFitToScreen,
 }: CanvasAreaProps) => {
     // Always use input image for canvas layout in edit mode - livePreview is purely cosmetic
     const baseImageSrc = viewMode === "edit" ? inputImage || displayImage : displayImage || inputImage;
@@ -203,7 +210,7 @@ const CanvasArea = ({
                         {progress ? (
                             <>
                                 <p className="text-studio-text text-sm mb-2">
-                                    {progress.textinfo || "Generating image..."}
+                                    {(progress.textinfo as string | undefined) || "Generating image..."}
                                 </p>
                                 <div className="w-64 h-2 bg-studio-bg/30 rounded-full overflow-hidden mb-2">
                                     <div
@@ -213,9 +220,9 @@ const CanvasArea = ({
                                 </div>
                                 <p className="text-studio-textSecondary text-xs">
                                     {Math.round((progress.progress ?? 0) * 100)}%
-                                    {progress.total_batches && progress.total_batches > 1 &&
-                                        ` • Batch ${progress.current_batch}/${progress.total_batches}`}
-                                    {progress.eta && ` • ETA: ${Math.round(progress.eta)}s`}
+                                    {typeof progress.total_batches === 'number' && progress.total_batches > 1 &&
+                                        ` • Batch ${typeof progress.current_batch === 'number' ? progress.current_batch : '?'}/${progress.total_batches}`}
+                                    {typeof progress.eta === 'number' && ` • ETA: ${Math.round(progress.eta)}s`}
                                 </p>
                             </>
                         ) : (
@@ -396,9 +403,28 @@ const CanvasArea = ({
                     )}
 
 
-                    {/* Inpaint Parameters Panel */}
+                    {/* Zoom Toolbar - Bottom Left */}
+                    {(displayImage || inputImage) && !isDrawing && setShowGrid && setUiVisible && (
+                        <div className={`absolute bottom-4 left-4 z-20 transition-opacity duration-200 ${uiVisible ? 'opacity-100' : 'opacity-0'}`}>
+                            <ZoomToolbar
+                                zoom={zoom}
+                                showGrid={showGrid}
+                                setShowGrid={setShowGrid}
+                                fitToScreen={fitToScreen}
+                                handleZoomOut={handleZoomOut}
+                                handleZoomIn={handleZoomIn}
+                                handleResetZoom={handleResetZoom}
+                                handleFitToScreen={handleFitToScreen}
+                                openFileDialog={openFileDialog}
+                                uiVisible={uiVisible}
+                                setUiVisible={setUiVisible}
+                            />
+                        </div>
+                    )}
+
+                    {/* Inpaint Parameters Panel - Bottom Right */}
                     {generationMode === "inpaint" && (
-                        <div className={`transition-opacity duration-200 ${uiVisible ? 'opacity-100' : 'opacity-0'}`}>
+                        <div className={`absolute bottom-4 right-4 z-20 transition-opacity duration-200 ${uiVisible ? 'opacity-100' : 'opacity-0'}`}>
                             <InpaintParametersPanel
                                 maskBlur={maskBlur}
                                 setMaskBlur={setMaskBlur}

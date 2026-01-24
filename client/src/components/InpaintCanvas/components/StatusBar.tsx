@@ -1,5 +1,6 @@
 // VITE UI
 import { useState, useEffect } from 'react'
+import MemoryPanel from '../../MemoryPanel'
 import type { StatusBarProps } from '../../../types/components'
 
 // Hook to track memory usage
@@ -36,6 +37,7 @@ const StatusBar = ({
     loading,
 }: StatusBarProps) => {
     const memoryUsage = useMemoryUsage()
+    const [memoryPanelOpen, setMemoryPanelOpen] = useState(false)
     return (
         <div className="studio-toolbar justify-between text-xs text-studio-textSecondary ps-2 pe-2">
             <div className="flex items-center gap-4">
@@ -82,9 +84,17 @@ const StatusBar = ({
                 )}
             </div>
             <div className="flex items-center gap-4">
-                {memoryUsage && (
-                    <span>mem: {memoryUsage}mb</span>
+                {memoryUsage != null && (
+                    <button
+                        type="button"
+                        onClick={() => setMemoryPanelOpen(true)}
+                        className="text-studio-textSecondary hover:text-studio-text hover:underline cursor-pointer transition-colors"
+                        title="Open memory panel"
+                    >
+                        mem: {memoryUsage}mb
+                    </button>
                 )}
+                <MemoryPanel open={memoryPanelOpen} onClose={() => setMemoryPanelOpen(false)} />
                 <span>Stable Diffusion viteUI</span>
                 {progress && loading && <span className="text-studio-accent">{progress.textinfo}</span>}
             </div>
