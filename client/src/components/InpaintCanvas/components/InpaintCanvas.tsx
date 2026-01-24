@@ -108,6 +108,8 @@ const InpaintCanvas = ({
     });
 
     const fileHandling = useFileHandling({ onImageUpload });
+    // Destructure to avoid ref access warnings
+    const { isDragOver, fileInputRef, openFileDialog, handleDragOver, handleDragLeave, handleDrop } = fileHandling;
 
     // Initialize keyboard shortcuts
     useKeyboardShortcuts({
@@ -336,7 +338,7 @@ const InpaintCanvas = ({
                         handleZoomIn={canvasState.handleZoomIn}
                         handleResetZoom={canvasState.handleResetZoom}
                         handleFitToScreen={canvasState.handleFitToScreen}
-                        openFileDialog={fileHandling.openFileDialog}
+                        openFileDialog={openFileDialog}
                         uiVisible={uiVisible}
                         setUiVisible={setUiVisible}
                     />
@@ -375,10 +377,10 @@ const InpaintCanvas = ({
                 viewMode={canvasState.viewMode}
                 isDrawing={canvasState.isDrawing}
                 setLastDrawPos={canvasState.setLastDrawPos}
-                isDragOver={fileHandling.isDragOver}
-                handleDragOver={fileHandling.handleDragOver}
-                handleDragLeave={fileHandling.handleDragLeave}
-                handleDrop={fileHandling.handleDrop}
+                isDragOver={isDragOver}
+                handleDragOver={handleDragOver}
+                handleDragLeave={handleDragLeave}
+                handleDrop={handleDrop}
                 handleMouseDown={handleMouseDown}
                 handleMouseMove={handleMouseMove}
                 handleMouseUp={handleMouseUp}
@@ -388,7 +390,7 @@ const InpaintCanvas = ({
                 brushHardness={brushHardness}
                 setBrushHardness={setBrushHardness}
                 drawingMode={drawingMode}
-                openFileDialog={fileHandling.openFileDialog}
+                openFileDialog={openFileDialog}
                 maskBlur={maskBlur}
                 setMaskBlur={setMaskBlur}
                 inpaintingFill={inpaintingFill}
@@ -426,7 +428,7 @@ const InpaintCanvas = ({
 
             {/* Hidden file input */}
             <input
-                ref={fileHandling.fileInputRef}
+                ref={fileInputRef}
                 type="file"
                 accept="image/*"
                 onChange={handleFileInput}

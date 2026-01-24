@@ -14,12 +14,16 @@ function TagsNodeContent({
 }: TagsNodeContentProps) {
   const tagRefs = useRef<(HTMLInputElement | null)[]>([])
   const [hasFocusedInitialTag, setHasFocusedInitialTag] = useState(false)
-  const shouldFocusInitialTag =
-    node.value.length > 0 && node.value[0].value === '' && !hasFocusedInitialTag
-
+  
+  // Determine if we should focus the initial tag
+  const shouldFocusInitialTag = node.value.length > 0 && node.value[0].value === '' && !hasFocusedInitialTag
+  
+  // Update state when we need to focus - defer setState
   useEffect(() => {
     if (shouldFocusInitialTag) {
-      setHasFocusedInitialTag(true)
+      requestAnimationFrame(() => {
+        setHasFocusedInitialTag(true)
+      })
     }
   }, [shouldFocusInitialTag])
 

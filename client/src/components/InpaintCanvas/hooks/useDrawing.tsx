@@ -209,7 +209,7 @@ export function useDrawing({
             ctx.arc(x, y, brushSize / 2, 0, 2 * Math.PI);
             ctx.fill();
         }
-    }, [drawingMode, brushHardness, brushSize]);
+    }, [drawingMode, brushHardness, brushSize, maskCanvasRef]);
 
 
     // Calculate bounding box of mask pixels for padding visualization
@@ -439,25 +439,22 @@ export function useDrawing({
     const [focusBounds, setFocusBounds] = useState<Bounds | null>(null);
     const [maskBounds, setMaskBounds] = useState<Bounds | null>(null);
 
-    // Calculate focus bounds (independent of canvas)
-    const calculateFocusBounds = useCallback(() => {
+    // Calculate focus bounds (independent of canvas) - pure function that returns both bounds
+    const calculateBounds = useCallback((): { maskBounds: Bounds | null; focusBounds: Bounds | null } => {
         if (!inpaintFullRes) {
-            return null;
+            return { maskBounds: null, focusBounds: null };
         }
 
         // Get mask bounds
         const bounds = getMaskBounds();
         if (!bounds) {
-            setMaskBounds(null);
-            return null;
+            return { maskBounds: null, focusBounds: null };
         }
-
-        setMaskBounds(bounds);
 
         // Get canvas dimensions from mask canvas
         const canvas = maskCanvasRef.current;
         if (!canvas) {
-            return null;
+            return { maskBounds: bounds, focusBounds: null };
         }
 
         // Calculate padded bounds
@@ -500,32 +497,41 @@ export function useDrawing({
         focusY = Math.max(0, Math.min(focusY, Math.max(0, canvas.height - focusedHeight)));
 
         return {
-            x: focusX,
-            y: focusY,
-            width: focusedWidth,
-            height: focusedHeight,
+            maskBounds: bounds,
+            focusBounds: {
+                x: focusX,
+                y: focusY,
+                width: focusedWidth,
+                height: focusedHeight,
+            },
         };
     }, [inpaintFullRes, inpaintFullResPadding, getMaskBounds, generationWidth, generationHeight, maskCanvasRef]);
 
-    const updateBorderVisualization = useCallback(() => {
-        // Calculate bounds (DOM implementation doesn't need canvas)
-        const bounds = calculateFocusBounds();
-        setFocusBounds(bounds);
-
-        // Canvas drawing is no longer used - DOM borders handle visualization
-    }, [calculateFocusBounds]);
-
-    // Update border visualization
+    // Update border visualization - use requestAnimationFrame to defer setState
     useEffect(() => {
-        updateBorderVisualization();
-    }, [updateBorderVisualization]);
+        const updateBounds = () => {
+            const { maskBounds: newMaskBounds, focusBounds: newFocusBounds } = calculateBounds();
+            setMaskBounds(newMaskBounds);
+            setFocusBounds(newFocusBounds);
+        };
+        
+        // Defer setState to avoid synchronous setState in effect
+        requestAnimationFrame(updateBounds);
+    }, [calculateBounds]);
 
     // Update border visualization after drawing operations
     useEffect(() => {
         if (maskHistory.length > 0) {
-            updateBorderVisualization();
+            const updateBounds = () => {
+                const { maskBounds: newMaskBounds, focusBounds: newFocusBounds } = calculateBounds();
+                setMaskBounds(newMaskBounds);
+                setFocusBounds(newFocusBounds);
+            };
+            
+            // Defer setState to avoid synchronous setState in effect
+            requestAnimationFrame(updateBounds);
         }
-    }, [maskHistory, historyIndex, updateBorderVisualization]);
+    }, [maskHistory, calculateBounds]);
 
     const undoMask = useCallback(() => {
         if (historyIndex > 0) {
@@ -541,10 +547,13 @@ export function useDrawing({
                 // Update inpaint mask
                 const maskDataURL = getMaskDataUrl();
                 setInpaintMask(maskDataURL || null);
-                updateBorderVisualization();
+                // Update bounds after undo
+                const { maskBounds: newMaskBounds, focusBounds: newFocusBounds } = calculateBounds();
+                setMaskBounds(newMaskBounds);
+                setFocusBounds(newFocusBounds);
             }
         }
-    }, [historyIndex, maskHistory, getMaskDataUrl, setInpaintMask, updateBorderVisualization, maskCanvasRef]);
+    }, [historyIndex, maskHistory, getMaskDataUrl, setInpaintMask, calculateBounds, maskCanvasRef]);
 
     const redoMask = useCallback(() => {
         if (historyIndex < maskHistory.length - 1) {
@@ -560,10 +569,13 @@ export function useDrawing({
                 // Update inpaint mask
                 const maskDataURL = getMaskDataUrl();
                 setInpaintMask(maskDataURL || null);
-                updateBorderVisualization();
+                // Update bounds after undo
+                const { maskBounds: newMaskBounds, focusBounds: newFocusBounds } = calculateBounds();
+                setMaskBounds(newMaskBounds);
+                setFocusBounds(newFocusBounds);
             }
         }
-    }, [historyIndex, maskHistory, getMaskDataUrl, setInpaintMask, updateBorderVisualization, maskCanvasRef]);
+    }, [historyIndex, maskHistory, getMaskDataUrl, setInpaintMask, calculateBounds, maskCanvasRef]);
 
     const canUndo = historyIndex > 0;
     const canRedo = historyIndex < maskHistory.length - 1;

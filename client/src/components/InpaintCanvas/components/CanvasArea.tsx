@@ -1,6 +1,6 @@
 // VITE UI
 import { Upload } from "lucide-react";
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { cn } from "../../../lib/utils";
 import InpaintParametersPanel from "./InpaintParametersPanel";
 import type { CanvasAreaProps } from "../../../types/components";
@@ -100,14 +100,16 @@ const CanvasArea = ({
     }, []);
 
     // Show brush indicator when input image is available, drawing mode is supported, and we're in inpaint mode
-    useEffect(() => {
-        const shouldShowBrushIndicator =
-            Boolean(inputImage) &&
+    const shouldShowBrushIndicator = useMemo(() => {
+        return Boolean(inputImage) &&
             generationMode === "inpaint" &&
             (drawingMode === "brush" || drawingMode === "erase");
-
-        setShowBrushIndicator(shouldShowBrushIndicator);
     }, [inputImage, drawingMode, generationMode]);
+
+    // Sync derived value to state
+    useEffect(() => {
+        setShowBrushIndicator(shouldShowBrushIndicator);
+    }, [shouldShowBrushIndicator]);
 
     // Alt + scroll for brush size adjustment
     useEffect(() => {

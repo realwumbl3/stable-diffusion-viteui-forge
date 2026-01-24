@@ -15,7 +15,7 @@ import { useWorkspaceTabs } from "./hooks/useWorkspaceTabs";
 import { parseWorkspaceImage, resolveImageSrc, API_BASE_URL } from "./lib/utils";
 import { composePromptsFromNodes, generateId } from "./components/PromptComposer/utils/promptUtils";
 import { encodeLegacy } from "./components/PromptComposer/utils/legacyEncoding";
-import type { Generation, ModelInfo, SamplerInfo, UpscalerInfo } from "./Api";
+import type { Generation, ModelInfo, SamplerInfo, UpscalerInfo, ExtrasSingleImageParams } from "./Api";
 import type { PromptNode } from "./components/PromptComposer/types";
 import type { Timeline, GenerationMode, Progress } from "./types/components";
 
@@ -963,7 +963,7 @@ function App() {
             // Try to get workspace_image_path first
             const workspaceImagePath = getWorkspaceImagePath(upscaleDialog.sourceImage);
             
-            const params: any = {
+            const params: ExtrasSingleImageParams = {
                 upscaler_1: upscaler,
                 upscaling_resize: scaleFactor,
                 resize_mode: 0, // Scale by factor

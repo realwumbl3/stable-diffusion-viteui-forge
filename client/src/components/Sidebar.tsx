@@ -8,7 +8,7 @@ import {
   Edit,
   RefreshCw
 } from 'lucide-react'
-import { useState, useRef, useMemo } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { cn, resolveImageSrc } from '../lib/utils'
 import TimelineItem from './TimelineItem'
 import type { SidebarProps } from '../types/components'
@@ -37,14 +37,17 @@ const Sidebar = ({
   const [imageLoadTick, setImageLoadTick] = useState(0)
   const canvasImgRef = useRef<HTMLImageElement>(null)
 
-  const canvasDimensions = useMemo(() => {
+  const [canvasDimensions, setCanvasDimensions] = useState<{ width: number; height: number }>({ width: 0, height: 0 })
+
+  // Update canvas dimensions when image loads or changes
+  useEffect(() => {
     const img = canvasImgRef.current
 
     if (img && img.naturalWidth > 0 && img.naturalHeight > 0) {
-      return { width: img.naturalWidth, height: img.naturalHeight }
+      setCanvasDimensions({ width: img.naturalWidth, height: img.naturalHeight })
+    } else {
+      setCanvasDimensions({ width: 0, height: 0 })
     }
-
-    return { width: 0, height: 0 }
   }, [currentImage, canvasRefreshKey, imageLoadTick])
 
   const handleCanvasImageLoad = () => {

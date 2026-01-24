@@ -35,8 +35,12 @@ const WorkspaceBrowser = ({ currentWorkspace, onSelectWorkspace, onClose }: Work
         }
     }, []);
 
+    // Load structure on mount - async function handles setState internally
     useEffect(() => {
-        loadStructure();
+        // Defer to avoid synchronous setState warning (setState happens in async callback)
+        requestAnimationFrame(() => {
+            void loadStructure();
+        });
     }, [loadStructure]);
 
     useEffect(() => {

@@ -12,7 +12,6 @@ const ZoomToolbar = ({
     handleResetZoom,
     handleFitToScreen,
     openFileDialog,
-    uiVisible,
     setUiVisible,
 }: ZoomToolbarProps) => {
     return (

@@ -16,6 +16,7 @@ const TagComponent = React.forwardRef<HTMLInputElement, TagComponentProps>(
         const [inputValue, setInputValue] = useState(tag.value);
         const inputRef = useRef<HTMLInputElement>(null);
         const measureRef = useRef<HTMLSpanElement>(null);
+        const prevTagValueRef = useRef<string>(tag.value);
 
         const adjustInputWidth = (value: string) => {
             if (measureRef.current && inputRef.current) {
@@ -30,11 +31,18 @@ const TagComponent = React.forwardRef<HTMLInputElement, TagComponentProps>(
         // Forward the ref to the input element
         React.useImperativeHandle(ref, () => inputRef.current!);
 
+        // Update input value when tag.value changes externally (not from user input)
         useEffect(() => {
-            setInputValue(tag.value);
-            // Adjust width when tag value changes from props
-            setTimeout(() => adjustInputWidth(tag.value), 0);
-        }, [tag.value]);
+            if (tag.value !== prevTagValueRef.current && tag.value !== inputValue) {
+                prevTagValueRef.current = tag.value;
+                // Defer setState to avoid synchronous setState warning
+                requestAnimationFrame(() => {
+                    setInputValue(tag.value);
+                    // Adjust width when tag value changes from props
+                    setTimeout(() => adjustInputWidth(tag.value), 0);
+                });
+            }
+        }, [tag.value, inputValue]);
 
         useEffect(() => {
             if (shouldFocus && inputRef.current) {

@@ -1,5 +1,5 @@
 // VITE UI
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { UseWorkspaceTabsReturn } from '../types/hooks';
 
 const STORAGE_KEY_OPEN_WORKSPACES = 'viteui-open-workspaces';
@@ -22,7 +22,7 @@ const loadInitialTabs = (): { openWorkspaces: string[]; currentWorkspace: string
             }
         }
 
-        let currentWorkspaceData: string | null = storedCurrent;
+        const currentWorkspaceData: string | null = storedCurrent;
 
         if (currentWorkspaceData && !openWorkspacesData.includes(currentWorkspaceData)) {
             openWorkspacesData = [...openWorkspacesData, currentWorkspaceData];
@@ -43,16 +43,15 @@ const loadInitialTabs = (): { openWorkspaces: string[]; currentWorkspace: string
  * Hook for managing workspace tabs with localStorage persistence
  */
 export const useWorkspaceTabs = (): UseWorkspaceTabsReturn => {
-    const initialTabsRef = useRef<{ openWorkspaces: string[]; currentWorkspace: string | null }>();
-
-    if (!initialTabsRef.current) {
-        initialTabsRef.current = loadInitialTabs();
-    }
-
-    const [openWorkspaces, setOpenWorkspaces] = useState<string[]>(initialTabsRef.current.openWorkspaces);
-    const [currentWorkspace, setCurrentWorkspace] = useState<string | null>(
-        initialTabsRef.current.currentWorkspace
-    );
+    // Initialize state with loaded tabs - use lazy initialization to avoid ref access during render
+    const [openWorkspaces, setOpenWorkspaces] = useState<string[]>(() => {
+        const initial = loadInitialTabs();
+        return initial.openWorkspaces;
+    });
+    const [currentWorkspace, setCurrentWorkspace] = useState<string | null>(() => {
+        const initial = loadInitialTabs();
+        return initial.currentWorkspace;
+    });
 
     useEffect(() => {
         try {

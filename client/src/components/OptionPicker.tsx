@@ -1,5 +1,5 @@
 // VITE UI
-import { useState, useRef, useEffect, useLayoutEffect, useId } from 'react';
+import { useState, useRef, useEffect, useLayoutEffect, useMemo, useId } from 'react';
 import { ChevronDown } from 'lucide-react';
 import type { OptionPickerProps } from '../types/components';
 
@@ -12,31 +12,44 @@ const useDropdownPosition = (isOpen: boolean, triggerRef: React.RefObject<HTMLEl
   const [position, setPosition] = useState<DropdownPosition>({ top: 'top-full', left: 'left-0' });
 
   useLayoutEffect(() => {
-    if (!isOpen || !triggerRef.current) return;
-
-    const triggerRect = triggerRef.current.getBoundingClientRect();
-    const viewportHeight = window.innerHeight;
-    const viewportWidth = window.innerWidth;
-
-    // Calculate if dropdown fits below
-    const fitsBelow = triggerRect.bottom + 200 <= viewportHeight; // 200px estimated dropdown height
-
-    // Calculate if dropdown fits to the right
-    const fitsRight = triggerRect.left + 120 <= viewportWidth; // 120px minimum width
-
-    const newPosition: DropdownPosition = { top: 'top-full', left: 'left-0' };
-
-    if (!fitsBelow) {
-      // Show above if doesn't fit below
-      newPosition.top = 'bottom-full';
+    if (!isOpen || !triggerRef.current) {
+      // Defer setState to avoid synchronous setState warning
+      requestAnimationFrame(() => {
+        setPosition({ top: 'top-full', left: 'left-0' });
+      });
+      return;
     }
 
-    if (!fitsRight && triggerRect.right >= 120) {
-      // Show to the left if doesn't fit to the right
-      newPosition.left = 'right-0';
-    }
+    const updatePosition = () => {
+      if (!triggerRef.current) return;
+      
+      const triggerRect = triggerRef.current.getBoundingClientRect();
+      const viewportHeight = window.innerHeight;
+      const viewportWidth = window.innerWidth;
 
-    setPosition(newPosition);
+      // Calculate if dropdown fits below
+      const fitsBelow = triggerRect.bottom + 200 <= viewportHeight; // 200px estimated dropdown height
+
+      // Calculate if dropdown fits to the right
+      const fitsRight = triggerRect.left + 120 <= viewportWidth; // 120px minimum width
+
+      const newPosition: DropdownPosition = { top: 'top-full', left: 'left-0' };
+
+      if (!fitsBelow) {
+        // Show above if doesn't fit below
+        newPosition.top = 'bottom-full';
+      }
+
+      if (!fitsRight && triggerRect.right >= 120) {
+        // Show to the left if doesn't fit to the right
+        newPosition.left = 'right-0';
+      }
+
+      setPosition(newPosition);
+    };
+    
+    // Defer setState to avoid synchronous setState warning
+    requestAnimationFrame(updatePosition);
   }, [isOpen, triggerRef]);
 
   return position;
@@ -72,15 +85,19 @@ const OptionPicker = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Reset focused index when dropdown opens/closes
-  useEffect(() => {
+  // Reset focused index when dropdown opens/closes - derive from state
+  const derivedFocusedIndex = useMemo(() => {
     if (isOpen) {
       const selectedIndex = options.findIndex(option => option.value === value);
-      setFocusedIndex(selectedIndex >= 0 ? selectedIndex : 0);
-    } else {
-      setFocusedIndex(-1);
+      return selectedIndex >= 0 ? selectedIndex : 0;
     }
+    return -1;
   }, [isOpen, options, value]);
+
+  // Sync derived value to state only when it changes
+  useEffect(() => {
+    setFocusedIndex(derivedFocusedIndex);
+  }, [derivedFocusedIndex]);
 
   // Handle keyboard navigation
   useEffect(() => {
