@@ -1,6 +1,9 @@
 // VITE UI
 import type { Generation } from '../Api'
-import type { PromptNode } from '../components/PromptComposer/types'
+import type { PromptMode, PromptNode } from '../components/PromptComposer/types'
+
+// OptionPicker opening direction type
+export type OpeningDirection = 'up' | 'down' | 'auto'
 
 // Timeline types
 export interface Timeline {
@@ -134,6 +137,7 @@ export interface OptionPickerProps {
   placeholder?: string
   className?: string
   disabled?: boolean
+  openingDirection?: OpeningDirection
 }
 
 // ResolutionPicker component props
@@ -245,6 +249,8 @@ export interface InpaintCanvasProps {
   generationMode?: GenerationMode
   canvasRefreshKey?: number
   canvasControls: CanvasTopControlsProps
+  promptMode: PromptMode
+  onPromptModeChange: (mode: PromptMode) => void
 }
 
 // CanvasArea component props

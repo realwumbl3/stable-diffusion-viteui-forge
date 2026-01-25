@@ -2,9 +2,9 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { Dispatch, ReactNode, SetStateAction } from "react";
 import { useWorkspaceTabs } from "../hooks/useWorkspaceTabs";
-import type { GenerationMode, Timeline } from "../types/components";
+import type { GenerationMode } from "../types/components";
 import type { ModelInfo, SamplerInfo } from "../Api";
-import type { PromptNode } from "../components/PromptComposer/types";
+import type { PromptMode } from "../components/PromptComposer/types";
 
 const STORAGE_KEY_WORKSPACE_STATE = "viteui-workspace-state";
 
@@ -39,24 +39,14 @@ export interface WorkspaceModeState {
 }
 
 export interface WorkspaceUiState {
-    composerNodes: PromptNode[];
-    workspacePromptLoaded: boolean;
+    promptMode: PromptMode;
     sidebarCollapsed: boolean;
     propertiesCollapsed: boolean;
     pageLocked: boolean;
-    upscaleDialog: {
-        isOpen: boolean;
-        sourceImage: { id: string; image: string; type: "timeline" | "canvas" } | null;
-        selectedUpscaler: string;
-        availableUpscalers: Array<{ name: string; model_name?: string; scale?: number }>;
-        loading: boolean;
-        error: string | null;
-    };
 }
 
 export interface WorkspaceCanvasState {
     currentImage: string | null;
-    timeline: Timeline;
     canvasRefreshKey: number;
 }
 
@@ -115,28 +105,13 @@ const createDefaultWorkspaceState = (): WorkspaceState => ({
         forceInpaintEditMode: false,
     },
     ui: {
-        composerNodes: [],
-        workspacePromptLoaded: false,
+        promptMode: "simple",
         sidebarCollapsed: false,
         propertiesCollapsed: true,
         pageLocked: false,
-        upscaleDialog: {
-            isOpen: false,
-            sourceImage: null,
-            selectedUpscaler: "Lanczos",
-            availableUpscalers: [],
-            loading: false,
-            error: null,
-        },
     },
     canvas: {
         currentImage: null,
-        timeline: {
-            generationQueue: [],
-            currentPreview: null,
-            committedHistory: [],
-            discarded: [],
-        },
         canvasRefreshKey: 0,
     },
 });
@@ -173,6 +148,14 @@ const stripTransientState = (state: WorkspaceState): WorkspaceState => ({
         loading: false,
         pendingRestart: false,
         currentTaskId: null,
+    },
+    ui: {
+        ...state.ui,
+    },
+    canvas: {
+        ...state.canvas,
+        // Timeline is handled by the /workspaces/<workspaceName>/generations endpoint
+        // ComposerNodes are handled by the workspace prompt endpoint
     },
 });
 

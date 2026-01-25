@@ -3,7 +3,7 @@ import { useState, useRef, useEffect, useLayoutEffect, useMemo, useId } from 're
 import { createPortal } from 'react-dom';
 import type { CSSProperties, RefObject } from 'react';
 import { ChevronDown } from 'lucide-react';
-import type { OptionPickerProps } from '../types/components';
+import type { OptionPickerProps, OpeningDirection } from '../types/components';
 
 const DROPDOWN_ESTIMATED_HEIGHT = 240;
 const DROPDOWN_MARGIN = 8;
@@ -15,7 +15,8 @@ const useDropdownPosition = (
   isOpen: boolean,
   triggerRef: RefObject<HTMLElement>,
   dropdownRef: RefObject<HTMLElement>,
-  optionCount: number
+  optionCount: number,
+  openingDirection: OpeningDirection = 'auto'
 ): CSSProperties => {
   const [style, setStyle] = useState<CSSProperties>({});
 
@@ -47,7 +48,15 @@ const useDropdownPosition = (
       const dropdownWidth = dropdownRef.current?.offsetWidth ?? triggerRect.width;
       const spaceBelow = viewportHeight - triggerRect.bottom;
 
-      const openUpwards = dropdownHeight > spaceBelow && triggerRect.top > dropdownHeight + DROPDOWN_MARGIN;
+      let openUpwards: boolean;
+      if (openingDirection === 'up') {
+        openUpwards = true;
+      } else if (openingDirection === 'down') {
+        openUpwards = false;
+      } else {
+        // 'auto' mode - use existing logic
+        openUpwards = dropdownHeight > spaceBelow && triggerRect.top > dropdownHeight + DROPDOWN_MARGIN;
+      }
       const bottomLimit = viewportHeight - dropdownHeight - DROPDOWN_MARGIN;
       const computedTop = openUpwards
         ? Math.max(DROPDOWN_MARGIN, triggerRect.top - dropdownHeight - DROPDOWN_MARGIN)
@@ -85,7 +94,7 @@ const useDropdownPosition = (
       if (rafId) window.cancelAnimationFrame(rafId);
       if (timeoutId) window.clearTimeout(timeoutId);
     };
-  }, [isOpen, triggerRef, dropdownRef, optionCount]);
+  }, [isOpen, triggerRef, dropdownRef, optionCount, openingDirection]);
 
   return style;
 };
@@ -97,7 +106,8 @@ const OptionPicker = ({
   title,
   placeholder = "Select...",
   className = "",
-  disabled = false
+  disabled = false,
+  openingDirection = 'auto'
 }: OptionPickerProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [focusedIndex, setFocusedIndex] = useState(-1);
@@ -105,7 +115,7 @@ const OptionPicker = ({
   const selectRef = useRef<HTMLSelectElement>(null);
   const triggerRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const dropdownStyle = useDropdownPosition(isOpen, triggerRef, dropdownRef, options.length);
+  const dropdownStyle = useDropdownPosition(isOpen, triggerRef, dropdownRef, options.length, openingDirection);
   const computedDropdownStyle: CSSProperties = isOpen
     ? { position: 'fixed', top: 0, left: 0, visibility: 'hidden', ...dropdownStyle }
     : dropdownStyle;
@@ -197,7 +207,7 @@ const OptionPicker = ({
   const textWidth = displayText.length * 8; // Rough estimate: 8px per character
   const labelWidth = title ? title.length * 8 : 0;
   const minWidth = 60; // Minimum width to prevent too narrow
-  const containerWidth = Math.max(textWidth + 30, labelWidth + 16, minWidth); // Add padding
+  const containerWidth = Math.max(textWidth + 18, labelWidth + 16, minWidth); // Add padding
 
   const handleTriggerClick = (): void => {
     if (!disabled) {
@@ -256,7 +266,7 @@ const OptionPicker = ({
           }
         }}
         className={`
-          relative grid grid-cols-[minmax(0,1fr)_auto] items-center px-2 text-sm bg-studio-surface border border-studio-border rounded
+          relative grid grid-cols-[minmax(0,1fr)_auto] items-center px-1 text-sm bg-studio-surface border border-studio-border rounded
           ${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:bg-studio-surface/80'}
           focus:outline-none focus:ring-2 focus:ring-studio-accent focus:ring-offset-2 focus:ring-offset-studio-surface transition-all duration-200
         `}

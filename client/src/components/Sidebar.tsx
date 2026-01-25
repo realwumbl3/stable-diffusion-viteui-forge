@@ -176,16 +176,14 @@ const Sidebar = ({
                 <span className="hidden sm:inline">Inpaint</span>
               </button>
             </div>
-            <div className="mb-4">
-              <GenerationsNavigator
-                generationQueue={timeline.generationQueue}
-                currentPreview={timeline.currentPreview}
-                latestCommit={timeline.committedHistory[0] ?? null}
-                onPreviewSelect={onPreviewSelect}
-                onCommit={onCommitPreview}
-                onReject={onRejectPreview}
-              />
-            </div>
+            <GenerationsNavigator
+              generationQueue={timeline.generationQueue}
+              currentPreview={timeline.currentPreview}
+              latestCommit={timeline.committedHistory[0] ?? null}
+              onPreviewSelect={onPreviewSelect}
+              onCommit={onCommitPreview}
+              onReject={onRejectPreview}
+            />
           </div>
 
           {/* Sidebar Content */}
@@ -212,7 +210,7 @@ const Sidebar = ({
                 {hasQueueItems ? (
                   <div className="grid grid-cols-1 gap-2">
                     {timeline.generationQueue.map(generation => (
-                      <TimelineItem 
+                      <TimelineItem
                         key={generation.genid}
                         item={generation}
                         isActive={timeline.currentPreview?.genid === generation.genid}
@@ -234,17 +232,17 @@ const Sidebar = ({
 
               {/* Canvas */}
               <div className="space-y-2">
-                  <div className="flex items-center justify-between text-xs text-studio-textSecondary uppercase tracking-wider">
-                    <span>Canvas</span>
-                  </div>
+                <div className="flex items-center justify-between text-xs text-studio-textSecondary uppercase tracking-wider">
+                  <span>Canvas</span>
+                </div>
                 <div className="studio-panel p-2 rounded-lg space-y-2">
                   <div className="relative rounded-md overflow-hidden border border-studio-border cursor-pointer group"
-                       onClick={() => {
-                         // Clear any selected preview to navigate to canvas
-                         if (timeline.currentPreview) {
-                           onPreviewSelect(null)
-                         }
-                       }}>
+                    onClick={() => {
+                      // Clear any selected preview to navigate to canvas
+                      if (timeline.currentPreview) {
+                        onPreviewSelect(null)
+                      }
+                    }}>
                     {currentImage ? (
                       <img
                         ref={canvasImgRef}

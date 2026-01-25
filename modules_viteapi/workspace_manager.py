@@ -1,6 +1,9 @@
 # VITE UI
 import json
+import os
 import shutil
+import subprocess
+import sys
 from datetime import datetime
 from typing import Optional
 import time
@@ -543,6 +546,24 @@ class WorkspaceManager:
     def _metadata_path(self, workspace_path: Path) -> Path:
         return workspace_path / "workspace.json"
 
+    def _open_in_file_explorer(self, path: Path) -> None:
+        try:
+            if os.name == "nt":
+                if path.is_file():
+                    subprocess.Popen(["explorer", "/select,", str(path)])
+                else:
+                    os.startfile(str(path))
+            elif sys.platform == "darwin":
+                if path.is_file():
+                    subprocess.Popen(["open", "-R", str(path)])
+                else:
+                    subprocess.Popen(["open", str(path)])
+            else:
+                open_path = path if path.is_dir() else path.parent
+                subprocess.Popen(["xdg-open", str(open_path)])
+        except Exception as error:
+            raise HTTPException(status_code=500, detail=f"Failed to open path: {error}") from error
+
     def _load_metadata(self, workspace_path: Path) -> dict:
         metadata_path = self._metadata_path(workspace_path)
         if not metadata_path.exists():
@@ -558,6 +579,44 @@ class WorkspaceManager:
 
     def _prompt_file_path(self, workspace_path: Path) -> Path:
         return workspace_path / "prompt.json"
+
+    def reveal_workspace_path(self, name: str, payload: dict) -> dict:
+        if not isinstance(payload, dict):
+            raise HTTPException(status_code=422, detail="Payload is required")
+        relative_path = payload.get("path")
+        if not relative_path:
+            raise HTTPException(status_code=422, detail="path is required")
+
+        file_path = self.resolve_workspace_file(name, relative_path)
+        if not file_path.exists():
+            raise HTTPException(status_code=404, detail=f"Path not found: {relative_path}")
+
+        self._open_in_file_explorer(file_path)
+        return {"success": True, "path": self._workspace_relative_path(name, file_path)}
+
+    def open_workspace_image_in_mspaint(self, name: str, payload: dict) -> dict:
+        if sys.platform != "win32":
+            raise HTTPException(status_code=422, detail="MS Paint integration is only supported on Windows")
+        if not isinstance(payload, dict):
+            raise HTTPException(status_code=422, detail="Payload is required")
+        relative_path = payload.get("path")
+        if not relative_path:
+            raise HTTPException(status_code=422, detail="path is required")
+
+        file_path = self.resolve_workspace_file(name, relative_path)
+        if not file_path.exists():
+            raise HTTPException(status_code=404, detail=f"Path not found: {relative_path}")
+
+        mspaint = shutil.which("mspaint")
+        if not mspaint:
+            raise HTTPException(status_code=500, detail="MS Paint executable not found")
+
+        try:
+            subprocess.Popen([mspaint, str(file_path)])
+        except Exception as error:
+            raise HTTPException(status_code=500, detail=f"Failed to launch MS Paint: {error}") from error
+
+        return {"success": True, "path": self._workspace_relative_path(name, file_path)}
 
     def register_routes(self, api):
         """Register workspace API routes with the given API instance"""
@@ -584,6 +643,8 @@ class WorkspaceManager:
         api.add_api_route("/workspaces/{name:path}/restore", self.restore_workspace_image, methods=["POST"])
         api.add_api_route("/workspaces/{name:path}/uncommit", self.uncommit_workspace_image, methods=["POST"])
         api.add_api_route("/workspaces/{name:path}/import", self.import_workspace_image, methods=["POST"])
+        api.add_api_route("/workspaces/{name:path}/reveal", self.reveal_workspace_path, methods=["POST"])
+        api.add_api_route("/workspaces/{name:path}/open-mspaint", self.open_workspace_image_in_mspaint, methods=["POST"])
 
 
 class WorkspaceImageManager:

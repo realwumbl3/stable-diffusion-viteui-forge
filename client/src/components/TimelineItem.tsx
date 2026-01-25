@@ -1,7 +1,7 @@
 // VITE UI
-import { X, Maximize2 } from "lucide-react";
+import { X, Maximize2, FolderOpen, Paintbrush } from "lucide-react";
 import { cn, resolveImageSrc } from "../lib/utils";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, type MouseEvent } from "react";
 import api from "../Api";
 import type { TimelineItemProps } from "../types/components";
 
@@ -24,15 +24,42 @@ const TimelineItem = ({
     const [imageDimensions, setImageDimensions] = useState<{ width: number; height: number }>({ width: 0, height: 0 });
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const imgRef = useRef<HTMLImageElement>(null);
+    const workspaceActionsAvailable = Boolean(item.workspace && item.genid);
+    const workspaceAssetPath = item.genid ? `${item.status === "commit" ? "commits" : item.status === "reject" ? "rejects" : "candidates"}/${item.genid}/full.png` : "";
+
+    const handleOpenInExplorer = async (event: MouseEvent<HTMLButtonElement>): Promise<void> => {
+        event.stopPropagation();
+        if (!workspaceActionsAvailable) return;
+        try {
+            await api.revealWorkspacePath(item.workspace, workspaceAssetPath);
+        } catch (error) {
+            console.warn("Failed to open generation in file explorer", error);
+        }
+    };
+
+    const handleOpenInMspaint = async (event: MouseEvent<HTMLButtonElement>): Promise<void> => {
+        event.stopPropagation();
+        if (!workspaceActionsAvailable) return;
+        try {
+            await api.openWorkspaceImageInMspaint(item.workspace, workspaceAssetPath);
+        } catch (error) {
+            console.warn("Failed to open generation in MS Paint", error);
+        }
+    };
 
     useEffect(() => {
         const fetchDimensions = async (): Promise<void> => {
             if (item.genid && item.workspace) {
                 try {
-                    const category = item.status === 'commit' ? 'commits' : item.status === 'reject' ? 'rejects' : 'candidates';
-                    const meta = await api.getGenerationAsset(item.workspace, category, item.genid, 'meta.json');
-                    const width = meta.full_width;
-                    const height = meta.full_height;
+                    const meta = (await api.getGenerationAsset(
+                        item.workspace,
+                        item.status === 'commit' ? 'commits' : item.status === 'reject' ? 'rejects' : 'candidates',
+                        item.genid,
+                        'meta.json'
+                    )) as { full_width?: number; full_height?: number } | null;
+
+                    const width = typeof meta?.full_width === "number" ? meta.full_width : 0;
+                    const height = typeof meta?.full_height === "number" ? meta.full_height : 0;
                     setAspectRatio(width > 0 && height > 0 ? width / height : 1);
                     setImageDimensions({ width, height });
                 } catch (error) {
@@ -43,6 +70,8 @@ const TimelineItem = ({
 
         fetchDimensions();
     }, [item.genid, item.workspace, item.status]);
+
+    const previewSrc = (getGenerationImageUrl ? getGenerationImageUrl(item, 'preview') : resolveImageSrc(item.image, "preview")) ?? '';
 
     return (
         <div
@@ -57,7 +86,7 @@ const TimelineItem = ({
             <button onClick={onSelect} className="w-full h-full text-left" type="button">
                 <img
                     ref={imgRef}
-                    src={getGenerationImageUrl ? getGenerationImageUrl(item, 'preview') : resolveImageSrc(item.image, "preview") || ''}
+                    src={previewSrc}
                     crossOrigin="anonymous"
                     alt="Timeline item"
                     className="w-full h-full object-contain"
@@ -68,11 +97,31 @@ const TimelineItem = ({
             <div className="absolute top-0 left-0 right-0 p-2 bg-gradient-to-b from-studio-panel/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
                 <div className="flex items-center justify-between">
                     {/* Left side - Resolution */}
-                    <div className="flex items-center">
+                    <div className="flex items-center gap-1">
                         {imageDimensions.width > 0 && (
                             <div className="rounded bg-studio-panel/80 text-studio-textSecondary px-1.5 py-0.5 text-xs">
                                 {imageDimensions.width}×{imageDimensions.height}
                             </div>
+                        )}
+                        {imageDimensions.width > 0 && workspaceActionsAvailable && (
+                            <button
+                                onClick={handleOpenInExplorer}
+                                className="rounded bg-studio-panel/80 text-studio-textSecondary p-1 hover:bg-studio-surface transition-colors"
+                                title="Open in File Explorer"
+                                type="button"
+                            >
+                                <FolderOpen size={12} />
+                            </button>
+                        )}
+                        {imageDimensions.width > 0 && workspaceActionsAvailable && (
+                            <button
+                                onClick={handleOpenInMspaint}
+                                className="rounded bg-studio-panel/80 text-studio-textSecondary p-1 hover:bg-studio-surface transition-colors"
+                                title="Open in MS Paint"
+                                type="button"
+                            >
+                                <Paintbrush size={12} />
+                            </button>
                         )}
                     </div>
 

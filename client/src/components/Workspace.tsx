@@ -1,5 +1,5 @@
 // VITE UI
-import { memo, useCallback, useEffect, useMemo, useRef } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { SetStateAction } from "react";
 import api from "../Api";
 import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
@@ -13,7 +13,7 @@ import { composePromptsFromNodes } from "./PromptComposer/utils/promptUtils";
 import { encodeLegacy } from "./PromptComposer/utils/legacyEncoding";
 import { useWorkspaceContext, useWorkspaceState } from "../contexts/WorkspaceContext";
 import type { Generation, ExtrasSingleImageParams } from "../Api";
-import type { PromptNode } from "./PromptComposer/types";
+import type { PromptMode, PromptNode } from "./PromptComposer/types";
 import type { GenerationMode, Progress, Timeline } from "../types/components";
 
 interface WorkspaceProps {
@@ -40,9 +40,32 @@ const Workspace = ({ workspaceId, isActive }: WorkspaceProps) => {
 
     const { generation, mode, ui, canvas } = workspaceState;
 
+    // Separate state for composer nodes (not part of workspace state syncing)
+    const [composerNodes, setComposerNodes] = useState<PromptNode[]>([]);
+
+    // Separate state for timeline (not part of workspace state syncing)
+    const [timeline, setTimeline] = useState<Timeline>({
+        generationQueue: [],
+        currentPreview: null,
+        committedHistory: [],
+        discarded: [],
+    });
+    const generationQueue = timeline.generationQueue;
+    const currentPreview = timeline.currentPreview;
+
+    // Separate state for upscale dialog (not part of workspace state syncing)
+    const [upscaleDialog, setUpscaleDialog] = useState({
+        isOpen: false,
+        sourceImage: null as { id: string; image: string; type: "timeline" | "canvas" } | null,
+        selectedUpscaler: "Lanczos",
+        availableUpscalers: [] as Array<{ name: string; model_name?: string; scale?: number }>,
+        loading: false,
+        error: null as string | null,
+    });
+
     const composerPrompts = useMemo(
-        () => composePromptsFromNodes(ui.composerNodes),
-        [ui.composerNodes]
+        () => composePromptsFromNodes(composerNodes),
+        [composerNodes]
     );
     const composerPrompt = composerPrompts.positive;
     const composerNegativePrompt = composerPrompts.negative;
@@ -78,6 +101,10 @@ const Workspace = ({ workspaceId, isActive }: WorkspaceProps) => {
         }));
     }, [updateWorkspaceState]);
 
+    const handlePromptModeChange = useCallback((mode: PromptMode) => {
+        setUiState({ promptMode: mode });
+    }, [setUiState]);
+
     const setCanvasState = useCallback((updates: Partial<typeof canvas>) => {
         updateWorkspaceState((prev) => ({
             ...prev,
@@ -85,15 +112,9 @@ const Workspace = ({ workspaceId, isActive }: WorkspaceProps) => {
         }));
     }, [updateWorkspaceState]);
 
-    const setTimeline = useCallback((updater: (prev: Timeline) => Timeline) => {
-        updateWorkspaceState((prev) => ({
-            ...prev,
-            canvas: {
-                ...prev.canvas,
-                timeline: updater(prev.canvas.timeline),
-            },
-        }));
-    }, [updateWorkspaceState]);
+    const setTimelineState = useCallback((updater: (prev: Timeline) => Timeline) => {
+        setTimeline(updater);
+    }, []);
 
     const resetGenerationState = useCallback((): void => {
         setGenerationState({
@@ -132,44 +153,39 @@ const Workspace = ({ workspaceId, isActive }: WorkspaceProps) => {
                 });
             }
 
-            setCanvasState({
-                timeline: {
-                    generationQueue,
-                    currentPreview: generationQueue.length > 0 ? generationQueue[0] : null,
-                    committedHistory,
-                    discarded,
-                },
-            });
+            setTimelineState(() => ({
+                generationQueue,
+                currentPreview: generationQueue.length > 0 ? generationQueue[0] : null,
+                committedHistory,
+                discarded,
+            }));
         } catch (error) {
             console.error("Failed to load workspace generations:", error);
-            setCanvasState({
-                timeline: {
-                    generationQueue: [],
-                    currentPreview: null,
-                    committedHistory: [],
-                    discarded: [],
-                },
-            });
+            setTimelineState(() => ({
+                generationQueue: [],
+                currentPreview: null,
+                committedHistory: [],
+                discarded: [],
+            }));
         }
-    }, [getGenerationImageUrl, setCanvasState, workspaceId]);
+    }, [getGenerationImageUrl, setCanvasState, setTimelineState, workspaceId]);
 
     const loadWorkspacePrompt = useCallback(async (): Promise<void> => {
         if (!workspaceId) {
-            setUiState({ workspacePromptLoaded: true });
             return;
         }
-        setUiState({ workspacePromptLoaded: false });
+
+        let nodes: PromptNode[] = [];
         try {
             const workspacePrompt = await api.getWorkspacePrompt(workspaceId);
-            const nodes = workspacePrompt.nodes || [];
+            nodes = workspacePrompt.nodes || [];
             programmaticComposerUpdateRef.current = true;
-            setUiState({ composerNodes: nodes });
         } catch (error) {
             console.error("Failed to load workspace prompt:", error);
         } finally {
-            setUiState({ workspacePromptLoaded: true });
+            setComposerNodes(nodes);
         }
-    }, [setUiState, workspaceId]);
+    }, [workspaceId]);
 
     const handleGenerationModeChange = (nextMode: GenerationMode): void => {
         setModeState({ generationMode: nextMode });
@@ -197,7 +213,7 @@ const Workspace = ({ workspaceId, isActive }: WorkspaceProps) => {
     const generateImage = useCallback(async (): Promise<void> => {
         setGenerationState({ pendingRestart: false });
         if (!composerPrompt.trim()) return;
-        if ((mode.generationMode === "img2img" || mode.generationMode === "inpaint") && canvas.timeline.committedHistory.length === 0) {
+        if ((mode.generationMode === "img2img" || mode.generationMode === "inpaint") && timeline.committedHistory.length === 0) {
             alert("No committed images available for img2img/inpainting. Please generate and commit an image first.");
             return;
         }
@@ -225,9 +241,9 @@ const Workspace = ({ workspaceId, isActive }: WorkspaceProps) => {
 
         try {
             let promptWithMetadata = composerPrompt;
-            if (ui.composerNodes.length > 0) {
+            if (composerNodes.length > 0) {
                 try {
-                    const encodedData = encodeLegacy(ui.composerNodes);
+                    const encodedData = encodeLegacy(composerNodes);
                     promptWithMetadata += `\n\n\n\n\n<betterpromptexport:${encodedData}>`;
                 } catch (e) {
                     console.warn("Failed to encode prompt metadata for generation:", e);
@@ -254,7 +270,7 @@ const Workspace = ({ workspaceId, isActive }: WorkspaceProps) => {
             if (mode.generationMode === "img2img") {
                 const img2imgParams = {
                     ...baseParams,
-                    genid: canvas.timeline.committedHistory[0].genid,
+                    genid: timeline.committedHistory[0].genid,
                     denoising_strength: generation.denoisingStrength,
                 };
                 data = await api.img2img(img2imgParams);
@@ -262,7 +278,7 @@ const Workspace = ({ workspaceId, isActive }: WorkspaceProps) => {
                 const maskBase64Data = mode.inpaintMask!.split(",")[1];
                 const inpaintParams = {
                     ...baseParams,
-                    genid: canvas.timeline.committedHistory[0].genid,
+                    genid: timeline.committedHistory[0].genid,
                     mask: maskBase64Data,
                     mask_blur: mode.maskBlur,
                     inpainting_fill: mode.inpaintingFill,
@@ -301,7 +317,7 @@ const Workspace = ({ workspaceId, isActive }: WorkspaceProps) => {
             resetGenerationState();
         }
     }, [
-        canvas.timeline.committedHistory,
+        timeline.committedHistory,
         composerNegativePrompt,
         composerPrompt,
         generation.batchSize,
@@ -324,7 +340,7 @@ const Workspace = ({ workspaceId, isActive }: WorkspaceProps) => {
         mode.maskBlur,
         resetGenerationState,
         setGenerationState,
-        ui.composerNodes,
+        composerNodes,
         workspaceId,
     ]);
 
@@ -373,12 +389,12 @@ const Workspace = ({ workspaceId, isActive }: WorkspaceProps) => {
         }
     }, [setGenerationState, setModels, setSamplers]);
 
-    const composerNodesSignature = useMemo(() => JSON.stringify(ui.composerNodes), [ui.composerNodes]);
+    const composerNodesSignature = useMemo(() => JSON.stringify(composerNodes), [composerNodes]);
 
     const handleComposerNodesChange = (nodes: PromptNode[]): void => {
         const nextSignature = JSON.stringify(nodes);
         if (nextSignature === composerNodesSignature) return;
-        setUiState({ composerNodes: nodes });
+        setComposerNodes(nodes);
     };
 
     const handleInpaintMaskChange = useCallback((value: SetStateAction<string | null>) => {
@@ -399,20 +415,26 @@ const Workspace = ({ workspaceId, isActive }: WorkspaceProps) => {
         });
     }, [updateWorkspaceState]);
 
-    const noopSetInpaintMask = useCallback(() => {}, []);
+    const noopSetInpaintMask = useCallback(() => { }, []);
 
     useEffect(() => {
         if (!workspaceId) return;
         workspaceChangingRef.current = true;
         setCanvasState({ currentImage: null });
         setGenerationState({ inputImage: null });
-        setUiState({ workspacePromptLoaded: false, composerNodes: [] });
+        setComposerNodes([]);
+        setTimelineState(() => ({
+            generationQueue: [],
+            currentPreview: null,
+            committedHistory: [],
+            discarded: [],
+        }));
         void loadWorkspaceGenerations();
         void loadWorkspacePrompt();
         setTimeout(() => {
             workspaceChangingRef.current = false;
         }, 100);
-    }, [workspaceId, loadWorkspaceGenerations, loadWorkspacePrompt, setCanvasState, setGenerationState, setUiState]);
+    }, [workspaceId, loadWorkspaceGenerations, loadWorkspacePrompt, setCanvasState, setGenerationState, setTimelineState]);
 
     useEffect(() => {
         if (!workspaceId || workspaceChangingRef.current) return;
@@ -432,19 +454,19 @@ const Workspace = ({ workspaceId, isActive }: WorkspaceProps) => {
     ]);
 
     useEffect(() => {
-        if (!workspaceId || !ui.workspacePromptLoaded || workspaceChangingRef.current) return;
+        if (!workspaceId || workspaceChangingRef.current) return;
         if (programmaticComposerUpdateRef.current) {
             programmaticComposerUpdateRef.current = false;
             return;
         }
-        const payload = { nodes: ui.composerNodes };
+        const payload = { nodes: composerNodes };
         const timer = setTimeout(() => {
             api.saveWorkspacePrompt(workspaceId, payload).catch((error) => {
                 console.error("Failed to save workspace prompt:", error);
             });
         }, 500);
         return () => clearTimeout(timer);
-    }, [ui.composerNodes, ui.workspacePromptLoaded, workspaceId]);
+    }, [composerNodes, workspaceId]);
 
     useEffect(() => {
         setCanvasState({ canvasRefreshKey: 0 });
@@ -581,7 +603,7 @@ const Workspace = ({ workspaceId, isActive }: WorkspaceProps) => {
 
             setGenerationState({ inputImage: getGenerationImageUrl(committedGeneration, "full") });
 
-            setTimeline((prev) => {
+            setTimelineState((prev) => {
                 const committedHistory = [committedGeneration, ...prev.committedHistory];
                 return { ...prev, committedHistory };
             });
@@ -592,8 +614,8 @@ const Workspace = ({ workspaceId, isActive }: WorkspaceProps) => {
         }
     };
 
-    const handlePreviewSelect = (generationItem: Generation | null): void => {
-        setTimeline((prev) => ({
+    const handlePreviewSelect = useCallback((generationItem: Generation | null): void => {
+        setTimelineState((prev) => ({
             ...prev,
             currentPreview: generationItem,
         }));
@@ -605,10 +627,27 @@ const Workspace = ({ workspaceId, isActive }: WorkspaceProps) => {
             setModeState({ forceInpaintEditMode: true });
             setTimeout(() => setModeState({ forceInpaintEditMode: false }), 100);
         }
-    };
+    }, [
+        canvas.currentImage,
+        generation.inputImage,
+        mode.generationMode,
+        setGenerationState,
+        setModeState,
+        setTimelineState,
+    ]);
+
+    const navigateCandidate = useCallback((direction: number) => {
+        const queueLength = generationQueue.length;
+        if (queueLength === 0) return;
+
+        const currentIndex = generationQueue.findIndex((gen) => gen.genid === currentPreview?.genid);
+        const safeIndex = currentIndex >= 0 ? currentIndex : 0;
+        const nextIndex = (safeIndex + direction + queueLength) % queueLength;
+        handlePreviewSelect(generationQueue[nextIndex]);
+    }, [currentPreview, generationQueue, handlePreviewSelect]);
 
     const handleRejectPreview = async (): Promise<void> => {
-        const preview = canvas.timeline.currentPreview;
+        const preview = timeline.currentPreview;
         if (!preview) return;
         try {
             await api.rejectWorkspaceImage(preview.workspace, `candidates/${preview.genid}/full.png`);
@@ -619,10 +658,10 @@ const Workspace = ({ workspaceId, isActive }: WorkspaceProps) => {
     };
 
     const handleCommitPreview = async (): Promise<void> => {
-        const preview = canvas.timeline.currentPreview;
+        const preview = timeline.currentPreview;
         if (!preview) return;
         try {
-            const otherCandidates = canvas.timeline.generationQueue.filter((gen) => gen.genid !== preview.genid);
+            const otherCandidates = timeline.generationQueue.filter((gen) => gen.genid !== preview.genid);
             for (const candidate of otherCandidates) {
                 try {
                     await api.rejectWorkspaceImage(candidate.workspace, `candidates/${candidate.genid}/full.png`);
@@ -679,49 +718,41 @@ const Workspace = ({ workspaceId, isActive }: WorkspaceProps) => {
     };
 
     const handleOpenUpscaleDialog = (sourceImage: { id: string; image: string; type: "timeline" | "canvas" }): void => {
-        if (ui.upscaleDialog.availableUpscalers.length === 0) {
+        if (upscaleDialog.availableUpscalers.length === 0) {
             api.getUpscalers()
                 .then((upscalers) => {
-                    setUiState({
-                        upscaleDialog: {
-                            ...ui.upscaleDialog,
-                            availableUpscalers: upscalers,
-                            selectedUpscaler: upscalers.length > 0 ? upscalers[0].name : "Lanczos",
-                        },
-                    });
+                    setUpscaleDialog((prev) => ({
+                        ...prev,
+                        availableUpscalers: upscalers,
+                        selectedUpscaler: upscalers.length > 0 ? upscalers[0].name : "Lanczos",
+                    }));
                 })
                 .catch((error) => {
                     console.error("Failed to fetch upscalers:", error);
-                    setUiState({
-                        upscaleDialog: {
-                            ...ui.upscaleDialog,
-                            error: "Failed to load upscalers",
-                        },
-                    });
+                    setUpscaleDialog((prev) => ({
+                        ...prev,
+                        error: "Failed to load upscalers",
+                    }));
                 });
         }
 
-        setUiState({
-            upscaleDialog: {
-                ...ui.upscaleDialog,
-                isOpen: true,
-                sourceImage,
-                loading: false,
-                error: null,
-            },
-        });
+        setUpscaleDialog((prev) => ({
+            ...prev,
+            isOpen: true,
+            sourceImage,
+            loading: false,
+            error: null,
+        }));
     };
 
     const handleCloseUpscaleDialog = (): void => {
-        setUiState({
-            upscaleDialog: {
-                ...ui.upscaleDialog,
-                isOpen: false,
-                sourceImage: null,
-                loading: false,
-                error: null,
-            },
-        });
+        setUpscaleDialog((prev) => ({
+            ...prev,
+            isOpen: false,
+            sourceImage: null,
+            loading: false,
+            error: null,
+        }));
     };
 
     const getWorkspaceImagePath = (
@@ -748,8 +779,8 @@ const Workspace = ({ workspaceId, isActive }: WorkspaceProps) => {
                     }
                 }
             }
-            if (canvas.timeline.committedHistory.length > 0) {
-                const latestCommit = canvas.timeline.committedHistory[0];
+            if (timeline.committedHistory.length > 0) {
+                const latestCommit = timeline.committedHistory[0];
                 return `commits/${latestCommit.genid}/full.png`;
             }
         }
@@ -757,21 +788,19 @@ const Workspace = ({ workspaceId, isActive }: WorkspaceProps) => {
     };
 
     const handleUpscale = async (upscaler: string, scaleFactor: number): Promise<void> => {
-        if (!ui.upscaleDialog.sourceImage) return;
-        setUiState({
-            upscaleDialog: {
-                ...ui.upscaleDialog,
-                loading: true,
-                error: null,
-            },
-        });
+        if (!upscaleDialog.sourceImage) return;
+        setUpscaleDialog((prev) => ({
+            ...prev,
+            loading: true,
+            error: null,
+        }));
 
         try {
             if (!workspaceId) {
                 throw new Error("Workspace not initialized");
             }
 
-            const workspaceImagePath = getWorkspaceImagePath(ui.upscaleDialog.sourceImage);
+            const workspaceImagePath = getWorkspaceImagePath(upscaleDialog.sourceImage);
             const params: ExtrasSingleImageParams = {
                 upscaler_1: upscaler,
                 upscaling_resize: scaleFactor,
@@ -783,7 +812,7 @@ const Workspace = ({ workspaceId, isActive }: WorkspaceProps) => {
             if (workspaceImagePath) {
                 params.workspace_image_path = workspaceImagePath;
             } else {
-                const sourceImageData = await getBase64Payload(ui.upscaleDialog.sourceImage.image);
+                const sourceImageData = await getBase64Payload(upscaleDialog.sourceImage.image);
                 if (!sourceImageData) {
                     throw new Error("No source image data available for upscaling");
                 }
@@ -796,7 +825,7 @@ const Workspace = ({ workspaceId, isActive }: WorkspaceProps) => {
             }
 
             if (result.generation) {
-                setTimeline((prev) => ({
+                setTimelineState((prev) => ({
                     ...prev,
                     generationQueue: [result.generation!, ...prev.generationQueue],
                     currentPreview: result.generation!,
@@ -807,13 +836,11 @@ const Workspace = ({ workspaceId, isActive }: WorkspaceProps) => {
         } catch (error) {
             console.error("Upscale failed:", error);
             const errorMessage = error instanceof Error ? error.message : "Upscale failed. Please try again.";
-            setUiState({
-                upscaleDialog: {
-                    ...ui.upscaleDialog,
-                    loading: false,
-                    error: errorMessage,
-                },
-            });
+            setUpscaleDialog((prev) => ({
+                ...prev,
+                loading: false,
+                error: errorMessage,
+            }));
         }
     };
 
@@ -827,11 +854,6 @@ const Workspace = ({ workspaceId, isActive }: WorkspaceProps) => {
     };
 
     useKeyboardShortcuts({
-        "ctrl+g": () => {
-            if (composerPrompt.trim() && !generation.loading) {
-                void generateImage();
-            }
-        },
         "g": () => {
             if (generation.loading) {
                 void handleInterrupt();
@@ -847,6 +869,14 @@ const Workspace = ({ workspaceId, isActive }: WorkspaceProps) => {
         "alt+n": () => handleGenerationModeChange("inpaint"),
         "ctrl+b": () => setUiState({ sidebarCollapsed: !ui.sidebarCollapsed }),
         "ctrl+p": () => setUiState({ propertiesCollapsed: !ui.propertiesCollapsed }),
+        "arrowleft": () => navigateCandidate(-1),
+        "arrowright": () => navigateCandidate(1),
+        "backspace": () => {
+            void handleRejectPreview();
+        },
+        "enter": () => {
+            void handleCommitPreview();
+        },
     }, isActive);
 
     const canvasControls = {
@@ -886,7 +916,7 @@ const Workspace = ({ workspaceId, isActive }: WorkspaceProps) => {
             <Sidebar
                 collapsed={ui.sidebarCollapsed}
                 onToggle={() => setUiState({ sidebarCollapsed: !ui.sidebarCollapsed })}
-                timeline={canvas.timeline}
+                timeline={timeline}
                 currentImage={canvas.currentImage}
                 onPreviewSelect={handlePreviewSelect}
                 onCommitPreview={handleCommitPreview}
@@ -906,7 +936,7 @@ const Workspace = ({ workspaceId, isActive }: WorkspaceProps) => {
             {mode.generationMode === "inpaint" ? (
                 <InpaintCanvas
                     currentImage={canvas.currentImage}
-                    previewImage={getGenerationImageUrl(canvas.timeline.currentPreview)}
+                    previewImage={getGenerationImageUrl(timeline.currentPreview)}
                     onClearPreview={() => handlePreviewSelect(null)}
                     inputImage={generation.inputImage}
                     livePreview={livePreview}
@@ -914,8 +944,10 @@ const Workspace = ({ workspaceId, isActive }: WorkspaceProps) => {
                     progress={progress}
                     generationWidth={generation.width}
                     generationHeight={generation.height}
-                    composerNodes={ui.composerNodes}
+                    composerNodes={composerNodes}
                     onComposerNodesChange={handleComposerNodesChange}
+                    promptMode={ui.promptMode}
+                    onPromptModeChange={handlePromptModeChange}
                     setInpaintMask={handleInpaintMaskChange}
                     onImageUpload={handleCanvasImageUpload}
                     inpaintFullRes={mode.inpaintFullRes}
@@ -938,15 +970,17 @@ const Workspace = ({ workspaceId, isActive }: WorkspaceProps) => {
             ) : (
                 <InpaintCanvas
                     currentImage={canvas.currentImage}
-                    previewImage={getGenerationImageUrl(canvas.timeline.currentPreview)}
+                    previewImage={getGenerationImageUrl(timeline.currentPreview)}
                     onClearPreview={() => handlePreviewSelect(null)}
                     livePreview={livePreview}
                     loading={generation.loading}
                     progress={progress}
                     generationWidth={generation.width}
                     generationHeight={generation.height}
-                    composerNodes={ui.composerNodes}
+                    composerNodes={composerNodes}
                     onComposerNodesChange={handleComposerNodesChange}
+                    promptMode={ui.promptMode}
+                    onPromptModeChange={handlePromptModeChange}
                     setInpaintMask={noopSetInpaintMask}
                     forceEditMode={false}
                     maskBlur={mode.maskBlur}
@@ -970,14 +1004,14 @@ const Workspace = ({ workspaceId, isActive }: WorkspaceProps) => {
             )}
 
             <UpscaleDialog
-                isOpen={ui.upscaleDialog.isOpen}
+                isOpen={upscaleDialog.isOpen}
                 onClose={handleCloseUpscaleDialog}
                 onUpscale={handleUpscale}
-                sourceImage={ui.upscaleDialog.sourceImage}
-                selectedUpscaler={ui.upscaleDialog.selectedUpscaler}
-                availableUpscalers={ui.upscaleDialog.availableUpscalers}
-                loading={ui.upscaleDialog.loading}
-                error={ui.upscaleDialog.error}
+                sourceImage={upscaleDialog.sourceImage}
+                selectedUpscaler={upscaleDialog.selectedUpscaler}
+                availableUpscalers={upscaleDialog.availableUpscalers}
+                loading={upscaleDialog.loading}
+                error={upscaleDialog.error}
             />
 
             {shouldRenderBrowser && (

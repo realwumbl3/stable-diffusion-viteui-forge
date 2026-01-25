@@ -37,10 +37,14 @@ export interface BreakNode extends BaseNode {
 
 export type PromptNode = TagsNode | TextNode | GroupNode | BreakNode
 
+export type PromptMode = 'simple' | 'composer'
+
 export interface PromptComposerProps {
   className?: string
   onNodesChange?: (nodes: PromptNode[]) => void
   initialData?: PromptNode[]
+  mode?: PromptMode
+  onModeChange?: (mode: PromptMode) => void
   showDemoButton?: boolean
   showKeyboardHints?: boolean
   collapsed?: boolean

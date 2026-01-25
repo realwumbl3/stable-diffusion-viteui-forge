@@ -11,6 +11,7 @@ import { cn } from "../../lib/utils";
 import "./PromptComposer.css";
 import type {
     PromptComposerProps,
+    PromptMode,
     PromptNode,
     TextNode,
     TagsNode
@@ -56,6 +57,8 @@ function PromptComposer({
     className,
     onNodesChange,
     initialData = [],
+    mode: modeProp = "simple",
+    onModeChange,
     collapsed = false,
     onToggle,
 }: PromptComposerProps) {
@@ -104,7 +107,12 @@ function PromptComposer({
     });
     const [showJsonImport, setShowJsonImport] = useState(false);
     const [jsonImportText, setJsonImportText] = useState("");
-    const [mode, setMode] = useState<"simple" | "composer">("simple");
+    const [mode, setMode] = useState<PromptMode>(() => modeProp);
+    useEffect(() => {
+        if (modeProp !== mode) {
+            setMode(modeProp);
+        }
+    }, [modeProp, mode]);
     const editorRef = useRef<HTMLDivElement>(null);
 
     const handleSimplePromptChange = useCallback(
@@ -163,18 +171,19 @@ function PromptComposer({
     );
 
     const handleModeButtonClick = useCallback(
-        (targetMode: "simple" | "composer") => {
+        (targetMode: PromptMode) => {
             if (mode === targetMode) {
                 onToggle?.();
                 return;
             }
 
             setMode(targetMode);
+            onModeChange?.(targetMode);
             if (collapsed) {
                 onToggle?.();
             }
         },
-        [collapsed, mode, onToggle]
+        [collapsed, mode, onModeChange, onToggle]
     );
 
     // Helper to get node ID from DOM element

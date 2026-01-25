@@ -125,6 +125,7 @@ export interface Generation {
   negativePrompt?: string;
   parameters?: Record<string, unknown>;
   workspace: string;
+  image?: string;
 }
 
 import { API_BASE_URL as BASE_URL } from './lib/utils';
@@ -363,6 +364,20 @@ class StableDiffusionAPI {
     return this.request(`/workspaces/${encodeURIComponent(workspaceName)}/delete`, {
       method: 'POST',
       body: JSON.stringify({ image_path: imagePath }),
+    });
+  }
+
+  async openWorkspaceImageInMspaint(workspaceName: string, path: string): Promise<{ success: boolean; path: string }> {
+    return this.request(`/workspaces/${encodeURIComponent(workspaceName)}/open-mspaint`, {
+      method: 'POST',
+      body: JSON.stringify({ path }),
+    });
+  }
+
+  async revealWorkspacePath(workspaceName: string, path: string): Promise<{ success: boolean; path: string }> {
+    return this.request(`/workspaces/${encodeURIComponent(workspaceName)}/reveal`, {
+      method: 'POST',
+      body: JSON.stringify({ path }),
     });
   }
 

@@ -25,9 +25,9 @@ const InpaintParametersPanel = ({
 }: InpaintParametersPanelProps) => {
     const fillOptions = [
         { value: "0", label: "Fill" },
-        { value: "1", label: "Orig" },
-        { value: "2", label: "Noise" },
-        { value: "3", label: "Nothing" },
+        { value: "1", label: "Source" },
+        { value: "2", label: "LNoise" },
+        { value: "3", label: "LEmpty" },
     ];
 
     const handleDenoisingStrengthChange = (value: number) => {
@@ -44,6 +44,7 @@ const InpaintParametersPanel = ({
                         value={String(inpaintingFill)}
                         onChange={(value) => setInpaintingFill(parseInt(value, 10))}
                         title="Mode"
+                        openingDirection="up"
                     />
                 </div>
 

@@ -26,6 +26,8 @@ const InpaintCanvas = ({
     generationHeight,
     composerNodes,
     onComposerNodesChange,
+    promptMode,
+    onPromptModeChange,
     // Inpainting specific props
     setInpaintMask,
     brushSize: initialBrushSize = 16,
@@ -124,6 +126,11 @@ const InpaintCanvas = ({
         clearMask: drawing.clearMask,
         undoMask: drawing.undoMask,
         redoMask: drawing.redoMask,
+        showMask: canvasState.showMask,
+        setMaskVisibility: canvasState.setMaskVisibility,
+        showBorder: canvasState.showBorder,
+        setShowBorder: canvasState.setShowBorder,
+        handleFitToScreen: canvasState.handleFitToScreen,
     });
 
     // Mouse event handlers
@@ -415,6 +422,8 @@ const InpaintCanvas = ({
             <PromptComposer
                 initialData={composerNodes}
                 onNodesChange={onComposerNodesChange}
+                mode={promptMode}
+                onModeChange={onPromptModeChange}
                 collapsed={canvasState.footerCollapsed}
                 onToggle={() => canvasState.setFooterCollapsed(!canvasState.footerCollapsed)}
             />
