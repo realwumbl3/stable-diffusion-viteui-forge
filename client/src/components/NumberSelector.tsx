@@ -13,6 +13,7 @@ interface NumberSelectorProps {
   inputClassName?: string;
   disabled?: boolean;
   label?: string;
+  suffix?: string;
 }
 
 const NumberSelector = ({
@@ -24,7 +25,8 @@ const NumberSelector = ({
   className = "",
   inputClassName = "",
   disabled = false,
-  label
+  label,
+  suffix
 }: NumberSelectorProps) => {
   const [isFocused, setIsFocused] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -161,7 +163,7 @@ const NumberSelector = ({
           </button>
         </div>
 
-        <div className="grid">
+        <div className="grid grid-flow-col auto-cols-max items-center gap-1">
           <input
             ref={inputRef}
             type="number"
@@ -188,9 +190,14 @@ const NumberSelector = ({
             style={{ width: `${valueLength + 1}ch` }}
           />
           {label && (
-            <div className="col-start-1 row-start-1 self-end justify-self-end text-[8px] leading-none pr-1 pl-1 text-studio-textSecondary font-medium whitespace-nowrap pointer-events-none">
+            <div className="col-start-1 row-start-1 self-end justify-self-end text-[8px] leading-none pr-1 pl-1 text-studio-textSecondary font-medium whitespace-nowrap pointer-events-none translate-y-[1px]">
               {label}
             </div>
+          )}
+          {suffix && (
+            <span className="text-[10px] font-semibold text-studio-textMuted leading-none">
+              {suffix}
+            </span>
           )}
         </div>
       </div>

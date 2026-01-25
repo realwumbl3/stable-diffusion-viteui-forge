@@ -11,6 +11,7 @@ import {
 import { useState, useRef, useEffect } from 'react'
 import { cn, resolveImageSrc } from '../lib/utils'
 import TimelineItem from './TimelineItem'
+import type { Generation } from '../Api'
 import type { SidebarProps } from '../types/components'
 
 const Sidebar = ({
@@ -54,7 +55,7 @@ const Sidebar = ({
     setImageLoadTick((tick) => tick + 1)
   }
 
-  const previewImage = getGenerationImageUrl ? getGenerationImageUrl(timeline.currentPreview) : timeline.currentPreview?.image
+  const previewImage = getGenerationImageUrl?.(timeline.currentPreview) ?? null
   const hasQueueItems = timeline.generationQueue.length > 0
   const hasCommitted = timeline.committedHistory.length > 0
   const hasDiscarded = timeline.discarded.length > 0
@@ -74,6 +75,13 @@ const Sidebar = ({
     discardedPage * itemsPerPage,
     (discardedPage + 1) * itemsPerPage
   )
+
+  const handleTimelineUpscale = (generation: Generation): void => {
+    if (!onUpscale) return
+    const image = getGenerationImageUrl?.(generation)
+    if (!image) return
+    onUpscale({ id: generation.genid, image, type: 'timeline' })
+  }
 
   return (
     <aside className={cn(
@@ -338,7 +346,7 @@ const Sidebar = ({
                         item={generation}
                         isActive={timeline.currentPreview?.genid === generation.genid}
                         onSelect={() => onPreviewSelect(generation)}
-                        onUpscale={onUpscale}
+                        onUpscale={handleTimelineUpscale}
                         showUpscale
                         onCommit={() => onUncommitGeneration(generation)}
                         showCommitReject={true}

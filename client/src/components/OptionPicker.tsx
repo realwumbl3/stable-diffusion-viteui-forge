@@ -1,5 +1,6 @@
 // VITE UI
 import { useState, useRef, useEffect, useLayoutEffect, useMemo, useId } from 'react';
+import { createPortal } from 'react-dom';
 import type { CSSProperties, RefObject } from 'react';
 import { ChevronDown } from 'lucide-react';
 import type { OptionPickerProps } from '../types/components';
@@ -19,15 +20,27 @@ const useDropdownPosition = (
   const [style, setStyle] = useState<CSSProperties>({});
 
   useLayoutEffect(() => {
-    if (!isOpen || !triggerRef.current) {
+    if (!isOpen) {
       setStyle({});
       return;
     }
 
-    const updatePosition = () => {
-      if (!triggerRef.current) return;
+    let rafId = 0;
+    let timeoutId = 0;
 
-      const triggerRect = triggerRef.current.getBoundingClientRect();
+    const updatePosition = () => {
+      const triggerElement = triggerRef.current;
+      if (!triggerElement) {
+        setStyle({
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          visibility: 'hidden',
+        });
+        return;
+      }
+
+      const triggerRect = triggerElement.getBoundingClientRect();
       const viewportHeight = window.innerHeight;
       const viewportWidth = window.innerWidth;
       const dropdownHeight = dropdownRef.current?.offsetHeight ?? DROPDOWN_ESTIMATED_HEIGHT;
@@ -56,16 +69,21 @@ const useDropdownPosition = (
         minWidth: triggerRect.width,
         maxWidth,
         maxHeight,
+        visibility: 'visible',
       });
     };
 
     updatePosition();
+    rafId = window.requestAnimationFrame(updatePosition);
+    timeoutId = window.setTimeout(updatePosition, 0);
     window.addEventListener('resize', updatePosition);
     window.addEventListener('scroll', updatePosition);
 
     return () => {
       window.removeEventListener('resize', updatePosition);
       window.removeEventListener('scroll', updatePosition);
+      if (rafId) window.cancelAnimationFrame(rafId);
+      if (timeoutId) window.clearTimeout(timeoutId);
     };
   }, [isOpen, triggerRef, dropdownRef, optionCount]);
 
@@ -88,11 +106,19 @@ const OptionPicker = ({
   const triggerRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const dropdownStyle = useDropdownPosition(isOpen, triggerRef, dropdownRef, options.length);
+  const computedDropdownStyle: CSSProperties = isOpen
+    ? { position: 'fixed', top: 0, left: 0, visibility: 'hidden', ...dropdownStyle }
+    : dropdownStyle;
 
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(target) &&
+        !dropdownRef.current?.contains(target)
+      ) {
         setIsOpen(false);
         setFocusedIndex(-1);
       }
@@ -252,13 +278,13 @@ const OptionPicker = ({
 
 
       {/* Dropdown menu */}
-      {isOpen && !disabled && (
+      {isOpen && !disabled && createPortal(
         <div
           ref={dropdownRef}
           id={dropdownId}
           role="listbox"
           className="bg-studio-panel border border-studio-border rounded shadow-lg z-50 overflow-y-auto"
-          style={dropdownStyle}
+          style={computedDropdownStyle}
         >
           {options.map((option, index) => (
             <div
@@ -275,7 +301,8 @@ const OptionPicker = ({
               {option.label}
             </div>
           ))}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

@@ -415,6 +415,23 @@ const Workspace = ({ workspaceId, isActive }: WorkspaceProps) => {
     }, [workspaceId, loadWorkspaceGenerations, loadWorkspacePrompt, setCanvasState, setGenerationState, setUiState]);
 
     useEffect(() => {
+        if (!workspaceId || workspaceChangingRef.current) return;
+        if (mode.generationMode !== "inpaint") return;
+        if (!canvas.currentImage || generation.inputImage) return;
+        setModeState({ forceInpaintEditMode: true });
+        const timer = setTimeout(() => setModeState({ forceInpaintEditMode: false }), 100);
+        setGenerationState({ inputImage: canvas.currentImage });
+        return () => clearTimeout(timer);
+    }, [
+        canvas.currentImage,
+        generation.inputImage,
+        mode.generationMode,
+        setGenerationState,
+        setModeState,
+        workspaceId,
+    ]);
+
+    useEffect(() => {
         if (!workspaceId || !ui.workspacePromptLoaded || workspaceChangingRef.current) return;
         if (programmaticComposerUpdateRef.current) {
             programmaticComposerUpdateRef.current = false;
