@@ -43,7 +43,7 @@ const CanvasTopControls = ({ controls, visible }: Props) => {
                     setHeight={setHeight}
                     inputImage={inputImage}
                 />
-                <div className="flex flex-row items-center gap-1">
+                <div className="flex flex-row items-center gap-1 justify-end">
                     <NumberSelector
                         value={steps}
                         onChange={setSteps}

@@ -34,7 +34,7 @@ const InpaintParametersPanel = ({
             if (e.deltaY > 0) {
                 setInpaintFullResPadding(Math.max(0, inpaintFullResPadding - 64));
             } else {
-                setInpaintFullResPadding(Math.min(1024, inpaintFullResPadding + 64));
+                setInpaintFullResPadding(Math.min(4096, inpaintFullResPadding + 64));
             }
         };
 
@@ -155,7 +155,7 @@ const InpaintParametersPanel = ({
                                 </span>
                             </div>
                             <button
-                                onClick={() => setInpaintFullResPadding(Math.min(1024, inpaintFullResPadding + 8))}
+                                onClick={() => setInpaintFullResPadding(Math.min(4096, inpaintFullResPadding + 8))}
                                 className="studio-btn-ghost p-1"
                                 title="Increase Padding"
                                 type="button"

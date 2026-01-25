@@ -565,6 +565,27 @@ export function useDrawing({
 
     const [focusBounds, setFocusBounds] = useState<Bounds | null>(null);
     const [maskBounds, setMaskBounds] = useState<Bounds | null>(null);
+    const lastBoundsRef = useRef<{ maskBounds: Bounds | null; focusBounds: Bounds | null } | null>(null);
+
+    const boundsEqual = (a: Bounds | null, b: Bounds | null): boolean => {
+        if (a === b) return true;
+        if (!a || !b) return false;
+        return a.x === b.x && a.y === b.y && a.width === b.width && a.height === b.height;
+    };
+
+    const applyBounds = useCallback((newMaskBounds: Bounds | null, newFocusBounds: Bounds | null) => {
+        const previous = lastBoundsRef.current;
+        if (
+            previous &&
+            boundsEqual(previous.maskBounds, newMaskBounds) &&
+            boundsEqual(previous.focusBounds, newFocusBounds)
+        ) {
+            return;
+        }
+        lastBoundsRef.current = { maskBounds: newMaskBounds, focusBounds: newFocusBounds };
+        setMaskBounds(newMaskBounds);
+        setFocusBounds(newFocusBounds);
+    }, []);
 
     // Calculate focus bounds (independent of canvas) - pure function that returns both bounds
     const calculateBounds = useCallback((): { maskBounds: Bounds | null; focusBounds: Bounds | null } => {
@@ -638,27 +659,25 @@ export function useDrawing({
     useEffect(() => {
         const updateBounds = () => {
             const { maskBounds: newMaskBounds, focusBounds: newFocusBounds } = calculateBounds();
-            setMaskBounds(newMaskBounds);
-            setFocusBounds(newFocusBounds);
+            applyBounds(newMaskBounds, newFocusBounds);
         };
         
         // Defer setState to avoid synchronous setState in effect
         requestAnimationFrame(updateBounds);
-    }, [calculateBounds]);
+    }, [applyBounds, calculateBounds]);
 
     // Update border visualization after drawing operations
     useEffect(() => {
         if (maskHistory.length > 0) {
             const updateBounds = () => {
                 const { maskBounds: newMaskBounds, focusBounds: newFocusBounds } = calculateBounds();
-                setMaskBounds(newMaskBounds);
-                setFocusBounds(newFocusBounds);
+                applyBounds(newMaskBounds, newFocusBounds);
             };
             
             // Defer setState to avoid synchronous setState in effect
             requestAnimationFrame(updateBounds);
         }
-    }, [maskHistory, calculateBounds]);
+    }, [maskHistory, applyBounds, calculateBounds]);
 
     const undoMask = useCallback(() => {
         if (historyIndex > 0) {
@@ -676,11 +695,10 @@ export function useDrawing({
                 setInpaintMask(maskDataURL || null);
                 // Update bounds after undo
                 const { maskBounds: newMaskBounds, focusBounds: newFocusBounds } = calculateBounds();
-                setMaskBounds(newMaskBounds);
-                setFocusBounds(newFocusBounds);
+                applyBounds(newMaskBounds, newFocusBounds);
             }
         }
-    }, [historyIndex, maskHistory, getMaskDataUrl, setInpaintMask, calculateBounds, maskCanvasRef]);
+    }, [historyIndex, maskHistory, getMaskDataUrl, setInpaintMask, calculateBounds, maskCanvasRef, applyBounds]);
 
     const redoMask = useCallback(() => {
         if (historyIndex < maskHistory.length - 1) {
@@ -698,11 +716,10 @@ export function useDrawing({
                 setInpaintMask(maskDataURL || null);
                 // Update bounds after undo
                 const { maskBounds: newMaskBounds, focusBounds: newFocusBounds } = calculateBounds();
-                setMaskBounds(newMaskBounds);
-                setFocusBounds(newFocusBounds);
+                applyBounds(newMaskBounds, newFocusBounds);
             }
         }
-    }, [historyIndex, maskHistory, getMaskDataUrl, setInpaintMask, calculateBounds, maskCanvasRef]);
+    }, [historyIndex, maskHistory, getMaskDataUrl, setInpaintMask, calculateBounds, maskCanvasRef, applyBounds]);
 
     const canUndo = historyIndex > 0;
     const canRedo = historyIndex < maskHistory.length - 1;

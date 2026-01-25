@@ -5,13 +5,19 @@ import type { PromptNode } from "./types";
 class PromptComposerStore {
   private nodes: PromptNode[] = [];
   private listeners: Set<(nodes: PromptNode[]) => void> = new Set();
+  private nodesSerialized = "";
 
   getNodes(): PromptNode[] {
     return [...this.nodes];
   }
 
   setNodes(nodes: PromptNode[]): void {
+    const nextSerialized = JSON.stringify(nodes);
+    if (nextSerialized === this.nodesSerialized) {
+      return;
+    }
     this.nodes = [...nodes];
+    this.nodesSerialized = nextSerialized;
     this.notifyListeners();
   }
 
@@ -30,6 +36,7 @@ class PromptComposerStore {
   initialize(initialData?: PromptNode[]): void {
     if (initialData && initialData.length > 0 && this.nodes.length === 0) {
       this.nodes = [...initialData];
+      this.nodesSerialized = JSON.stringify(this.nodes);
     }
   }
 }

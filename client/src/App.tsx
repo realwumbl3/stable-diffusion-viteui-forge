@@ -741,14 +741,6 @@ function App() {
         }
     };
 
-    // Wrapper for PropertiesPanel that handles null values and async calls
-    const handlePropertiesImageUpload = (image: string | null): void => {
-        if (image === null) {
-            setInputImage(null);
-        } else {
-            handleCanvasImageUpload(image);
-        }
-    };
 
     const handlePreviewSelect = (generation: Generation | null): void => {
         setTimeline((prev) => ({
@@ -1058,7 +1050,7 @@ function App() {
                 onToggleLock={() => setPageLocked(!pageLocked)}
                 models={models}
                 selectedModel={selectedModel}
-                onModelChange={setSelectedModel}
+                onModelChange={handleModelChange}
                 samplers={samplers}
                 selectedSampler={selectedSampler}
                 setSelectedSampler={setSelectedSampler}

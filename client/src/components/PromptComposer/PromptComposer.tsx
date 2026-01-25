@@ -71,7 +71,7 @@ function PromptComposer({
                 updatingFromInitialDataRef.current = false;
             }, 0);
         }
-    }, [initialData, setNodes]);
+    }, [initialData]);
 
     // Initialize with default nodes if none provided and no initial data was given
     useEffect(() => {
@@ -86,7 +86,7 @@ function PromptComposer({
             };
             setNodes([defaultTagNode]);
         }
-    }, [nodes.length, setNodes, initialData]);
+    }, [nodes.length, initialData]);
 
     // Simple drag state like vanilla JS
     const dragStateRef = useRef<{

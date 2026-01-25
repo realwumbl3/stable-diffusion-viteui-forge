@@ -2,6 +2,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import PromptComposer from "../../PromptComposer";
 import InpaintToolbar from "./InpaintToolbar";
+import Img2ImgToolbar from "./Img2ImgToolbar";
 import { resolveImageSrc } from "../../../lib/utils";
 import CanvasTopControls from "./CanvasTopControls";
 
@@ -366,33 +367,40 @@ const InpaintCanvas = ({
                 focusBounds={drawing.focusBounds}
                 maskBounds={drawing.maskBounds}
             />
-            {/* Left Toolbar - Mask Controls */}
-            {isInpaintMode && (displayImage || inputImage) && !canvasState.isDrawing && (
+            {/* Left Toolbar - Mode-specific Controls */}
+            {((generationMode === "inpaint" && (displayImage || inputImage)) || generationMode === "img2img") && !canvasState.isDrawing && (
                 <div className={`absolute top-1 left-1 z-10 transition-opacity duration-200 ${uiVisible ? 'opacity-100' : 'opacity-0'}`}>
-                    <InpaintToolbar
-                        drawingMode={drawingMode}
-                        setDrawingMode={setDrawingMode}
-                        brushSize={brushSize}
-                        setBrushSize={setBrushSize}
-                        brushHardness={brushHardness}
-                        setBrushHardness={setBrushHardness}
-                        fillTarget={fillTarget}
-                        setFillTarget={setFillTarget}
-                        fillTolerance={fillTolerance}
-                        setFillTolerance={setFillTolerance}
-                        fillOverfill={fillOverfill}
-                        setFillOverfill={setFillOverfill}
-                        zoom={canvasState.zoom}
-                        showMask={canvasState.showMask}
-                        setShowMask={canvasState.setMaskVisibility}
-                        showBorder={canvasState.showBorder}
-                        setShowBorder={canvasState.setShowBorder}
-                        onClear={drawing.clearMask}
-                        onUndo={drawing.undoMask}
-                        onRedo={drawing.redoMask}
-                        canUndo={drawing.canUndo}
-                        canRedo={drawing.canRedo}
-                    />
+                    {generationMode === "inpaint" ? (
+                        <InpaintToolbar
+                            drawingMode={drawingMode}
+                            setDrawingMode={setDrawingMode}
+                            brushSize={brushSize}
+                            setBrushSize={setBrushSize}
+                            brushHardness={brushHardness}
+                            setBrushHardness={setBrushHardness}
+                            fillTarget={fillTarget}
+                            setFillTarget={setFillTarget}
+                            fillTolerance={fillTolerance}
+                            setFillTolerance={setFillTolerance}
+                            fillOverfill={fillOverfill}
+                            setFillOverfill={setFillOverfill}
+                            zoom={canvasState.zoom}
+                            showMask={canvasState.showMask}
+                            setShowMask={canvasState.setMaskVisibility}
+                            showBorder={canvasState.showBorder}
+                            setShowBorder={canvasState.setShowBorder}
+                            onClear={drawing.clearMask}
+                            onUndo={drawing.undoMask}
+                            onRedo={drawing.redoMask}
+                            canUndo={drawing.canUndo}
+                            canRedo={drawing.canRedo}
+                        />
+                    ) : generationMode === "img2img" ? (
+                        <Img2ImgToolbar
+                            denoisingStrength={denoisingStrength}
+                            setDenoisingStrength={setDenoisingStrength}
+                        />
+                    ) : null}
                 </div>
             )}
 
