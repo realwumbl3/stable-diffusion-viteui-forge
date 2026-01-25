@@ -36,7 +36,7 @@ const InpaintParametersPanel = ({
     };
 
     return (
-        <div className="p-1 w-40 rounded-lg border border-studio-border bg-studio-bg/30 shadow-2xl backdrop-blur">
+        <div className="p-1 w-42 rounded-lg border border-studio-border bg-studio-bg/30 shadow-2xl backdrop-blur">
             <div className="grid grid-cols-2 gap-1 items-center">
                 <div className="flex justify-center">
                     <OptionPicker
@@ -72,10 +72,22 @@ const InpaintParametersPanel = ({
                 </div>
 
                 <button
+                    onClick={() => setInpaintingMaskInvert(!inpaintingMaskInvert)}
+                    className={`flex items-center justify-center px-2 py-1 rounded-md text-xs font-medium transition-all duration-200 ${inpaintingMaskInvert
+                        ? "bg-studio-accent text-studio-bg shadow-sm"
+                        : "text-studio-textSecondary hover:text-studio-text hover:bg-studio-surface"
+                        }`}
+                    title="Invert Mask"
+                    type="button"
+                >
+                    Invert
+                </button>
+                
+                <button
                     onClick={() => setInpaintFullRes(!inpaintFullRes)}
                     className={`flex items-center justify-center px-2 py-1 rounded-md text-xs font-medium transition-all duration-200 ${inpaintFullRes
-                            ? "bg-studio-accent text-studio-bg shadow-sm"
-                            : "text-studio-textSecondary hover:text-studio-text hover:bg-studio-surface"
+                        ? "bg-studio-accent text-studio-bg shadow-sm"
+                        : "text-studio-textSecondary hover:text-studio-text hover:bg-studio-surface"
                         }`}
                     title="Focused (Full Resolution)"
                     type="button"
@@ -83,17 +95,6 @@ const InpaintParametersPanel = ({
                     Focused
                 </button>
 
-                <button
-                    onClick={() => setInpaintingMaskInvert(!inpaintingMaskInvert)}
-                    className={`flex items-center justify-center px-2 py-1 rounded-md text-xs font-medium transition-all duration-200 ${inpaintingMaskInvert
-                            ? "bg-studio-accent text-studio-bg shadow-sm"
-                            : "text-studio-textSecondary hover:text-studio-text hover:bg-studio-surface"
-                        }`}
-                    title="Invert Mask"
-                    type="button"
-                >
-                    Invert
-                </button>
 
                 {inpaintFullRes && (
                     <div className="flex justify-center">

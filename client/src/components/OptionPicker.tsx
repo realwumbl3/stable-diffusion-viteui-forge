@@ -195,8 +195,9 @@ const OptionPicker = ({
 
   // Measure the text width to set the container width
   const textWidth = displayText.length * 8; // Rough estimate: 8px per character
+  const labelWidth = title ? title.length * 8 : 0;
   const minWidth = 60; // Minimum width to prevent too narrow
-  const containerWidth = Math.max(textWidth + 30, minWidth); // Add padding
+  const containerWidth = Math.max(textWidth + 30, labelWidth + 16, minWidth); // Add padding
 
   const handleTriggerClick = (): void => {
     if (!disabled) {
@@ -255,13 +256,13 @@ const OptionPicker = ({
           }
         }}
         className={`
-          relative flex items-center justify-between px-2 pb-2 text-sm bg-studio-surface border border-studio-border rounded
+          relative grid grid-cols-[minmax(0,1fr)_auto] items-center px-2 text-sm bg-studio-surface border border-studio-border rounded
           ${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:bg-studio-surface/80'}
           focus:outline-none focus:ring-2 focus:ring-studio-accent focus:ring-offset-2 focus:ring-offset-studio-surface transition-all duration-200
         `}
         style={{ width: `${containerWidth}px` }}
       >
-        <span className="text-studio-text truncate" aria-hidden="true">{displayText}</span>
+        <span className="min-w-0 text-studio-text truncate" aria-hidden="true">{displayText}</span>
         <ChevronDown
           size={12}
           className={`text-studio-textSecondary transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
@@ -269,7 +270,7 @@ const OptionPicker = ({
         />
         {/* Title positioned absolutely over the selector */}
         {title && (
-          <div className="absolute bottom-0 text-[8px] bottom-0 right-0 leading-none h-[1em] pr-1 pl-1 text-studio-textSecondary font-medium whitespace-nowrap pointer-events-none">
+          <div className="col-start-1 col-end-3 row-start-1 self-end justify-self-end text-[8px] leading-none pr-1 pl-1 text-studio-textSecondary font-medium whitespace-nowrap pointer-events-none translate-y-[1px]">
             {title}
           </div>
         )}
