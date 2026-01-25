@@ -4,6 +4,7 @@ import React, {
     useRef,
     useCallback,
     useEffect,
+    useMemo,
     memo
 } from "react";
 import { cn } from "../../lib/utils";
@@ -20,9 +21,9 @@ import {
     insertNode,
     findNodeById
 } from "./utils/promptUtils";
+import { decodeLegacy } from "./utils/legacyEncoding";
 import NodeField from "./components/NodeField";
 import PromptControls from "./components/PromptControls";
-import { usePromptComposerStore } from "./store";
 import {
     Type,
     Edit,
@@ -58,20 +59,25 @@ function PromptComposer({
     collapsed = false,
     onToggle,
 }: PromptComposerProps) {
-    const { nodes, setNodes } = usePromptComposerStore(initialData);
+    const [nodes, setNodes] = useState<PromptNode[]>(() => (initialData?.length ? [...initialData] : []));
     const updatingFromInitialDataRef = useRef(false);
+    const initialSignature = useMemo(() => JSON.stringify(initialData ?? []), [initialData]);
+    const lastInitialSignatureRef = useRef(initialSignature);
 
     // Update nodes when initialData changes (e.g., when loading workspace prompts)
     useEffect(() => {
-        if (initialData && initialData.length > 0) {
-            updatingFromInitialDataRef.current = true;
-            setNodes(initialData);
-            // Clear the flag after a short delay to ensure the nodes update has completed
-            setTimeout(() => {
-                updatingFromInitialDataRef.current = false;
-            }, 0);
+        if (lastInitialSignatureRef.current === initialSignature) {
+            return;
         }
-    }, [initialData]);
+        lastInitialSignatureRef.current = initialSignature;
+        updatingFromInitialDataRef.current = true;
+        setNodes(initialData ? [...initialData] : []);
+        // Clear the flag after a short delay to ensure the nodes update has completed
+        const timer = setTimeout(() => {
+            updatingFromInitialDataRef.current = false;
+        }, 0);
+        return () => clearTimeout(timer);
+    }, [initialData, initialSignature]);
 
     // Initialize with default nodes if none provided and no initial data was given
     useEffect(() => {
@@ -335,9 +341,41 @@ function PromptComposer({
         setJsonImportText("");
     }, []);
 
+    const extractLegacyNodesFromText = useCallback((text: string): PromptNode[] | null => {
+        const match = text.match(/<betterpromptexport:([^>]+)>/i);
+        if (match?.[1]) {
+            const decoded = decodeLegacy(match[1]);
+            if (decoded && Array.isArray(decoded)) {
+                return decoded as PromptNode[];
+            }
+        }
+
+        const looseMatch = text.match(/betterpromptexport:([^\s>]+)/i);
+        if (looseMatch?.[1]) {
+            const decoded = decodeLegacy(looseMatch[1]);
+            if (decoded && Array.isArray(decoded)) {
+                return decoded as PromptNode[];
+            }
+        }
+
+        const decoded = decodeLegacy(text.trim());
+        if (decoded && Array.isArray(decoded)) {
+            return decoded as PromptNode[];
+        }
+
+        return null;
+    }, []);
+
     const handleJsonImport = useCallback(() => {
         if (!jsonImportText.trim()) {
             console.error("Please enter JSON data");
+            return;
+        }
+
+        const legacyNodes = extractLegacyNodesFromText(jsonImportText);
+        if (legacyNodes) {
+            setNodes(legacyNodes);
+            setShowJsonImport(false);
             return;
         }
 
@@ -352,7 +390,7 @@ function PromptComposer({
         } catch (e) {
             console.error("Invalid JSON syntax", e);
         }
-    }, [jsonImportText, setNodes, setShowJsonImport]);
+    }, [extractLegacyNodesFromText, jsonImportText, setNodes, setShowJsonImport]);
 
 
     // Keyboard shortcuts
@@ -519,6 +557,12 @@ function PromptComposer({
                         const metadata = extractPNGTextChunks(arrayBuffer);
 
     
+                        const legacyNodes = extractLegacyNodesFromText(metadata);
+                        if (legacyNodes) {
+                            setNodes(legacyNodes);
+                            return;
+                        }
+
                         // Fallback: try to parse metadata as JSON
                         try {
                             const data = JSON.parse(metadata);
@@ -527,7 +571,7 @@ function PromptComposer({
                                 return;
                             }
                         } catch {
-                            // Not JSON, create text node from metadata
+                            // Not JSON/legacy, create text node from metadata
                         }
 
                         // Last resort: create text node from metadata
@@ -550,6 +594,12 @@ function PromptComposer({
                         const metadata = extractJPEGMetadata(arrayBuffer);
 
 
+                        const legacyNodes = extractLegacyNodesFromText(metadata);
+                        if (legacyNodes) {
+                            setNodes(legacyNodes);
+                            return;
+                        }
+
                         // Fallback: try to parse metadata as JSON
                         try {
                             const data = JSON.parse(metadata);
@@ -558,7 +608,7 @@ function PromptComposer({
                                 return;
                             }
                         } catch {
-                            // Not JSON, create text node from metadata
+                            // Not JSON/legacy, create text node from metadata
                         }
 
                         // Last resort: create text node from metadata
@@ -579,31 +629,40 @@ function PromptComposer({
                     reader.onload = (e) => {
                         const content = e.target?.result as string;
 
+                        const legacyNodes = extractLegacyNodesFromText(content);
+                        if (legacyNodes) {
+                            setNodes(legacyNodes);
+                            return;
+                        }
+
                         try {
                             // Try to parse as JSON first
                             const data = JSON.parse(content);
                             if (Array.isArray(data)) {
                                 setNodes(data);
+                                return;
                             }
                         } catch {
-                            // If not JSON, treat as plain text and create a text node
-                            const textNode: TextNode = {
-                                id: generateId(),
-                                type: "text",
-                                name: "Imported Text",
-                                hidden: false,
-                                weight: 1,
-                                value: content,
-                            };
-                            setNodes([textNode]);
+                            // Fall through to plain text handling.
                         }
+
+                        // If not JSON/legacy, treat as plain text and create a text node
+                        const textNode: TextNode = {
+                            id: generateId(),
+                            type: "text",
+                            name: "Imported Text",
+                            hidden: false,
+                            weight: 1,
+                            value: content,
+                        };
+                        setNodes([textNode]);
                     };
                     reader.readAsText(file);
                 }
             }
         };
         input.click();
-    }, [setNodes]);
+    }, [extractLegacyNodesFromText, setNodes]);
 
     const simplePositiveNode = nodes.find(
         (node) => node.type === 'text' && (node as TextNode).mode === 'simple-positive'

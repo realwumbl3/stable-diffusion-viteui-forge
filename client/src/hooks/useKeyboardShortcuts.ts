@@ -4,8 +4,12 @@ export type KeyboardShortcutCallback = () => void
 
 export type KeyboardShortcuts = Record<string, KeyboardShortcutCallback>
 
-export const useKeyboardShortcuts = (shortcuts: KeyboardShortcuts): void => {
+export const useKeyboardShortcuts = (shortcuts: KeyboardShortcuts, enabled = true): void => {
   useEffect(() => {
+    if (!enabled) {
+      return;
+    }
+
     const handleKeyDown = (event: KeyboardEvent): void => {
       // Don't trigger shortcuts when text inputs or textareas are focused
       const activeElement = document.activeElement
@@ -46,5 +50,5 @@ export const useKeyboardShortcuts = (shortcuts: KeyboardShortcuts): void => {
 
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [shortcuts])
+  }, [shortcuts, enabled])
 }

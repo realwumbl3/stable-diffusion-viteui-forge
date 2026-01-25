@@ -161,7 +161,7 @@ const NumberSelector = ({
           </button>
         </div>
 
-        <div>
+        <div className="grid">
           <input
             ref={inputRef}
             type="number"
@@ -180,7 +180,7 @@ const NumberSelector = ({
             tabIndex={-1}
             aria-hidden="true"
             className={cn(
-              "w-auto min-w-[3ch] px-1 bg-transparent text-right text-base font-bold text-white appearance-none [appearance:textfield]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
+              "col-start-1 row-start-1 w-auto min-w-[3ch] px-1 bg-transparent text-right text-base font-bold text-white appearance-none [appearance:textfield]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
               "focus:outline-none focus:ring-0 transition-all duration-200 placeholder:text-studio-textMuted",
               inputClassName
             )}
@@ -188,7 +188,7 @@ const NumberSelector = ({
             style={{ width: `${valueLength + 1}ch` }}
           />
           {label && (
-            <div className="absolute bottom-0 right-0 text-[8px] leading-none pr-1 pl-1 text-studio-textSecondary font-medium whitespace-nowrap pointer-events-none">
+            <div className="col-start-1 row-start-1 self-end justify-self-end text-[8px] leading-none pr-1 pl-1 text-studio-textSecondary font-medium whitespace-nowrap pointer-events-none">
               {label}
             </div>
           )}

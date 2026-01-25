@@ -2,6 +2,7 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
+import { WorkspaceProvider } from './contexts/WorkspaceContext'
 import api from './Api'
 import './index.css'
 import './lib/memory-debug' // Memory debugging utilities
@@ -23,6 +24,8 @@ if (!rootElement) {
 
 ReactDOM.createRoot(rootElement).render(
   <React.StrictMode>
-    <App />
+    <WorkspaceProvider>
+      <App />
+    </WorkspaceProvider>
   </React.StrictMode>,
 )

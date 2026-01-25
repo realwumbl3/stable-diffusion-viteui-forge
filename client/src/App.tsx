@@ -1,381 +1,67 @@
 // VITE UI
-import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import api from "./Api";
-import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
-import { useWebSocketProgress } from "./hooks/useWebSocketProgress";
 import Header from "./components/Header";
-import Sidebar from "./components/Sidebar";
-import InpaintCanvas from "./components/InpaintCanvas/components/InpaintCanvas";
-import PropertiesPanel from "./components/PropertiesPanel";
-import UpscaleDialog from "./components/UpscaleDialog";
-import WorkspaceBrowser from "./components/WorkspaceBrowser";
+import Workspace from "./components/Workspace";
 import { useTitleIconAnimation } from "./hooks/useTitleIconAnimation";
-import { useWorkspaceTabs } from "./hooks/useWorkspaceTabs";
-import { parseWorkspaceImage, resolveImageSrc, API_BASE_URL } from "./lib/utils";
-import { composePromptsFromNodes } from "./components/PromptComposer/utils/promptUtils";
-import { encodeLegacy } from "./components/PromptComposer/utils/legacyEncoding";
-import type { Generation, ModelInfo, SamplerInfo, UpscalerInfo, ExtrasSingleImageParams } from "./Api";
-import type { PromptNode } from "./components/PromptComposer/types";
-import type { Timeline, GenerationMode, Progress } from "./types/components";
+import { useWorkspaceContext, useWorkspaceState } from "./contexts/WorkspaceContext";
 
 function App() {
-    const [composerNodes, setComposerNodes] = useState<PromptNode[]>([]);
-    const composerPrompts = useMemo(
-        () => composePromptsFromNodes(composerNodes),
-        [composerNodes]
-    );
-    const composerPrompt = composerPrompts.positive;
-    const composerNegativePrompt = composerPrompts.negative;
-    const [workspacePromptLoaded, setWorkspacePromptLoaded] = useState(false);
-    const programmaticComposerUpdateRef = useRef(false);
-    const initialLoadRef = useRef(false);
-    const workspaceChangingRef = useRef(false);
-    const [loading, setLoading] = useState<boolean>(false);
-    const [currentImage, setCurrentImage] = useState<string | null>(null);
-    const [currentTaskId, setCurrentTaskId] = useState<string | null>(null);
-    const [canvasRefreshKey, setCanvasRefreshKey] = useState<number>(0);
-    const [pendingRestart, setPendingRestart] = useState<boolean>(false);
-
-    // WebSocket progress tracking
-    const { progress: progressData, livePreview } = useWebSocketProgress(currentTaskId);
-
-    // Convert ProgressData to Progress type (ensure progress is number, not number | undefined)
-    const progress: Progress | null = progressData ? {
-        progress: progressData.progress ?? 0,
-        ...progressData
-    } : null;
-
-    // Model and sampler settings
-    const [models, setModels] = useState<ModelInfo[]>([]);
-    const [samplers, setSamplers] = useState<SamplerInfo[]>([]);
-    const [selectedModel, setSelectedModel] = useState<string>("");
-    const [selectedSampler, setSelectedSampler] = useState<string>("Euler a");
-    const [clipSkip, setClipSkip] = useState<number>(1);
-
-    // Generation parameters
-    const [generationMode, setGenerationMode] = useState<GenerationMode>("txt2img");
-
-    const handleGenerationModeChange = (mode: GenerationMode): void => {
-        setGenerationMode(mode);
-        // When switching to inpaint mode, force edit mode for mask editing
-        if (mode === "inpaint") {
-            setForceInpaintEditMode(true);
-            // Reset after a short delay to allow the effect to take place
-            setTimeout(() => setForceInpaintEditMode(false), 100);
-            // If there's a current image, use it as input for inpainting
-            if (currentImage) {
-                setInputImage(currentImage);
-            }
-        } else {
-            setForceInpaintEditMode(false);
-        }
-    };
-
-    const handleRefreshCanvas = () => {
-        setCanvasRefreshKey(prev => prev + 1);
-    };
-
-    // Inpainting parameters
-    const [inpaintMask, setInpaintMask] = useState<string | null>(null);
-    const [maskBlur, setMaskBlur] = useState<number>(4);
-    const [inpaintingFill, setInpaintingFill] = useState<number>(0);
-    const [inpaintFullRes, setInpaintFullRes] = useState<boolean>(true);
-    const [inpaintFullResPadding, setInpaintFullResPadding] = useState<number>(64);
-    const [inpaintingMaskInvert, setInpaintingMaskInvert] = useState<boolean>(false);
-    const [steps, setSteps] = useState<number>(20);
-    const [cfgScale, setCfgScale] = useState<number>(7);
-    const [width, setWidth] = useState<number>(512);
-    const [height, setHeight] = useState<number>(512);
-    const [batchSize, setBatchSize] = useState<number>(1);
-    const [count, setCount] = useState<number>(1);
-
-    // img2img parameters
-    const [denoisingStrength, setDenoisingStrength] = useState<number>(0.75);
-    const [inputImage, setInputImage] = useState<string | null>(null);
-
-    const [timeline, setTimeline] = useState<Timeline>({
-        generationQueue: [], // Array of Generation objects
-        currentPreview: null, // Generation object or null
-        committedHistory: [], // Array of Generation objects
-        discarded: [], // Array of Generation objects
-    });
-
-    // Workspace tabs management
     const {
         openWorkspaces,
         currentWorkspace,
         openWorkspace,
         closeWorkspace,
-        switchWorkspace
-    } = useWorkspaceTabs();
+        switchWorkspace,
+        removeWorkspaceState,
+        models,
+        samplers,
+        workspaceBrowserOpen,
+        setWorkspaceBrowserOpen,
+    } = useWorkspaceContext();
+    const { workspaceState: activeWorkspaceState, updateWorkspaceState } = useWorkspaceState(currentWorkspace);
+    const [recentWorkspaceIds, setRecentWorkspaceIds] = useState<string[]>([]);
+    const initialLoadRef = useRef(false);
 
-    const [workspaceBrowserOpen, setWorkspaceBrowserOpen] = useState<boolean>(false);
+    const setActiveGenerationState = useCallback((updates: Partial<typeof activeWorkspaceState.generation>) => {
+        updateWorkspaceState((prev) => ({
+            ...prev,
+            generation: { ...prev.generation, ...updates },
+        }));
+    }, [updateWorkspaceState]);
 
-    // Save settings
-    const [saveImages, setSaveImages] = useState(false);
+    const setActiveUiState = useCallback((updates: Partial<typeof activeWorkspaceState.ui>) => {
+        updateWorkspaceState((prev) => ({
+            ...prev,
+            ui: { ...prev.ui, ...updates },
+        }));
+    }, [updateWorkspaceState]);
 
-    // UI state
-    const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-    const [propertiesCollapsed, setPropertiesCollapsed] = useState(true);
-    const [forceInpaintEditMode, setForceInpaintEditMode] = useState(false);
-    const [pageLocked, setPageLocked] = useState(false);
+    useTitleIconAnimation(activeWorkspaceState.generation.loading);
 
-    // Upscale dialog state
-    const [upscaleDialog, setUpscaleDialog] = useState<{
-        isOpen: boolean;
-        sourceImage: { id: string; image: string; type: 'timeline' | 'canvas' } | null;
-        selectedUpscaler: string;
-        availableUpscalers: UpscalerInfo[];
-        loading: boolean;
-        error: string | null;
-    }>({
-        isOpen: false,
-        sourceImage: null, // {id, image, type: 'timeline'|'canvas'}
-        selectedUpscaler: "Lanczos",
-        availableUpscalers: [],
-        loading: false,
-        error: null,
-    });
+    useEffect(() => {
+        if (!currentWorkspace) return;
+        setRecentWorkspaceIds((prev) => {
+            const next = [currentWorkspace, ...prev.filter((id) => id !== currentWorkspace)];
+            return next.slice(0, 2);
+        });
+    }, [currentWorkspace]);
 
-    useTitleIconAnimation(loading);
-
-    const loadWorkspaceGenerations = useCallback(async (workspaceName: string): Promise<void> => {
-        if (!workspaceName) return;
-
-        try {
-            const generations = await api.getGenerations(workspaceName);
-
-            // Separate generations by status
-            const generationQueue = generations.filter(gen => gen.status === 'candidate');
-            const committedHistory = generations.filter(gen => gen.status === 'commit');
-            const discarded = generations.filter(gen => gen.status === 'reject');
-
-            // Set the latest committed image as the current canvas image
-            if (committedHistory.length > 0) {
-                setCurrentImage(getGenerationImageUrl(committedHistory[0], 'full'));
-            }
-
-            setTimeline({
-                generationQueue,
-                currentPreview: generationQueue.length > 0 ? generationQueue[0] : null,
-                committedHistory,
-                discarded,
-            });
-        } catch (error) {
-            console.error("Failed to load workspace generations:", error);
-            // Fallback to empty timeline
-            setTimeline({
-                generationQueue: [],
-                currentPreview: null,
-                committedHistory: [],
-                discarded: [],
-            });
-        }
-    }, []);
-
-    const loadWorkspacePrompt = useCallback(async (workspaceName: string): Promise<void> => {
-        if (!workspaceName) {
-            setWorkspacePromptLoaded(true);
-            return;
-        }
-
-        setWorkspacePromptLoaded(false);
-        try {
-            const workspacePrompt = await api.getWorkspacePrompt(workspaceName);
-            const nodes = workspacePrompt.nodes || [];
-            programmaticComposerUpdateRef.current = true;
-            setComposerNodes(nodes);
-        } catch (error) {
-            console.error("Failed to load workspace prompt:", error);
-        } finally {
-            setWorkspacePromptLoaded(true);
-        }
-    }, [setComposerNodes, setWorkspacePromptLoaded]);
-
-    const resetGenerationState = useCallback((): void => {
-        console.log("Resetting generation state: loading=false, currentTaskId=null");
-        setLoading(false);
-        setCurrentTaskId(null);
-        sessionStorage.removeItem('currentTaskId'); // Clear stored task ID
-    }, []);
-
-    const generateImage = useCallback(async (): Promise<void> => {
-        setPendingRestart(false);
-        if (!composerPrompt.trim()) return;
-        if ((generationMode === "img2img" || generationMode === "inpaint") && timeline.committedHistory.length === 0) {
-            alert("No committed images available for img2img/inpainting. Please generate and commit an image first.");
-            return;
-        }
-        if (generationMode === "inpaint" && !inpaintMask) {
-            alert("Please draw or upload a mask for inpainting mode.");
-            return;
-        }
-
-        if (!currentWorkspace) {
-            alert("Workspace not initialized yet. Please wait a moment and try again.");
-            return;
-        }
-
-        // Validate latest commit exists for img2img/inpaint modes
-        if ((generationMode === "img2img" || generationMode === "inpaint") && timeline.committedHistory.length === 0) {
-            alert("No committed images available for img2img/inpainting. Please generate and commit an image first.");
-            return;
-        }
-
-        setLoading(true);
-        setCurrentTaskId(null); // Clear previous task ID
-        sessionStorage.removeItem('currentTaskId'); // Clear stored task ID
-
-        // Generate task ID first (use sessionStorage to ensure consistency across requests)
-        let taskId = sessionStorage.getItem('currentTaskId');
-        if (!taskId) {
-            taskId = `task(${generationMode}-${Date.now()}-${Math.random().toString(36).substr(2, 9)})`;
-            sessionStorage.setItem('currentTaskId', taskId);
-        }
-
-
-        // Establish WebSocket connection first and wait for it to be ready
-        setCurrentTaskId(taskId);
-
-        // Wait a bit for WebSocket connection to establish
-        await new Promise((resolve) => setTimeout(resolve, 100));
-
-        try {
-            // Inject prompt composer metadata for generation data preservation
-            let promptWithMetadata = composerPrompt;
-            if (composerNodes.length > 0) {
-                try {
-                    const encodedData = encodeLegacy(composerNodes);
-                    promptWithMetadata += `\n\n\n\n\n<betterpromptexport:${encodedData}>`;
-                } catch (e) {
-                    console.warn('Failed to encode prompt metadata for generation:', e);
-                }
-            }
-
-            const baseParams = {
-                prompt: promptWithMetadata,
-                negative_prompt: composerNegativePrompt,
-                steps: steps,
-                width: width,
-                height: height,
-                cfg_scale: cfgScale,
-                sampler_name: selectedSampler,
-                batch_size: batchSize,
-                n_iter: count,
-                clip_skip: clipSkip,
-                save_images: saveImages,
-                force_task_id: taskId, // Use the same task ID
-                workspace_name: currentWorkspace,
-            };
-
-
-            let data;
-            if (generationMode === "img2img") {
-                const img2imgParams = {
-                    ...baseParams,
-                    genid: timeline.committedHistory[0].genid,
-                    denoising_strength: denoisingStrength,
-                };
-                data = await api.img2img(img2imgParams);
-            } else if (generationMode === "inpaint") {
-                const maskBase64Data = inpaintMask!.split(",")[1];
-                const inpaintParams = {
-                    ...baseParams,
-                    genid: timeline.committedHistory[0].genid,
-                    mask: maskBase64Data,
-                    mask_blur: maskBlur,
-                    inpainting_fill: inpaintingFill,
-                    inpaint_full_res: inpaintFullRes,
-                    inpaint_full_res_padding: inpaintFullResPadding,
-                    inpainting_mask_invert: inpaintingMaskInvert ? 1 : 0,
-                    denoising_strength: denoisingStrength,
-                };
-                data = await api.img2img(inpaintParams);
-            } else {
-                data = await api.txt2img(baseParams);
-            }
-
-            if ((data.filesystem_paths && data.filesystem_paths.length > 0) || (data.images && data.images.length > 0)) {
-                // Reload generations from the backend since they now include proper metadata
-                console.log("Loading workspace generations...");
-                await loadWorkspaceGenerations(currentWorkspace);
-                console.log("Workspace generations loaded");
-            }
-
-            // Force clear progress after successful generation
-            console.log("Generation completed successfully, clearing progress");
-        } catch (error) {
-            console.error("Error generating image:", error);
-            const errorMessage = error instanceof Error ? error.message : String(error);
-
-            // Check for specific error types
-            if (errorMessage.includes("Failed to fetch") || errorMessage.includes("NetworkError") || errorMessage.includes("404")) {
-                // Check if this is likely a missing input image
-                if (generationMode === "inpaint" || generationMode === "img2img") {
-                    alert("Failed to load input image. The image may no longer be available. Please select a different input image.");
-                    // Clear the invalid input image
-                    setInputImage(null);
-                } else {
-                    alert("Network error occurred. Please check your connection and try again.");
-                }
-            } else if (errorMessage.includes("CORS")) {
-                alert("CORS error occurred. This may be due to browser security restrictions.");
-            } else if (errorMessage.includes("interrupted") || errorMessage.includes("interrupt")) {
-                alert("Generation was interrupted. Please try again.");
-            } else {
-                alert("Error generating image. Make sure the API server is running on port 7861.");
-            }
-
-            // Ensure state is properly reset on error
-            resetGenerationState();
-        } finally {
-            console.log("Finally block: resetting generation state");
-            resetGenerationState();
-        }
-    }, [
-        composerPrompt,
-        generationMode,
-        timeline.committedHistory,
-        inpaintMask,
-        currentWorkspace,
-        composerNodes,
-        composerNegativePrompt,
-        steps,
-        width,
-        height,
-        cfgScale,
-        selectedSampler,
-        batchSize,
-        count,
-        clipSkip,
-        saveImages,
-        denoisingStrength,
-        maskBlur,
-        inpaintingFill,
-        inpaintFullRes,
-        inpaintFullResPadding,
-        inpaintingMaskInvert,
-        loadWorkspaceGenerations,
-        resetGenerationState,
-    ]);
+    useEffect(() => {
+        setRecentWorkspaceIds((prev) => prev.filter((id) => openWorkspaces.includes(id)));
+    }, [openWorkspaces]);
 
     const initializeWorkspace = useCallback(async (): Promise<void> => {
         try {
-            workspaceChangingRef.current = true;
             const data = await api.listWorkspaces();
             const workspaces = data.workspaces || [];
             if (workspaces.length > 0) {
-                // Check for stored workspace in localStorage
-                const lastWorkspace = localStorage.getItem('viteui-current-workspace');
-                let selectedWorkspace;
-
-                if (lastWorkspace) {
-                    // Use the stored workspace if it still exists
-                    selectedWorkspace = workspaces.find(ws => ws.name === lastWorkspace);
-                }
+                const lastWorkspace = localStorage.getItem("viteui-current-workspace");
+                let selectedWorkspace = lastWorkspace
+                    ? workspaces.find((ws) => ws.name === lastWorkspace)
+                    : undefined;
 
                 if (!selectedWorkspace) {
-                    // Fall back to most recently created workspace
                     const sorted = [...workspaces].sort((a, b) => {
                         const aTime = a.created ? new Date(a.created).getTime() : 0;
                         const bTime = b.created ? new Date(b.created).getTime() : 0;
@@ -384,255 +70,55 @@ function App() {
                     selectedWorkspace = sorted[0];
                 }
 
-                // selectedWorkspace is guaranteed to be defined at this point
                 openWorkspace(selectedWorkspace!.name);
-                await loadWorkspaceGenerations(selectedWorkspace!.name);
-                await loadWorkspacePrompt(selectedWorkspace!.name);
-                setTimeout(() => {
-                    workspaceChangingRef.current = false;
-                }, 100);
                 return;
             }
 
             const created = await api.createWorkspace("untitled");
             if (created?.name) {
                 openWorkspace(created.name);
-                await loadWorkspaceGenerations(created.name);
-                await loadWorkspacePrompt(created.name);
-                setTimeout(() => {
-                    workspaceChangingRef.current = false;
-                }, 100);
             }
         } catch (error) {
             console.error("Failed to initialize workspace:", error);
-            workspaceChangingRef.current = false;
         }
-    }, [openWorkspace, loadWorkspaceGenerations, loadWorkspacePrompt]);
+    }, [openWorkspace]);
 
     useEffect(() => {
         if (initialLoadRef.current) return;
         initialLoadRef.current = true;
-        loadInitialData();
-        initializeWorkspace();
-    }, [initializeWorkspace]);
-
-    // Debug logging for loading state changes
-    useEffect(() => {
-        console.log("Loading state changed:", loading);
-    }, [loading]);
-
-    // Handle page lock functionality
-    useEffect(() => {
-        const handleBeforeUnload = (e: BeforeUnloadEvent): string | undefined => {
-            if (pageLocked) {
-                e.preventDefault();
-                e.returnValue = ''; // Chrome requires returnValue to be set
-                return '';
-            }
-        };
-
-        if (pageLocked) {
-            window.addEventListener('beforeunload', handleBeforeUnload);
+        if (!currentWorkspace && openWorkspaces.length === 0) {
+            void initializeWorkspace();
         }
+    }, [currentWorkspace, initializeWorkspace, openWorkspaces.length]);
 
-        return () => {
-            window.removeEventListener('beforeunload', handleBeforeUnload);
-        };
-    }, [pageLocked]);
-
-    // Reset refresh key when currentImage changes
-    useEffect(() => {
-        setCanvasRefreshKey(0);
-    }, [currentImage]);
-
-    useEffect(() => {
-        if (!loading && pendingRestart) {
-            if (!composerPrompt.trim()) {
-                console.warn("Pending restart aborted because prompt is empty.");
-                setPendingRestart(false);
-                return;
-            }
-
-            setPendingRestart(false);
-            generateImage();
-        }
-    }, [loading, pendingRestart, composerPrompt, generateImage]);
-
-    const loadInitialData = async (): Promise<void> => {
-        try {
-            const [modelsData, samplersData, optionsData] = await Promise.all([
-                api.getModels(),
-                api.getSamplers(),
-                api.getOptions(),
-            ]);
-
-            setModels(modelsData);
-            setSamplers(samplersData);
-
-            // Set currently loaded model
-            const currentModelTitle = optionsData.sd_model_checkpoint;
-            if (currentModelTitle) {
-                // Find the model in the list that matches the current title (which includes hash)
-                const currentModel = modelsData.find((model) => model.title === currentModelTitle);
-                if (currentModel) {
-                    setSelectedModel(currentModel.title);
-                } else {
-                    // If we can't find the exact match, try to find by hash or model name
-                    const hashMatch = typeof currentModelTitle === 'string' ? currentModelTitle.match(/\[([a-f0-9]+)\]$/) : null;
-                    if (hashMatch) {
-                        const hash = hashMatch[1];
-                        const fallbackModel = modelsData.find(
-                            (model) => model.hash === hash || model.title.includes(hash)
-                        );
-                        if (fallbackModel) {
-                            setSelectedModel(fallbackModel.title);
-                        } else if (modelsData.length > 0) {
-                            // Last resort: use first model
-                            setSelectedModel(modelsData[0].title);
-                        }
-                    } else if (modelsData.length > 0) {
-                        // Last resort: use first model
-                        setSelectedModel(modelsData[0].title);
-                    }
-                }
-            } else if (modelsData.length > 0) {
-                // Fallback to first model if no current model is set
-                setSelectedModel(modelsData[0].title);
-            }
-
-            // Set currently loaded clip skip
-            const currentClipSkip = optionsData.CLIP_stop_at_last_layers;
-            console.log("currentClipSkip", currentClipSkip);
-            if (currentClipSkip !== undefined && currentClipSkip !== null) {
-                setClipSkip(parseInt(currentClipSkip as string));
-            }
-        } catch (error) {
-            console.error("Error loading initial data:", error);
-        }
-    };
-
-    const handleWorkspaceChange = async (workspaceName: string): Promise<void> => {
+    const handleWorkspaceChange = (workspaceName: string): void => {
         if (!workspaceName) return;
-
-        // Ensure workspace is in tabs (should be handled by openWorkspace, but being safe)
         if (!openWorkspaces.includes(workspaceName)) {
             openWorkspace(workspaceName);
         } else {
             switchWorkspace(workspaceName);
         }
-
-        // Load workspace data
-        workspaceChangingRef.current = true;
-        setCurrentImage(null);
-        setInputImage(null);
-        setWorkspacePromptLoaded(false);
-        setComposerNodes([]);
-        await loadWorkspaceGenerations(workspaceName);
-        await loadWorkspacePrompt(workspaceName);
-        // Small delay to ensure all state updates have settled
-        setTimeout(() => {
-            workspaceChangingRef.current = false;
-        }, 100);
     };
 
     const handleCreateWorkspace = async (name: string): Promise<void> => {
         try {
-            workspaceChangingRef.current = true;
             const result = await api.createWorkspace(name);
             if (result?.name) {
-                // Open it in a new tab
                 openWorkspace(result.name);
-
-                setCurrentImage(null);
-                setInputImage(null);
-                setWorkspacePromptLoaded(false);
-                setComposerNodes([]);
-                await loadWorkspaceGenerations(result.name);
-                await loadWorkspacePrompt(result.name);
-                setTimeout(() => {
-                    workspaceChangingRef.current = false;
-                }, 100);
             }
         } catch (error) {
             console.error("Failed to create workspace:", error);
-            workspaceChangingRef.current = false;
         }
     };
 
     const handleWorkspaceClose = (workspaceName: string): void => {
         closeWorkspace(workspaceName);
-        // If closing the current workspace, clear the workspace data
-        if (currentWorkspace === workspaceName) {
-            setCurrentImage(null);
-            setInputImage(null);
-            setWorkspacePromptLoaded(false);
-            setComposerNodes([]);
-            setTimeline({
-                generationQueue: [],
-                currentPreview: null,
-                committedHistory: [],
-                discarded: [],
-            });
-        }
-    };
-
-    const handleComposerNodesChange = (nodes: PromptNode[]): void => {
-        setComposerNodes(nodes);
-    };
-
-    useEffect(() => {
-        if (!currentWorkspace || !workspacePromptLoaded || workspaceChangingRef.current) return;
-        if (programmaticComposerUpdateRef.current) {
-            programmaticComposerUpdateRef.current = false;
-            return;
-        }
-        const payload = {
-            nodes: composerNodes,
-        };
-        const timer = setTimeout(() => {
-            api.saveWorkspacePrompt(currentWorkspace, payload).catch((error) => {
-                console.error("Failed to save workspace prompt:", error);
-            });
-        }, 500);
-        return () => clearTimeout(timer);
-    }, [composerNodes, currentWorkspace, workspacePromptLoaded]);
-
-    // Get image URL for a generation
-    const getGenerationImageUrl = (generation: Generation | null, size: 'preview' | 'full' = 'full'): string | null => {
-        if (!generation) return null;
-        const asset = size === 'preview' ? '512.png' : 'full.png';
-        const category = generation.status === 'commit' ? 'commits' : generation.status === 'reject' ? 'rejects' : 'candidates';
-        return `${API_BASE_URL}/api/workspaces/${encodeURIComponent(generation.workspace)}/${category}/${generation.genid}/${asset}`;
-    };
-
-    const fetchImageAsDataUrl = async (imageValue: string): Promise<string> => {
-        const imageUrl = resolveImageSrc(imageValue, "full");
-        if (!imageUrl) {
-            throw new Error("Invalid image URL");
-        }
-        const response = await fetch(imageUrl);
-        if (!response.ok) {
-            throw new Error(`Failed to fetch image: ${response.status}`);
-        }
-        const blob = await response.blob();
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result as string);
-            reader.onerror = reject;
-            reader.readAsDataURL(blob);
-        });
-    };
-
-    const getBase64Payload = async (imageValue: string | null): Promise<string | null> => {
-        if (!imageValue) return null;
-        if (typeof imageValue === "string" && imageValue.startsWith("data:")) {
-            return imageValue;
-        }
-        return await fetchImageAsDataUrl(imageValue);
+        removeWorkspaceState(workspaceName);
+        setRecentWorkspaceIds((prev) => prev.filter((id) => id !== workspaceName));
     };
 
     const handleModelChange = async (modelTitle: string): Promise<void> => {
-        setSelectedModel(modelTitle);
+        setActiveGenerationState({ selectedModel: modelTitle });
         try {
             await api.setModel(modelTitle);
         } catch (error) {
@@ -640,405 +126,12 @@ function App() {
         }
     };
 
-    const handleClipSkipChange = async (newClipSkip: number): Promise<void> => {
-        setClipSkip(newClipSkip);
-        try {
-            await api.setOptions({ CLIP_stop_at_last_layers: newClipSkip });
-        } catch (error) {
-            console.error("Error setting clip skip:", error);
-        }
-    };
-
-    const handleSkip = async (): Promise<void> => {
-        try {
-            console.log("Skipping generation");
-            await api.skip();
-            console.log("Generation skipped");
-        } catch (error) {
-            console.error("Error skipping generation:", error);
-        }
-    };
-
-    const handleInterrupt = async (): Promise<void> => {
-        try {
-            await api.interrupt();
-            console.log("Generation interrupt signal sent - waiting for API response");
-            // Don't immediately reset state - wait for the original API request to finish
-            // The UI state will be updated when the generation API call completes
-        } catch (error) {
-            console.error("Error sending interrupt signal:", error);
-            // If interrupt API fails, still don't reset state immediately
-            // Let the original API request handle state cleanup
-        }
-    };
-
-    const handleRestart = (): void => {
-        if (!loading) return;
-        setPendingRestart(true);
-        handleInterrupt();
-    };
-
-    const handleEnd = (): void => {
-        if (pendingRestart) {
-            setPendingRestart(false);
-        }
-        handleInterrupt();
-    };
-
-    const handleCanvasImageUpload = async (imageSrc: string): Promise<void> => {
-        if (!currentWorkspace) return;
-        try {
-            const result = await api.importWorkspaceImage(currentWorkspace, imageSrc);
-
-            // Extract genid from the path (candidates/{genid}/full.png)
-            const pathParts = result.image_path.split('/');
-            const genid = pathParts.length >= 2 ? pathParts[1] : 'unknown';
-
-            // Create a Generation object for the uploaded image
-            const uploadedGeneration: Generation = {
-                genid,
-                status: 'candidate' as const,
-                timestamp: Date.now(),
-                source: 'upload' as const,
-                workspace: currentWorkspace,
-                prompt: 'Uploaded image',
-                negativePrompt: '',
-                parameters: {}
-            };
-
-            // Immediately commit the uploaded image
-            await api.commitWorkspaceImage(currentWorkspace, `candidates/${genid}/full.png`);
-
-            // Update the uploaded generation to reflect it's now committed
-            const committedGeneration: Generation = { ...uploadedGeneration, status: 'commit' as const };
-
-            setInputImage(getGenerationImageUrl(committedGeneration, 'full'));
-
-            setTimeline((prev) => {
-                let committedHistory = prev.committedHistory;
-                // Add the current canvas image to history if it exists and is different
-                if (currentImage) {
-                    // Find or create a generation object for the current image
-                    const currentGen = prev.committedHistory.find(g => getGenerationImageUrl(g, 'full') === currentImage);
-                    if (currentGen) {
-                        // Keep the existing generation in history
-                    } else {
-                        // This shouldn't happen with the new system, but handle it gracefully
-                        console.warn('Current image not found in committed history');
-                    }
-                }
-                // Add the uploaded image as committed
-                committedHistory = [committedGeneration, ...committedHistory];
-                return {
-                    ...prev,
-                    committedHistory,
-                };
-            });
-
-            setCurrentImage(getGenerationImageUrl(committedGeneration, 'full'));
-        } catch (error) {
-            console.error("Failed to import image to workspace:", error);
-        }
-    };
-
-
-    const handlePreviewSelect = (generation: Generation | null): void => {
-        setTimeline((prev) => ({
-            ...prev,
-            currentPreview: generation,
-        }));
-    };
-
-    const handleRejectPreview = async (): Promise<void> => {
-        const preview = timeline.currentPreview;
-        if (!preview) return;
-
-        try {
-            await api.rejectWorkspaceImage(preview.workspace, `candidates/${preview.genid}/full.png`);
-            // Reload generations to get updated status
-            if (currentWorkspace) {
-                await loadWorkspaceGenerations(currentWorkspace);
-            }
-        } catch (error) {
-            console.error("Failed to reject generation:", error);
-        }
-    };
-
-    const handleCommitPreview = async (): Promise<void> => {
-        const preview = timeline.currentPreview;
-        if (!preview) return;
-
-        try {
-            // Reject all other candidates in the generation queue
-            const otherCandidates = timeline.generationQueue.filter(gen => gen.genid !== preview.genid);
-            for (const candidate of otherCandidates) {
-                try {
-                    await api.rejectWorkspaceImage(candidate.workspace, `candidates/${candidate.genid}/full.png`);
-                } catch (error) {
-                    console.error(`Failed to reject candidate ${candidate.genid}:`, error);
-                }
-            }
-
-            // Commit the selected preview
-            await api.commitWorkspaceImage(preview.workspace, `candidates/${preview.genid}/full.png`);
-            // Reload generations to get updated status
-            if (currentWorkspace) {
-                await loadWorkspaceGenerations(currentWorkspace);
-            }
-
-            // Update current image if it was the committed one
-            const committedImageUrl = getGenerationImageUrl({ ...preview, status: 'commit' });
-            setCurrentImage(committedImageUrl);
-
-            if (generationMode === "inpaint") {
-                setInputImage(committedImageUrl);
-            } else if (generationMode !== "txt2img") {
-                setInputImage(committedImageUrl);
-            }
-        } catch (error) {
-            console.error("Failed to commit generation:", error);
-        }
-    };
-
-    const handleDiscardGeneration = async (generation: Generation): Promise<void> => {
-        try {
-            await api.deleteWorkspaceImage(generation.workspace, `${generation.status === 'candidate' ? 'candidates' : generation.status === 'commit' ? 'commits' : 'rejects'}/${generation.genid}/full.png`);
-            // Reload generations to get updated status
-            if (currentWorkspace) {
-                await loadWorkspaceGenerations(currentWorkspace);
-            }
-        } catch (error) {
-            console.error("Failed to delete generation:", error);
-        }
-    };
-
-    const handleRestoreGeneration = async (generation: Generation): Promise<void> => {
-        try {
-            await api.restoreWorkspaceImage(generation.workspace, `${generation.status === 'reject' ? 'rejects' : 'commits'}/${generation.genid}/full.png`);
-            // Reload generations to get updated status
-            if (currentWorkspace) {
-                await loadWorkspaceGenerations(currentWorkspace);
-            }
-        } catch (error) {
-            console.error("Failed to restore generation:", error);
-        }
-    };
-
-    const handleUncommitGeneration = async (generation: Generation): Promise<void> => {
-        try {
-            await api.uncommitWorkspaceImage(generation.workspace, `commits/${generation.genid}/full.png`);
-            // Reload generations to get updated status
-            if (currentWorkspace) {
-                await loadWorkspaceGenerations(currentWorkspace);
-            }
-        } catch (error) {
-            console.error("Failed to uncommit generation:", error);
-        }
-    };
-
-    // Upscale functionality
-    const handleOpenUpscaleDialog = (sourceImage: { id: string; image: string; type: 'timeline' | 'canvas' }): void => {
-        // Fetch available upscalers if not already loaded
-        if (upscaleDialog.availableUpscalers.length === 0) {
-            api.getUpscalers()
-                .then((upscalers) => {
-                    setUpscaleDialog((prev) => ({
-                        ...prev,
-                        availableUpscalers: upscalers,
-                        selectedUpscaler: upscalers.length > 0 ? upscalers[0].name : "Lanczos",
-                    }));
-                })
-                .catch((error) => {
-                    console.error("Failed to fetch upscalers:", error);
-                    setUpscaleDialog((prev) => ({
-                        ...prev,
-                        error: "Failed to load upscalers",
-                    }));
-                });
-        }
-
-        setUpscaleDialog((prev) => ({
-            ...prev,
-            isOpen: true,
-            sourceImage,
-            loading: false,
-            error: null,
-        }));
-    };
-
-    const handleCloseUpscaleDialog = (): void => {
-        setUpscaleDialog((prev) => ({
-            ...prev,
-            isOpen: false,
-            sourceImage: null,
-            loading: false,
-            error: null,
-        }));
-    };
-
-    const getWorkspaceImagePath = (sourceImage: { id: string; image: string; type: 'timeline' | 'canvas' } | Generation | null): string | null => {
-        if (!sourceImage) return null;
-        
-        // If sourceImage is a generation object (from timeline), build path from genid and status
-        if ('genid' in sourceImage && 'workspace' in sourceImage && 'status' in sourceImage) {
-            const gen = sourceImage as Generation;
-            const category = gen.status === 'commit' ? 'commits' 
-                : gen.status === 'reject' ? 'rejects' 
-                : 'candidates';
-            return `${category}/${gen.genid}/full.png`;
-        }
-        
-        // If sourceImage is from canvas, try to extract from currentImage URL or use latest committed
-        if ('type' in sourceImage && sourceImage.type === 'canvas') {
-            // Try to extract workspace path from currentImage URL
-            if (currentImage) {
-                const workspaceInfo = parseWorkspaceImage(currentImage);
-                if (workspaceInfo) {
-                    // Extract category and genid from the URL path
-                    const pathParts = workspaceInfo.path.split('/');
-                    if (pathParts.length >= 2 && ['candidates', 'commits', 'rejects'].includes(pathParts[0])) {
-                        const category = pathParts[0];
-                        const genid = pathParts[1];
-                        return `${category}/${genid}/full.png`;
-                    }
-                }
-            }
-            
-            // Fallback: use latest committed generation if available
-            if (timeline.committedHistory.length > 0) {
-                const latestCommit = timeline.committedHistory[0];
-                return `commits/${latestCommit.genid}/full.png`;
-            }
-        }
-        
-        return null;
-    };
-
-    const handleUpscale = async (upscaler: string, scaleFactor: number): Promise<void> => {
-        if (!upscaleDialog.sourceImage) return;
-
-        // Set loading state
-        setUpscaleDialog((prev) => ({
-            ...prev,
-            loading: true,
-            error: null,
-        }));
-
-        try {
-            if (!currentWorkspace) {
-                throw new Error("Workspace not initialized");
-            }
-
-            // Try to get workspace_image_path first
-            const workspaceImagePath = getWorkspaceImagePath(upscaleDialog.sourceImage);
-            
-            const params: ExtrasSingleImageParams = {
-                upscaler_1: upscaler,
-                upscaling_resize: scaleFactor,
-                resize_mode: 0, // Scale by factor
-                show_extras_results: true,
-                workspace_name: currentWorkspace,
-            };
-
-            // Use workspace path if available, otherwise fall back to base64
-            if (workspaceImagePath) {
-                params.workspace_image_path = workspaceImagePath;
-            } else {
-                // Fallback to base64 for non-workspace images
-                const sourceImageData = await getBase64Payload(upscaleDialog.sourceImage.image);
-                if (!sourceImageData) {
-                    throw new Error("No source image data available for upscaling");
-                }
-                params.image = sourceImageData;
-            }
-
-            const result = await api.extraSingleImage(params);
-
-            if (!result.image) {
-                throw new Error("Upscale failed. No images returned.");
-            }
-
-            // Add the upscaled generation directly to the timeline
-            if (result.generation) {
-                setTimeline((prev) => ({
-                    ...prev,
-                    generationQueue: [result.generation!, ...prev.generationQueue],
-                    currentPreview: result.generation!,
-                }));
-            }
-
-            // Close dialog
-            handleCloseUpscaleDialog();
-        } catch (error) {
-            console.error("Upscale failed:", error);
-            const errorMessage = error instanceof Error ? error.message : "Upscale failed. Please try again.";
-            setUpscaleDialog((prev) => ({
-                ...prev,
-                loading: false,
-                error: errorMessage,
-            }));
-        }
-    };
-
-
-
-    // Keyboard shortcuts
-    useKeyboardShortcuts({
-        "ctrl+g": () => {
-            if (composerPrompt.trim() && !loading) {
-                generateImage();
-            }
-        },
-        "g": () => {
-            if (loading) {
-                handleInterrupt();
-            } else if (composerPrompt.trim()) {
-                generateImage();
-            }
-        },
-        "h": () => {
-            handleSkip();
-        },
-        "alt+t": () => handleGenerationModeChange("txt2img"),
-        "alt+i": () => handleGenerationModeChange("img2img"),
-        "alt+n": () => handleGenerationModeChange("inpaint"),
-        "ctrl+b": () => setSidebarCollapsed(!sidebarCollapsed),
-        "ctrl+p": () => setPropertiesCollapsed(!propertiesCollapsed),
-    });
-
-    const canvasControls = {
-        loading,
-        progress,
-        onGenerate: generateImage,
-        canGenerate: !!composerPrompt.trim(),
-        onSkip: handleSkip,
-        onRestart: handleRestart,
-        onInterrupt: handleEnd,
-        pendingRestart,
-        steps,
-        setSteps,
-        count,
-        setCount,
-        selectedSampler,
-        setSelectedSampler,
-        cfgScale,
-        setCfgScale,
-        models,
-        selectedModel,
-        onModelChange: handleModelChange,
-        samplers,
-        width,
-        setWidth,
-        height,
-        setHeight,
-        inputImage,
-        pageLocked,
-        onToggleLock: () => setPageLocked(!pageLocked),
-    }
+    const cachedWorkspaceIds = useMemo(() => {
+        return recentWorkspaceIds.filter((id) => openWorkspaces.includes(id));
+    }, [openWorkspaces, recentWorkspaceIds]);
 
     return (
         <div className="h-screen flex flex-col bg-studio-bg">
-            {/* Header Toolbar */}
             <Header
                 openWorkspaces={openWorkspaces}
                 currentWorkspace={currentWorkspace}
@@ -1046,153 +139,30 @@ function App() {
                 onWorkspaceClose={handleWorkspaceClose}
                 onCreateWorkspace={handleCreateWorkspace}
                 onOpenWorkspaceBrowser={() => setWorkspaceBrowserOpen(true)}
-                pageLocked={pageLocked}
-                onToggleLock={() => setPageLocked(!pageLocked)}
+                pageLocked={activeWorkspaceState.ui.pageLocked}
+                onToggleLock={() => setActiveUiState({ pageLocked: !activeWorkspaceState.ui.pageLocked })}
                 models={models}
-                selectedModel={selectedModel}
+                selectedModel={activeWorkspaceState.generation.selectedModel}
                 onModelChange={handleModelChange}
                 samplers={samplers}
-                selectedSampler={selectedSampler}
-                setSelectedSampler={setSelectedSampler}
-                cfgScale={cfgScale}
-                setCfgScale={setCfgScale}
+                selectedSampler={activeWorkspaceState.generation.selectedSampler}
+                setSelectedSampler={(value) => setActiveGenerationState({ selectedSampler: value })}
+                cfgScale={activeWorkspaceState.generation.cfgScale}
+                setCfgScale={(value) => setActiveGenerationState({ cfgScale: value })}
             />
 
-            {/* Main Content Area */}
             <div className="flex-1 flex overflow-hidden">
-                {/* Left Sidebar */}
-                <Sidebar
-                    collapsed={sidebarCollapsed}
-                    onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
-                    timeline={timeline}
-                    currentImage={currentImage}
-                    onPreviewSelect={handlePreviewSelect}
-                    onCommitPreview={handleCommitPreview}
-                    onRejectPreview={handleRejectPreview}
-                    onDiscardGeneration={handleDiscardGeneration}
-                    onRestoreGeneration={handleRestoreGeneration}
-                    onUncommitGeneration={handleUncommitGeneration}
-                    onGenerationModeChange={handleGenerationModeChange}
-                    generationMode={generationMode}
-                    onUpscale={handleOpenUpscaleDialog}
-                    getGenerationImageUrl={getGenerationImageUrl}
-                    onRefreshTimeline={() => currentWorkspace && loadWorkspaceGenerations(currentWorkspace)}
-                    onRefreshCanvas={handleRefreshCanvas}
-                    canvasRefreshKey={canvasRefreshKey}
-                />
-
-                {/* Main Canvas Area */}
-                {generationMode === "inpaint" ? (
-                    <InpaintCanvas
-                        currentImage={currentImage}
-                        previewImage={getGenerationImageUrl(timeline.currentPreview)}
-                        inputImage={inputImage}
-                        livePreview={livePreview}
-                        loading={loading}
-                        progress={progress}
-                        generationWidth={width}
-                        generationHeight={height}
-                        composerNodes={composerNodes}
-                        onComposerNodesChange={handleComposerNodesChange}
-                        setInpaintMask={setInpaintMask}
-                        onImageUpload={handleCanvasImageUpload}
-                        inpaintFullRes={inpaintFullRes}
-                        inpaintFullResPadding={inpaintFullResPadding}
-                        setInpaintFullResPadding={setInpaintFullResPadding}
-                        setInpaintFullRes={setInpaintFullRes}
-                        forceEditMode={forceInpaintEditMode}
-                        maskBlur={maskBlur}
-                        setMaskBlur={setMaskBlur}
-                        inpaintingFill={inpaintingFill}
-                        setInpaintingFill={setInpaintingFill}
-                        denoisingStrength={denoisingStrength}
-                        setDenoisingStrength={setDenoisingStrength}
-                        inpaintingMaskInvert={inpaintingMaskInvert}
-                        setInpaintingMaskInvert={setInpaintingMaskInvert}
-                        generationMode={generationMode}
-                        canvasRefreshKey={canvasRefreshKey}
-                        canvasControls={canvasControls}
+                {cachedWorkspaceIds.map((workspaceId) => (
+                    <Workspace
+                        key={workspaceId}
+                        workspaceId={workspaceId}
+                        isActive={workspaceId === currentWorkspace}
                     />
-                ) : (
-                    <InpaintCanvas
-                        currentImage={currentImage}
-                        previewImage={getGenerationImageUrl(timeline.currentPreview)}
-                        livePreview={livePreview}
-                        loading={loading}
-                        progress={progress}
-                        generationWidth={width}
-                        generationHeight={height}
-                        composerNodes={composerNodes}
-                        onComposerNodesChange={handleComposerNodesChange}
-                        // Inpainting specific props - provide defaults for non-inpaint modes
-                        setInpaintMask={() => { }}
-                        forceEditMode={false}
-                        maskBlur={maskBlur}
-                        setMaskBlur={setMaskBlur}
-                        inpaintingFill={inpaintingFill}
-                        setInpaintingFill={setInpaintingFill}
-                        denoisingStrength={denoisingStrength}
-                        setDenoisingStrength={setDenoisingStrength}
-                        setInpaintFullRes={() => { }}
-                        inpaintingMaskInvert={inpaintingMaskInvert}
-                        setInpaintingMaskInvert={setInpaintingMaskInvert}
-                        // Image upload props for img2img mode
-                        inputImage={generationMode === "img2img" ? inputImage : null}
-                        onImageUpload={generationMode === "img2img" ? handleCanvasImageUpload : undefined}
-                        // Full resolution inpainting props - defaults for non-inpaint modes
-                        inpaintFullRes={false}
-                        inpaintFullResPadding={0}
-                        setInpaintFullResPadding={() => { }}
-                        generationMode={generationMode}
-                        canvasRefreshKey={canvasRefreshKey}
-                        canvasControls={canvasControls}
-                    />
-                )}
-
-                {/* Right Properties Panel */}
-                {/* <PropertiesPanel
-                    collapsed={propertiesCollapsed}
-                    onToggle={() => setPropertiesCollapsed(!propertiesCollapsed)}
-                    // Generation settings
-                    generationMode={generationMode}
-                    setGenerationMode={setGenerationMode}
-                    width={width}
-                    setWidth={setWidth}
-                    height={height}
-                    setHeight={setHeight}
-                    batchSize={batchSize}
-                    setBatchSize={setBatchSize}
-                    denoisingStrength={denoisingStrength}
-                    setDenoisingStrength={setDenoisingStrength}
-                    inputImage={inputImage}
-                    onImageUpload={handlePropertiesImageUpload}
-                    clipSkip={clipSkip}
-                    onClipSkipChange={handleClipSkipChange}
-                    saveImages={saveImages}
-                    setSaveImages={setSaveImages}
-                /> */}
-
-                {/* Upscale Dialog */}
-                <UpscaleDialog
-                    isOpen={upscaleDialog.isOpen}
-                    onClose={handleCloseUpscaleDialog}
-                    onUpscale={handleUpscale}
-                    sourceImage={upscaleDialog.sourceImage}
-                    selectedUpscaler={upscaleDialog.selectedUpscaler}
-                    availableUpscalers={upscaleDialog.availableUpscalers}
-                    loading={upscaleDialog.loading}
-                    error={upscaleDialog.error}
-                />
-
-                {workspaceBrowserOpen && (
-                    <WorkspaceBrowser
-                        currentWorkspace={currentWorkspace}
-                        onSelectWorkspace={(name) => {
-                            handleWorkspaceChange(name);
-                            setWorkspaceBrowserOpen(false);
-                        }}
-                        onClose={() => setWorkspaceBrowserOpen(false)}
-                    />
+                ))}
+                {!workspaceBrowserOpen && cachedWorkspaceIds.length === 0 && (
+                    <div className="flex-1 flex items-center justify-center text-studio-text-muted text-sm">
+                        No workspace open.
+                    </div>
                 )}
             </div>
         </div>
