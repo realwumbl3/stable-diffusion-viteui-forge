@@ -20,6 +20,9 @@ todos:
   - id: validate-ui
     content: Verify workspace and sidebar behaviors.
     status: pending
+  - id: todo-1769307222723-kn7xbls00
+    content: ""
+    status: pending
 isProject: false
 ---
 

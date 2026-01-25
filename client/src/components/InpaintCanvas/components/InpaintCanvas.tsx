@@ -4,7 +4,7 @@ import PromptComposer from "../../PromptComposer";
 import InpaintToolbar from "./InpaintToolbar";
 import Img2ImgToolbar from "./Img2ImgToolbar";
 import { resolveImageSrc } from "../../../lib/utils";
-import CanvasTopControls from "./CanvasTopControls";
+import GenerationControlls from "./GenerationControlls";
 
 // Import our extracted hooks and components
 import { useCanvasState } from "../hooks/useCanvasState";
@@ -299,8 +299,6 @@ const InpaintCanvas = ({
         // Drawing logic now handled at document level
     };
 
-    const isInpaintMode = generationMode === "inpaint";
-
     return (
         <main className="studio-canvas relative flex flex-col min-h-0">
             <CanvasArea
@@ -406,7 +404,7 @@ const InpaintCanvas = ({
 
             <div className="absolute top-1 right-1 z-20 pointer-events-auto">
                 {canvasControls && (
-                    <CanvasTopControls controls={canvasControls} visible={uiVisible} />
+                    <GenerationControlls controls={canvasControls} visible={uiVisible} />
                 )}
             </div>
 
