@@ -10,6 +10,15 @@ export interface Timeline {
   discarded: Generation[]
 }
 
+export interface GenerationsNavigatorProps {
+  generationQueue: Generation[]
+  currentPreview: Generation | null
+  latestCommit: Generation | null
+  onPreviewSelect: (generation: Generation | null) => void
+  onCommit: () => void
+  onReject: () => void
+}
+
 // Generation mode type
 export type GenerationMode = 'txt2img' | 'img2img' | 'inpaint'
 
@@ -207,6 +216,7 @@ export interface UpscaleDialogProps {
 export interface InpaintCanvasProps {
   currentImage?: string | null
   previewImage?: string | null
+  onClearPreview?: () => void
   livePreview?: string | null
   loading?: boolean
   progress?: Progress | null
@@ -247,6 +257,7 @@ export interface CanvasAreaProps {
   displayImage?: string | null
   inputImage?: string | null
   previewImage?: string | null
+  onClearPreview?: () => void
   currentImage?: string | null
   livePreview?: string | null
   generationWidth?: number

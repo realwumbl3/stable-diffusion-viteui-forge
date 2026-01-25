@@ -18,6 +18,7 @@ import type { InpaintCanvasProps } from "../../../types/components";
 const InpaintCanvas = ({
     currentImage,
     previewImage,
+    onClearPreview,
     livePreview,
     loading,
     progress,
@@ -299,6 +300,7 @@ const InpaintCanvas = ({
         // Drawing logic now handled at document level
     };
 
+
     return (
         <main className="studio-canvas relative flex flex-col min-h-0">
             <CanvasArea
@@ -310,6 +312,7 @@ const InpaintCanvas = ({
                 displayImage={resolvedDisplayImage}
                 inputImage={resolvedInputImage}
                 previewImage={resolvedPreviewImage}
+                onClearPreview={onClearPreview}
                 currentImage={resolvedCurrentImage}
                 livePreview={livePreview}
                 generationWidth={generationWidth}

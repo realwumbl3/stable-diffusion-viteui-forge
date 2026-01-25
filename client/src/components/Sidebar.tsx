@@ -11,6 +11,7 @@ import {
 import { useState, useRef, useEffect } from 'react'
 import { cn, resolveImageSrc } from '../lib/utils'
 import TimelineItem from './TimelineItem'
+import GenerationsNavigator from './GenerationsNavigator'
 import type { Generation } from '../Api'
 import type { SidebarProps } from '../types/components'
 
@@ -174,6 +175,16 @@ const Sidebar = ({
                 <Edit size={16} />
                 <span className="hidden sm:inline">Inpaint</span>
               </button>
+            </div>
+            <div className="mb-4">
+              <GenerationsNavigator
+                generationQueue={timeline.generationQueue}
+                currentPreview={timeline.currentPreview}
+                latestCommit={timeline.committedHistory[0] ?? null}
+                onPreviewSelect={onPreviewSelect}
+                onCommit={onCommitPreview}
+                onReject={onRejectPreview}
+              />
             </div>
           </div>
 

@@ -111,6 +111,7 @@ export function useCanvasState(props: UseCanvasStateProps) {
     const { showMask } = maskState;
     const previewWasActiveRef = useRef<string | null>(null);
     const isPreviewActive = Boolean(previewImage);
+    const isTimelinePreview = Boolean(previewImage);
 
     useEffect(() => {
         const wasPreviewActive = Boolean(previewWasActiveRef.current);
@@ -123,6 +124,9 @@ export function useCanvasState(props: UseCanvasStateProps) {
     }, [isPreviewActive, previewImage]);
 
     const viewMode = useMemo<ViewMode>(() => {
+        if (isTimelinePreview) {
+            return "result";
+        }
         if (forceEditMode || livePreview) {
             return "edit";
         }
@@ -133,7 +137,7 @@ export function useCanvasState(props: UseCanvasStateProps) {
             return "edit";
         }
         return "edit";
-    }, [forceEditMode, livePreview, displayImage, inputImage]);
+    }, [forceEditMode, isTimelinePreview, livePreview, displayImage, inputImage]);
 
     // Footer state
     const [footerCollapsed, setFooterCollapsed] = useState(false);

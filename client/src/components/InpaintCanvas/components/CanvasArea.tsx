@@ -13,6 +13,7 @@ const CanvasArea = ({
     imageRef,
     displayImage,
     inputImage,
+    previewImage,
     livePreview,
     loading,
     progress,
@@ -43,6 +44,7 @@ const CanvasArea = ({
     handleMouseEnter,
     drawingMode,
     openFileDialog,
+    onClearPreview,
     // Inpaint parameters
     maskBlur,
     setMaskBlur,
@@ -271,7 +273,15 @@ const CanvasArea = ({
                                     ? "none"
                                     : "transform 0.2s ease-out",
                         }}
-                        onMouseDown={handleMouseDown}
+                    onMouseDown={(e) => {
+                        if (previewImage && onClearPreview && e.button === 0) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            onClearPreview();
+                            return;
+                        }
+                        handleMouseDown(e);
+                    }}
                         onMouseMove={handleMouseMove}
                         onMouseUp={handleMouseUp}
                         onMouseEnter={handleMouseEnter}

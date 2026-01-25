@@ -597,6 +597,14 @@ const Workspace = ({ workspaceId, isActive }: WorkspaceProps) => {
             ...prev,
             currentPreview: generationItem,
         }));
+
+        if (!generationItem && mode.generationMode === "inpaint") {
+            if (canvas.currentImage && !generation.inputImage) {
+                setGenerationState({ inputImage: canvas.currentImage });
+            }
+            setModeState({ forceInpaintEditMode: true });
+            setTimeout(() => setModeState({ forceInpaintEditMode: false }), 100);
+        }
     };
 
     const handleRejectPreview = async (): Promise<void> => {
@@ -899,6 +907,7 @@ const Workspace = ({ workspaceId, isActive }: WorkspaceProps) => {
                 <InpaintCanvas
                     currentImage={canvas.currentImage}
                     previewImage={getGenerationImageUrl(canvas.timeline.currentPreview)}
+                    onClearPreview={() => handlePreviewSelect(null)}
                     inputImage={generation.inputImage}
                     livePreview={livePreview}
                     loading={generation.loading}
@@ -930,6 +939,7 @@ const Workspace = ({ workspaceId, isActive }: WorkspaceProps) => {
                 <InpaintCanvas
                     currentImage={canvas.currentImage}
                     previewImage={getGenerationImageUrl(canvas.timeline.currentPreview)}
+                    onClearPreview={() => handlePreviewSelect(null)}
                     livePreview={livePreview}
                     loading={generation.loading}
                     progress={progress}
