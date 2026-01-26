@@ -1,4 +1,3 @@
-// VITE UI
 import { useState, useRef, useEffect, useLayoutEffect, useMemo, useId } from 'react';
 import { createPortal } from 'react-dom';
 import type { CSSProperties, RefObject } from 'react';

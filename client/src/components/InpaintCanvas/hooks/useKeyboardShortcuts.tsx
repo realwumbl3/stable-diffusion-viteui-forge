@@ -70,11 +70,11 @@ export function useKeyboardShortcuts({
                 case "E":
                     setDrawingMode("erase");
                     break;
-                case "f":
+                case "r":
                     e.preventDefault();
                     handleFitToScreen();
                     break;
-                case "F":
+                case "f":
                     e.preventDefault();
                     setDrawingMode("fill");
                     break;

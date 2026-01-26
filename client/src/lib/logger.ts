@@ -1,4 +1,3 @@
-// VITE UI
 interface LogGroup {
   name: string;
   enabled: boolean;

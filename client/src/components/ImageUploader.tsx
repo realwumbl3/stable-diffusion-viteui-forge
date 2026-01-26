@@ -1,4 +1,3 @@
-// VITE UI
 import { useRef, useState } from 'react'
 import { Upload } from 'lucide-react'
 import { cn } from '../lib/utils'
@@ -65,7 +64,7 @@ const ImageUploader = ({
     return (
       <button
         onClick={openFileDialog}
-        className="studio-btn-ghost p-2"
+        className="studio-btn-ghost p-2 rounded-md"
         title="Upload Image"
         type="button"
       >

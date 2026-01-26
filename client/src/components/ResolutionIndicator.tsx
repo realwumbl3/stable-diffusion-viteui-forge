@@ -1,4 +1,3 @@
-// VITE UI
 import { useState, useRef, useEffect } from 'react'
 import { ChevronDown, Image as ImageIcon } from 'lucide-react'
 import { cn } from '../lib/utils'

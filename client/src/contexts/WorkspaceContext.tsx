@@ -1,4 +1,3 @@
-// VITE UI
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { Dispatch, ReactNode, SetStateAction } from "react";
 import { useWorkspaceTabs } from "../hooks/useWorkspaceTabs";

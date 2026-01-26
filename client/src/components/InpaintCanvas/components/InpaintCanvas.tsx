@@ -1,4 +1,3 @@
-// VITE UI
 import { useState, useRef, useEffect, useCallback } from "react";
 import PromptComposer from "../../PromptComposer";
 import InpaintToolbar from "./InpaintToolbar";
@@ -309,7 +308,7 @@ const InpaintCanvas = ({
 
 
     return (
-        <main className="studio-canvas relative flex flex-col min-h-0">
+        <main className="studio-canvas relative flex flex-col min-h-0 flex-1 overflow-hidden">
             <CanvasArea
                 canvasRef={canvasRef}
                 panTargetRef={panTargetRef}
@@ -335,6 +334,8 @@ const InpaintCanvas = ({
                 setShowGrid={canvasState.setShowGrid}
                 showMask={canvasState.showMask}
                 showBorder={canvasState.showBorder}
+                maskBorderMode={canvasState.maskBorderMode}
+                setMaskBorderMode={canvasState.setMaskBorderMode}
                 handleZoomOut={canvasState.handleZoomOut}
                 handleZoomIn={canvasState.handleZoomIn}
                 handleResetZoom={canvasState.handleResetZoom}

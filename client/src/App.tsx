@@ -1,4 +1,3 @@
-// VITE UI
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import api from "./Api";
 import Header from "./components/Header";
@@ -21,6 +20,7 @@ function App() {
     } = useWorkspaceContext();
     const { workspaceState: activeWorkspaceState, updateWorkspaceState } = useWorkspaceState(currentWorkspace);
     const [recentWorkspaceIds, setRecentWorkspaceIds] = useState<string[]>([]);
+    const [revealHotkeys, setRevealHotkeys] = useState(true);
     const initialLoadRef = useRef(false);
 
     const setActiveGenerationState = useCallback((updates: Partial<typeof activeWorkspaceState.generation>) => {
@@ -50,6 +50,20 @@ function App() {
     useEffect(() => {
         setRecentWorkspaceIds((prev) => prev.filter((id) => openWorkspaces.includes(id)));
     }, [openWorkspaces]);
+
+    // Toggle hotkey indicators with Shift+?
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.shiftKey && e.key === '?') {
+                console.log("Revealing hotkeys");
+                e.preventDefault();
+                setRevealHotkeys((prev) => !prev);
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, []);
 
     const initializeWorkspace = useCallback(async (): Promise<void> => {
         try {
@@ -131,7 +145,7 @@ function App() {
     }, [openWorkspaces, recentWorkspaceIds]);
 
     return (
-        <div className="h-screen flex flex-col bg-studio-bg">
+        <div className={`h-screen flex flex-col bg-studio-bg ${revealHotkeys ? 'reveal-hotkeys' : ''}`}>
             <Header
                 openWorkspaces={openWorkspaces}
                 currentWorkspace={currentWorkspace}

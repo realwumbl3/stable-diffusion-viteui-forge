@@ -2,6 +2,7 @@
 import { SkipForward, Square, RotateCw, Zap } from "lucide-react";
 import ResolutionIndicator from "../../ResolutionIndicator";
 import NumberSelector from "../../NumberSelector";
+import KeyIndicator from "../../KeyIndicator";
 import { cn } from "../../../lib/utils";
 import type { CanvasTopControlsProps } from "../../../types/components";
 
@@ -67,7 +68,7 @@ const CanvasTopControls = ({ controls, visible }: Props) => {
                 onClick={onGenerate}
                 disabled={!canGenerate || loading}
                 className={cn(
-                    "studio-btn-primary flex flex-col items-center gap-1 px-4 py-2 relative self-stretch justify-center line-height-1",
+                    "studio-btn-primary flex flex-col items-center gap-1 px-4 py-2 rounded-md relative self-stretch justify-center line-height-1 simple-block-fill",
                     (!canGenerate || loading) && "opacity-50 cursor-not-allowed"
                 )}
                 type="button"
@@ -90,7 +91,7 @@ const CanvasTopControls = ({ controls, visible }: Props) => {
                         </div>
                         <div className="absolute bottom-0 left-0 right-0 h-1 bg-studio-bg/20 rounded-b-md overflow-hidden">
                             <div
-                                className="h-full bg-studio-accent transition-all duration-300 ease-out"
+                                className="h-full bg-studio-accentSecondary transition-all duration-300 ease-out"
                                 style={{ width: `${(progress.progress || 0) * 100}%` }}
                             />
                         </div>
@@ -104,6 +105,7 @@ const CanvasTopControls = ({ controls, visible }: Props) => {
                     <>
                         <Zap size={16} />
                         Generate
+                        <KeyIndicator keys="G" />
                     </>
                 )}
             </button>
@@ -113,31 +115,34 @@ const CanvasTopControls = ({ controls, visible }: Props) => {
                     {progress && progress.total_batches && progress.total_batches > 1 && (
                         <button
                             onClick={onSkip}
-                            className="studio-btn-secondary flex flex-col items-center gap-1 px-3 py-1 text-sm hover:bg-studio-accent/20"
-                            title="Skip current generation"
+                            className="studio-btn-secondary flex flex-col items-center gap-1 px-3 py-1 rounded-md text-sm hover:bg-studio-accent/20 relative"
+                            title="Skip current generation (S)"
                             type="button"
                         >
                             <SkipForward size={16} />
                             Skip
+                            <KeyIndicator keys="S" />
                         </button>
                     )}
                     <button
                         onClick={onRestart}
-                        className="studio-btn-secondary flex flex-col items-center gap-1 px-3 py-1 text-sm hover:bg-studio-accent/20"
+                        className="studio-btn-secondary flex flex-col items-center gap-1 px-3 py-1 rounded-md text-sm hover:bg-studio-accent/20 relative"
                         title="Restart generation after interrupting current work"
                         type="button"
                     >
                         <RotateCw size={16} />
+                        <KeyIndicator keys="H" />
                         Restart
                     </button>
                     <button
                         onClick={onInterrupt}
-                        className="studio-btn-secondary flex flex-col items-center gap-1 px-3 py-1 text-sm hover:bg-studio-accent/20"
+                        className="studio-btn-secondary flex flex-col items-center gap-1 px-3 py-1 rounded-md text-sm hover:bg-studio-accent/20 relative"
                         title="Interrupt all generations"
                         type="button"
                     >
                         <Square size={16} />
                         End
+                        <KeyIndicator keys="G" />
                     </button>
                 </div>
             )}

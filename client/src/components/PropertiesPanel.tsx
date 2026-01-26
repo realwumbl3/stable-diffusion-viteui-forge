@@ -1,4 +1,3 @@
-// VITE UI
 import { useState } from "react";
 import { Sliders } from "lucide-react";
 import { cn } from "../lib/utils";
@@ -33,7 +32,7 @@ const PropertiesPanel = ({
     return (
         <aside
             className={cn(
-                "studio-properties-panel relative overflow-hidden transition-all duration-300 ease-in-out",
+                "studio-properties-panel relative overflow-hidden transition-all duration-300 ease-in-out w-96 flex flex-col",
                 collapsed ? "w-12" : "w-80"
             )}
         >
@@ -75,7 +74,7 @@ const PropertiesPanel = ({
                     )}
                 >
                     {/* Properties Header */}
-                    <div className="studio-sidebar-header">
+                    <div className="studio-sidebar-header p-4">
                         <h3 className="text-studio-text font-semibold text-sm">Properties</h3>
                     </div>
 
@@ -109,7 +108,7 @@ const PropertiesPanel = ({
                     </div>
 
                     {/* Properties Content */}
-                    <div className="studio-sidebar-content !overflow-y-auto">
+                    <div className="studio-sidebar-content !overflow-y-auto flex-1 overflow-hidden">
                         <div className="p-4 space-y-6">
                             {/* Generation, parameters Section */}
                             {activeSection === "generation" && (
@@ -117,7 +116,7 @@ const PropertiesPanel = ({
                                     {generationMode === "img2img" && (
                                         <>
                                             <div>
-                                                <label className="studio-label">Input Image</label>
+                                                <label className="studio-label mb-1 block">Input Image</label>
                                                 <div className="space-y-2">
                                                     <input
                                                         type="file"
@@ -157,7 +156,7 @@ const PropertiesPanel = ({
                                             </div>
 
                                             <div>
-                                                <label className="studio-label">Denoising Strength</label>
+                                                <label className="studio-label mb-1 block">Denoising Strength</label>
                                                 <input
                                                     type="range"
                                                     min="0"
@@ -182,7 +181,7 @@ const PropertiesPanel = ({
 
                                     {/* Batch Size */}
                                     <div>
-                                        <label className="studio-label">Batch Size</label>
+                                        <label className="studio-label mb-1 block">Batch Size</label>
                                         <NumberSelector
                                             value={batchSize}
                                             onChange={setBatchSize}
@@ -194,7 +193,7 @@ const PropertiesPanel = ({
 
                                     {/* Save to Output Folder */}
                                     <div>
-                                        <label className="studio-label">Save Options</label>
+                                        <label className="studio-label mb-1 block">Save Options</label>
                                         <div className="space-y-3">
                                             <div className="flex items-center space-x-2">
                                                 <input

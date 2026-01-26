@@ -1,4 +1,3 @@
-// VITE UI
 
 // useWorkspaceTabs hook return type
 export interface UseWorkspaceTabsReturn {

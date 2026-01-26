@@ -1,4 +1,3 @@
-// VITE UI
 import { useEffect, useRef } from "react";
 
 const BASE_TITLE = "sd-vite-ui";

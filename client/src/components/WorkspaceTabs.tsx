@@ -1,4 +1,3 @@
-// VITE UI
 import { useState, useEffect, useRef } from "react";
 import { X, Plus, FolderOpen } from "lucide-react";
 import CreateWorkspaceDialog from "./CreateWorkspaceDialog";

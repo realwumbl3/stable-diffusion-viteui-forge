@@ -1,4 +1,3 @@
-// VITE UI
 import {
   Wand2
 } from 'lucide-react'
@@ -7,7 +6,7 @@ import type { WelcomeProps } from '../types/components';
 const Welcome = ({ onGetStarted }: WelcomeProps) => {
 
   return (
-    <div className="studio-canvas flex items-center justify-center p-8">
+    <div className="studio-canvas flex items-center justify-center p-8 flex-1 relative overflow-hidden">
       <div className="max-w-4xl w-full">
         {/* Header */}
         <div className="text-center mb-12">
@@ -24,7 +23,7 @@ const Welcome = ({ onGetStarted }: WelcomeProps) => {
         <div className="text-center mb-12">
           <button
             onClick={() => onGetStarted()}
-            className="studio-btn-primary text-lg px-8 py-4 flex items-center gap-3 mx-auto"
+            className="studio-btn-primary text-lg px-8 py-4 rounded-md flex items-center gap-3 mx-auto"
           >
             <Wand2 size={20} />
             Get Started

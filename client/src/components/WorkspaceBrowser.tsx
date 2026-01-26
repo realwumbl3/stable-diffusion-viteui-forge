@@ -1,4 +1,3 @@
-// VITE UI
 import { useEffect, useState, useCallback } from "react";
 import { Folder, FolderPlus, ChevronRight, ChevronDown, Briefcase } from "lucide-react";
 import api from "../Api";

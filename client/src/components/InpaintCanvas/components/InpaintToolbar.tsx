@@ -1,7 +1,10 @@
-// VITE UI
 import { Brush, Eraser, PaintBucket, RotateCcw, Undo, Redo, Eye, EyeOff, Square } from "lucide-react";
 import { cn } from "../../../lib/utils";
+import KeyIndicator from "../../KeyIndicator";
 import type { InpaintToolbarProps } from "../../../types/components";
+import type { WheelEvent } from "react";
+
+const clampRange = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
 const InpaintToolbar = ({
     drawingMode,
@@ -23,6 +26,22 @@ const InpaintToolbar = ({
     canRedo = false,
 }: InpaintToolbarProps) => {
 
+    const handleWheelChange = (
+        event: WheelEvent<HTMLInputElement>,
+        currentValue: number,
+        setter: (value: number) => void,
+        min: number,
+        max: number,
+        step: number = 1
+    ) => {
+        event.preventDefault();
+        const direction = event.deltaY < 0 ? 1 : -1;
+        const nextValue = clampRange(currentValue + direction * step, min, max);
+        if (nextValue !== currentValue) {
+            setter(nextValue);
+        }
+    };
+
     return (
         <div className="p-1 w-24 rounded-lg border border-studio-border bg-studio-bg/30 p-1 shadow-2xl backdrop-blur">
             <div className="flex flex-col gap-1">
@@ -31,40 +50,42 @@ const InpaintToolbar = ({
                     <button
                         onClick={() => setDrawingMode("brush")}
                         className={cn(
-                            "flex flex-col items-center gap-1 p-2 rounded-md text-xs font-medium transition-all duration-200",
+                            "relative flex flex-col items-center gap-1 p-2 rounded-md text-xs font-medium transition-all duration-200 simple-block-fill",
                             drawingMode === "brush"
                                 ? "bg-studio-accent text-studio-bg shadow-sm"
                                 : "text-studio-textSecondary hover:text-studio-text hover:bg-studio-surface"
                         )}
-                        title="Brush"
+                        title="Brush (B)"
                         type="button"
                     >
                         <Brush size={14} />
                         <span className="text-center leading-tight">Brush</span>
+                        <KeyIndicator keys="B" />
                     </button>
                     <button
                         onClick={() => setDrawingMode("erase")}
                         className={cn(
-                            "flex flex-col items-center gap-1 p-2 rounded-md text-xs font-medium transition-all duration-200",
+                            "relative flex flex-col items-center gap-1 p-2 rounded-md text-xs font-medium transition-all duration-200 simple-block-fill",
                             drawingMode === "erase"
                                 ? "bg-studio-accent text-studio-bg shadow-sm"
                                 : "text-studio-textSecondary hover:text-studio-text hover:bg-studio-surface"
                         )}
-                        title="Eraser"
+                        title="Eraser (E)"
                         type="button"
                     >
                         <Eraser size={14} />
                         <span className="text-center leading-tight">Eraser</span>
+                        <KeyIndicator keys="E" />
                     </button>
                     <button
                         onClick={() => setDrawingMode("fill")}
                         className={cn(
-                            "flex flex-col items-center gap-1 p-2 rounded-md text-xs font-medium transition-all duration-200",
+                            "relative flex flex-col items-center gap-1 p-2 rounded-md text-xs font-medium transition-all duration-200 simple-block-fill",
                             drawingMode === "fill"
                                 ? "bg-studio-accent text-studio-bg shadow-sm"
                                 : "text-studio-textSecondary hover:text-studio-text hover:bg-studio-surface"
                         )}
-                        title="Fill"
+                        title="Fill (F)"
                         type="button"
                     >
                         <PaintBucket size={14} />
@@ -91,10 +112,13 @@ const InpaintToolbar = ({
                                     <input
                                         type="range"
                                         min="0"
-                                        max="128"
+                                        max="96"
                                         step="1"
                                         value={fillTolerance}
                                         onChange={(e) => setFillTolerance(parseInt(e.target.value, 10))}
+                                        onWheel={(event) =>
+                                            handleWheelChange(event, fillTolerance, setFillTolerance, 0, 96, 2)
+                                        }
                                         className="w-full h-2 bg-studio-surface rounded-lg appearance-none cursor-pointer slider"
                                         title={`Fill Tolerance: ${fillTolerance}`}
                                     />
@@ -110,6 +134,9 @@ const InpaintToolbar = ({
                                         step="1"
                                         value={fillOverfill}
                                         onChange={(e) => setFillOverfill(parseInt(e.target.value, 10))}
+                                        onWheel={(event) =>
+                                            handleWheelChange(event, fillOverfill, setFillOverfill, 0, 32, 1)
+                                        }
                                         className="w-full h-2 bg-studio-surface rounded-lg appearance-none cursor-pointer slider"
                                         title={`Fill Overfill: ${fillOverfill}px`}
                                     />
@@ -118,20 +145,22 @@ const InpaintToolbar = ({
                                     </div>
                                 </div>
                             </>)}
+                        <KeyIndicator keys="F" />
                     </button>
                     <button
                         onClick={onClear}
                         className={cn(
-                            "flex flex-col items-center gap-1 p-2 rounded-md text-xs font-medium transition-all duration-200",
+                            "relative flex flex-col items-center gap-1 p-2 rounded-md text-xs font-medium transition-all duration-200 simple-block-fill",
                             drawingMode === "clear"
                                 ? "bg-studio-accent text-studio-bg shadow-sm"
                                 : "text-studio-textSecondary hover:text-studio-text hover:bg-studio-surface"
                         )}
-                        title="Clear All"
+                        title="Clear All (C)"
                         type="button"
                     >
                         <RotateCcw size={14} />
                         <span className="text-center leading-tight">Clear All</span>
+                        <KeyIndicator keys="C" />
                     </button>
                 </div>
 
@@ -140,44 +169,46 @@ const InpaintToolbar = ({
                     <button
                         onClick={() => setShowMask(!showMask)}
                         className={cn(
-                            "flex flex-col items-center gap-1 p-2 rounded-md text-xs font-medium transition-all duration-200 flex-1",
+                            "relative flex flex-col items-center gap-1 p-2 rounded-md text-xs font-medium transition-all duration-200 flex-1 simple-block-fill",
                             showMask
                                 ? "bg-studio-accent/20 text-studio-accent border border-studio-accent/30"
                                 : "text-studio-textSecondary hover:text-studio-text hover:bg-studio-surface"
                         )}
-                        title="Toggle Mask Visibility"
+                        title="Toggle Mask Visibility (M)"
                         type="button"
                     >
                         {showMask ? <Eye size={14} /> : <EyeOff size={14} />}
                         <span className="text-center leading-tight">Mask</span>
+                        <KeyIndicator keys="M" />
                     </button>
 
                     <button
                         onClick={() => setShowBorder(!showBorder)}
                         className={cn(
-                            "flex flex-col items-center gap-1 p-2 rounded-md text-xs font-medium transition-all duration-200 flex-1",
+                            "relative flex flex-col items-center gap-1 p-2 rounded-md text-xs font-medium transition-all duration-200 flex-1 simple-block-fill",
                             showBorder
                                 ? "bg-studio-accent/20 text-studio-accent border border-studio-accent/30"
                                 : "text-studio-textSecondary hover:text-studio-text hover:bg-studio-surface"
                         )}
-                        title="Toggle Border Visualization"
+                        title="Toggle Border Visualization (N)"
                         type="button"
                     >
                         <Square size={14} />
                         <span className="text-center leading-tight">Border</span>
+                        <KeyIndicator keys="N" />
                     </button>
                 </div>
 
 
                 {/* Undo/Redo (Optional) */}
                 {(canUndo || canRedo) && (
-                    <div className="flex flex-col gap-1">
+                    <div className="flex flex-col">
                         <div className="flex gap-1">
                             <button
                                 onClick={onUndo}
                                 disabled={!canUndo}
                                 className={cn(
-                                    "flex-1 studio-btn-ghost p-1 flex flex-col items-center gap-1",
+                                    "relative flex-1 studio-btn-ghost p-1 pt-3 rounded-md flex flex-col items-center gap-1 simple-block-fill",
                                     !canUndo && "opacity-50 cursor-not-allowed"
                                 )}
                                 title="Undo (Ctrl+Z)"
@@ -185,19 +216,21 @@ const InpaintToolbar = ({
                             >
                                 <Undo size={12} />
                                 <span className="text-xs">Undo</span>
+                                <KeyIndicator keys="Ctrl+Z" />
                             </button>
                             <button
                                 onClick={onRedo}
                                 disabled={!canRedo}
                                 className={cn(
-                                    "flex-1 studio-btn-ghost p-1 flex flex-col items-center gap-1",
+                                    "relative flex-1 studio-btn-ghost p-1 pt-3 rounded-md flex flex-col items-center gap-1 simple-block-fill",
                                     !canRedo && "opacity-50 cursor-not-allowed"
                                 )}
-                                title="Redo (Ctrl+Y)"
+                                title="Redo (Ctrl+Shift+Z)"
                                 type="button"
                             >
                                 <Redo size={12} />
                                 <span className="text-xs">Redo</span>
+                                <KeyIndicator keys="Ctrl+Y" />
                             </button>
                         </div>
                     </div>

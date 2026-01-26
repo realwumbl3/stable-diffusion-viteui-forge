@@ -1,9 +1,9 @@
-// VITE UI
 import { Upload } from "lucide-react";
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { cn } from "../../../lib/utils";
 import InpaintParametersPanel from "./InpaintParametersPanel";
 import ZoomToolbar from "./ZoomToolbar";
+import FullResBorderOverlay from "./FullResBorderOverlay";
 import type { CanvasAreaProps } from "../../../types/components";
 
 const CanvasArea = ({
@@ -26,6 +26,8 @@ const CanvasArea = ({
     setShowGrid,
     showMask,
     showBorder,
+    maskBorderMode,
+    setMaskBorderMode,
     inpaintFullRes,
     inpaintFullResPadding,
     setInpaintFullResPadding,
@@ -340,39 +342,12 @@ const CanvasArea = ({
 
                         {previewOverlay}
 
-                        {/* DOM Border Implementation - Green dotted borders with red outline */}
                         {inpaintFullRes && inpaintFullResPadding > 0 && showBorder && focusBounds && (
-                            <div
-                                key={`borders-${focusBounds?.x}-${focusBounds?.y}-${focusBounds?.width}-${focusBounds?.height}`}
-                                className="absolute inset-0 pointer-events-none"
-                            >
-                                {/* Green dotted border - represents padding area */}
-                                <div
-                                    className="absolute outline-dotted outline-green-500"
-                                    style={{
-                                        top: `${focusBounds.y || 0}px`,
-                                        left: `${focusBounds.x || 0}px`,
-                                        width: `${focusBounds.width || 0}px`,
-                                        height: `${focusBounds.height || 0}px`,
-                                        outlineWidth: '3px',
-                                        outlineOffset: '3px'
-                                    }}
-                                />
-                                {/* Red outline border - represents the inner mask area */}
-                                {maskBounds && (
-                                    <div
-                                        className="absolute outline outline-red-500"
-                                        style={{
-                                            top: `${maskBounds.y || 0}px`,
-                                            left: `${maskBounds.x || 0}px`,
-                                            width: `${maskBounds.width || 0}px`,
-                                            height: `${maskBounds.height || 0}px`,
-                                            outlineWidth: '3px',
-                                            outlineOffset: '3px'
-                                        }}
-                                    />
-                                )}
-                            </div>
+                            <FullResBorderOverlay
+                                focusBounds={focusBounds}
+                                maskBounds={maskBounds}
+                                maskBorderMode={maskBorderMode}
+                            />
                         )}
 
                     </div>
@@ -448,6 +423,8 @@ const CanvasArea = ({
                                 setInpaintingMaskInvert={setInpaintingMaskInvert}
                                 inpaintFullResPadding={inpaintFullResPadding}
                                 setInpaintFullResPadding={setInpaintFullResPadding}
+                                maskBorderMode={maskBorderMode}
+                                setMaskBorderMode={setMaskBorderMode}
                             />
                         </div>
                     )}

@@ -1,4 +1,3 @@
-// VITE UI - Logger test utilities
 // Test the logger formatting in development
 
 export const testLogger = () => {

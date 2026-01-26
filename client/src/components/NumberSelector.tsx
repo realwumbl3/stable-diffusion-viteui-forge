@@ -1,4 +1,3 @@
-// VITE UI
 import { useState, useEffect, useRef } from 'react';
 import { ChevronUp, ChevronDown } from 'lucide-react';
 import { cn } from '../lib/utils';

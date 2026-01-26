@@ -1,4 +1,3 @@
-// VITE UI
 import { useState, useEffect, useRef } from 'react'
 import { X, Plus } from 'lucide-react'
 import type { CreateWorkspaceDialogProps } from '../types/components'

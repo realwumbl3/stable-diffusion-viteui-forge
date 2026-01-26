@@ -1,4 +1,3 @@
-// VITE UI
 import NumberSelector from "../../NumberSelector";
 
 interface Img2ImgToolbarProps {

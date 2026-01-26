@@ -1,4 +1,3 @@
-// VITE UI
 import { useState, useEffect, useRef } from 'react'
 import { X, Loader2, Maximize2 } from 'lucide-react'
 import { cn } from '../lib/utils'

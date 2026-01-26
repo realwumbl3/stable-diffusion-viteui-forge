@@ -687,7 +687,7 @@ function PromptComposer({
             <div className="p-2">
                 <div className="flex items-center justify-between mb-2">
                     <div
-                        className="flex items-center gap-2 cursor-pointer"
+                        className="flex items-center gap-2 cursor-pointer grow"
                         onClick={() => onToggle?.()}
                     >
                         <Type size={16} className="text-studio-textSecondary" />
@@ -758,7 +758,7 @@ function PromptComposer({
                                             handleSimplePromptChange(e.target.value)
                                         }
                                         placeholder="Describe what you want to generate... (e.g., 'a beautiful landscape, sunset, mountains')"
-                                        className="studio-textarea w-full resize-none text-sm"
+                                        className="studio-textarea w-full resize-none text-sm px-3 py-2 rounded-md"
                                         rows={3}
                                     />
                                 </div>
@@ -773,7 +773,7 @@ function PromptComposer({
                                             handleSimpleNegativePromptChange(e.target.value)
                                         }
                                         placeholder="Describe what you don't want... (e.g., 'blurry, low quality, distorted')"
-                                        className="studio-textarea w-full resize-none text-sm"
+                                        className="studio-textarea w-full resize-none text-sm px-3 py-2 rounded-md"
                                         rows={2}
                                     />
                                 </div>

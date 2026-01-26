@@ -43,23 +43,23 @@
 
 @layer components {
 
+
+  .simple-block-fill {
+    border: 1px solid var(--studio-border);
+    background: var(--studio-bg);
+  }
+
+  /* Key Indicator Styling */
+  .reveal-hotkeys .key-indicator {
+    opacity: 1 !important;
+  }
+
   /* Studio Panel Components */
   .studio-panel {
     background-color: var(--studio-panel);
     box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
   }
 
-  .studio-panel-header {
-    padding-left: 1rem;
-    padding-right: 1rem;
-    padding-top: 0.75rem;
-    padding-bottom: 0.75rem;
-    border-bottom-width: 1px;
-    border-color: var(--studio-border);
-    background-color: rgba(26, 26, 26, 0.5);
-    border-top-left-radius: 0.5rem;
-    border-top-right-radius: 0.5rem;
-  }
 
   .studio-panel-content {
     padding: 1rem;
@@ -70,11 +70,6 @@
     background-color: var(--studio-accent);
     color: var(--studio-text);
     font-weight: 500;
-    padding-left: 1rem;
-    padding-right: 1rem;
-    padding-top: 0.5rem;
-    padding-bottom: 0.5rem;
-    border-radius: 0.375rem;
     transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
     transition-duration: 200ms;
     box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
@@ -90,11 +85,6 @@
     border-color: var(--studio-border);
     color: var(--studio-text);
     font-weight: 500;
-    padding-left: 1rem;
-    padding-right: 1rem;
-    padding-top: 0.5rem;
-    padding-bottom: 0.5rem;
-    border-radius: 0.375rem;
     transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
     transition-duration: 200ms;
   }
@@ -105,11 +95,6 @@
 
   .studio-btn-ghost {
     color: var(--studio-text-secondary);
-    padding-left: 0.75rem;
-    padding-right: 0.75rem;
-    padding-top: 0.5rem;
-    padding-bottom: 0.5rem;
-    border-radius: 0.375rem;
     transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
     transition-duration: 200ms;
   }
@@ -184,35 +169,11 @@
     box-shadow: none;
   }
 
-  .studio-select {
-    background-color: var(--studio-surface);
-    border-width: 1px;
-    border-color: var(--studio-border);
-    border-radius: 0.375rem;
-    padding-left: 0.75rem;
-    padding-right: 0.75rem;
-    padding-top: 0.5rem;
-    padding-bottom: 0.5rem;
-    color: var(--studio-text);
-    transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
-  }
-
-  .studio-select:focus {
-    outline: 2px solid transparent;
-    outline-offset: 2px;
-    box-shadow: 0 0 0 2px var(--studio-accent);
-    border-color: transparent;
-  }
 
   .studio-textarea {
     background-color: var(--studio-surface);
     border-width: 1px;
     border-color: var(--studio-border);
-    border-radius: 0.375rem;
-    padding-left: 0.75rem;
-    padding-right: 0.75rem;
-    padding-top: 0.5rem;
-    padding-bottom: 0.5rem;
     color: var(--studio-text);
     transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
     resize: none;
@@ -235,25 +196,15 @@
     font-size: 0.875rem;
     line-height: 1.25rem;
     font-weight: 500;
-    margin-bottom: 0.25rem;
-    display: block;
   }
 
-  /* Studio Grid */
-  .studio-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 1rem;
-  }
+
 
   /* Studio Toolbar */
   .studio-toolbar {
     background-color: var(--studio-surface);
     border-bottom-width: 1px;
     border-color: var(--studio-border);
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
   }
 
   /* Studio Sidebar */
@@ -261,8 +212,6 @@
     background-color: var(--studio-panel);
     border-right-width: 1px;
     border-color: var(--studio-border);
-    display: flex;
-    flex-direction: column;
   }
 
   /* Studio Properties Panel (right side) */
@@ -270,28 +219,16 @@
     background-color: var(--studio-panel);
     border-left-width: 1px;
     border-color: var(--studio-border);
-    width: 24rem;
-    display: flex;
-    flex-direction: column;
   }
 
   .studio-sidebar-header {
-    padding: 1rem;
     border-bottom-width: 1px;
     border-color: var(--studio-border);
-  }
-
-  .studio-sidebar-content {
-    flex: 1 1 0%;
-    overflow: hidden;
   }
 
   /* Studio Canvas */
   .studio-canvas {
     background-color: var(--studio-bg);
-    flex: 1 1 0%;
-    position: relative;
-    overflow: hidden;
   }
 
   /* User Select Overrides */

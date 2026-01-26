@@ -1,4 +1,3 @@
-// VITE UI
 // API Types
 import type { WorkspaceStructureNode } from './types/components';
 import type { PromptNode } from './components/PromptComposer/types';

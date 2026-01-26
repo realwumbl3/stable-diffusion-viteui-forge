@@ -1,4 +1,3 @@
-// VITE UI
 import { useState, useEffect, useCallback } from 'react'
 import { X, RefreshCw, Clipboard } from 'lucide-react'
 import { memoryDebug } from '../lib/memory-debug'

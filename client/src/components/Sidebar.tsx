@@ -1,4 +1,3 @@
-// VITE UI
 import {
   ChevronLeft,
   ChevronRight,
@@ -12,6 +11,7 @@ import { useState, useRef, useEffect } from 'react'
 import { cn, resolveImageSrc } from '../lib/utils'
 import TimelineItem from './TimelineItem'
 import GenerationsNavigator from './GenerationsNavigator'
+import KeyIndicator from './KeyIndicator'
 import type { Generation } from '../Api'
 import type { SidebarProps } from '../types/components'
 
@@ -86,7 +86,7 @@ const Sidebar = ({
 
   return (
     <aside className={cn(
-      "studio-sidebar relative overflow-hidden transition-all duration-300 ease-in-out",
+      "studio-sidebar relative overflow-hidden transition-all duration-300 ease-in-out flex flex-col",
       collapsed ? "w-12" : "w-min"
     )}>
       {/* Always-full-width Content Container */}
@@ -112,9 +112,9 @@ const Sidebar = ({
           collapsed ? "opacity-0 pointer-events-none" : "opacity-100"
         )}>
           {/* Sidebar Header */}
-          <div className="studio-sidebar-header flex-shrink-0">
+          <div className="studio-sidebar-header flex-shrink-0 p-4">
             {/* Generation Mode Buttons */}
-            <div className="flex items-center bg-studio-surface rounded-lg p-1 border border-studio-border mb-4">
+            <div className="flex items-center bg-studio-surface rounded-lg p-1 border border-studio-border mb-4 gap-1">
               <button
                 onClick={() => {
                   if (generationMode === 'txt2img') {
@@ -124,7 +124,7 @@ const Sidebar = ({
                   }
                 }}
                 className={cn(
-                  "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all duration-200",
+                  "relative flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 simple-block-fill",
                   generationMode === 'txt2img'
                     ? "bg-studio-accent text-studio-bg shadow-sm"
                     : "text-studio-textSecondary hover:text-studio-text hover:bg-studio-surface"
@@ -134,6 +134,7 @@ const Sidebar = ({
               >
                 <Type size={16} />
                 <span className="hidden sm:inline">Text</span>
+                <KeyIndicator keys="Alt+T" />
               </button>
               <button
                 onClick={() => {
@@ -144,7 +145,7 @@ const Sidebar = ({
                   }
                 }}
                 className={cn(
-                  "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all duration-200",
+                  "relative flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 simple-block-fill",
                   generationMode === 'img2img'
                     ? "bg-studio-accent text-studio-bg shadow-sm"
                     : "text-studio-textSecondary hover:text-studio-text hover:bg-studio-surface"
@@ -154,7 +155,9 @@ const Sidebar = ({
               >
                 <ImageIcon size={16} />
                 <span className="hidden sm:inline">Image</span>
+                <KeyIndicator keys="Alt+I" />
               </button>
+
               <button
                 onClick={() => {
                   if (generationMode === 'inpaint') {
@@ -164,7 +167,7 @@ const Sidebar = ({
                   }
                 }}
                 className={cn(
-                  "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all duration-200",
+                  "relative flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 simple-block-fill",
                   generationMode === 'inpaint'
                     ? "bg-studio-accent text-studio-bg shadow-sm"
                     : "text-studio-textSecondary hover:text-studio-text hover:bg-studio-surface"
@@ -174,6 +177,7 @@ const Sidebar = ({
               >
                 <Edit size={16} />
                 <span className="hidden sm:inline">Inpaint</span>
+                <KeyIndicator keys="Alt+N" />
               </button>
             </div>
             <GenerationsNavigator
@@ -187,7 +191,7 @@ const Sidebar = ({
           </div>
 
           {/* Sidebar Content */}
-          <div className="studio-sidebar-content flex flex-col min-h-0">
+          <div className="studio-sidebar-content flex flex-col min-h-0 flex-1 overflow-hidden">
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-xs text-studio-textSecondary uppercase tracking-wider">
@@ -236,7 +240,7 @@ const Sidebar = ({
                   <span>Canvas</span>
                 </div>
                 <div className="studio-panel p-2 rounded-lg space-y-2">
-                  <div className="relative rounded-md overflow-hidden border border-studio-border cursor-pointer group"
+                  <div className="relative rounded-md overflow-hidden border border-studio-border cursor-pointer simple-block-fill group"
                     onClick={() => {
                       // Clear any selected preview to navigate to canvas
                       if (timeline.currentPreview) {
@@ -268,7 +272,9 @@ const Sidebar = ({
                           event.stopPropagation()
                           onRefreshCanvas?.()
                         }}
-                        className="absolute bottom-2 right-2 rounded bg-studio-panel/90 text-studio-textSecondary p-1.5 hover:bg-studio-surface hover:text-studio-text transition-all duration-200 shadow-sm opacity-0 group-hover:opacity-100"
+                        className="absolute bottom-2 right-2 rounded bg-studio-panel/90 text-studio-textSecondary p-1.5 hover:bg-studio-surface 
+                        hover:text-studio-text transition-all duration-200 shadow-sm opacity-0
+                        group-hover:opacity-100 transition-opacity"
                         title="Refresh Canvas"
                         type="button"
                       >
@@ -429,4 +435,4 @@ const Sidebar = ({
   )
 }
 
-export default Sidebar
+export { Sidebar as default }

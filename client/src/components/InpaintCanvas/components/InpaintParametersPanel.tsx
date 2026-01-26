@@ -1,4 +1,3 @@
-// VITE UI
 import OptionPicker from "../../OptionPicker";
 import NumberSelector from "../../NumberSelector";
 import type { InpaintParametersPanelProps } from "../../../types/components";
@@ -22,6 +21,9 @@ const InpaintParametersPanel = ({
     // Full res padding parameters
     inpaintFullResPadding,
     setInpaintFullResPadding,
+    // Mask border mode parameters
+    maskBorderMode,
+    setMaskBorderMode,
 }: InpaintParametersPanelProps) => {
     const fillOptions = [
         { value: "0", label: "Fill" },
@@ -94,6 +96,18 @@ const InpaintParametersPanel = ({
                     type="button"
                 >
                     Focused
+                </button>
+
+                <button
+                    onClick={() => setMaskBorderMode(!maskBorderMode)}
+                    className={`flex items-center justify-center px-2 py-1 rounded-md text-xs font-medium transition-all duration-200 ${maskBorderMode
+                        ? "bg-studio-accent text-studio-bg shadow-sm"
+                        : "text-studio-textSecondary hover:text-studio-text hover:bg-studio-surface"
+                        }`}
+                    title="Mask Border Mode"
+                    type="button"
+                >
+                    Mask Border
                 </button>
 
 

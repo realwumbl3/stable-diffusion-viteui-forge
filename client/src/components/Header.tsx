@@ -1,4 +1,3 @@
-// VITE UI
 import WorkspaceTabs from './WorkspaceTabs'
 import { cn } from '../lib/utils'
 import { Lock, Unlock } from 'lucide-react'
@@ -44,7 +43,7 @@ const Header = ({
   setCfgScale,
 }: HeaderProps) => {
   return (
-    <header className="studio-toolbar border-b-studio-border h-[38px]">
+    <header className="studio-toolbar border-b-studio-border h-[38px] flex items-center gap-2">
       <div className="w-full self-end">
         <WorkspaceTabs
           openWorkspaces={openWorkspaces}
@@ -86,7 +85,7 @@ const Header = ({
       <button
         onClick={onToggleLock}
         className={cn(
-          "studio-btn-ghost p-2",
+          "studio-btn-ghost p-2 rounded-md",
           pageLocked && "text-studio-accent"
         )}
         title={pageLocked ? "Unlock page (prevents accidental navigation)" : "Lock page (prevents accidental navigation)"}

@@ -1,4 +1,3 @@
-// VITE UI
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { SetStateAction } from "react";
 import api from "../Api";
@@ -861,8 +860,11 @@ const Workspace = ({ workspaceId, isActive }: WorkspaceProps) => {
                 void generateImage();
             }
         },
-        "h": () => {
+        "s": () => {
             void handleSkip();
+        },
+        "h": () => {
+            void handleRestart();
         },
         "alt+t": () => handleGenerationModeChange("txt2img"),
         "alt+i": () => handleGenerationModeChange("img2img"),

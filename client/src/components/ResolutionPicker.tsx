@@ -1,4 +1,3 @@
-// VITE UI
 import { useState } from 'react'
 import { ChevronDown, ChevronUp, Lock, Unlock } from 'lucide-react'
 import { cn } from '../lib/utils'
@@ -175,20 +174,20 @@ const ResolutionPicker = ({
   }
 
   return (
-    <div className={cn("cursor-pointer group p-4", className)} onClick={handleToggle}>
+    <div className={cn("cursor-pointer simple-block-fill p-4", className)} onClick={handleToggle}>
       {/* Collapsed State - Header with width/height inputs */}
       {collapsed ? (
         <div className="space-y-4">
           {/* Header */}
           <div className="flex items-center justify-between">
-            <label className="studio-label">Dimensions</label>
-            <ChevronDown size={16} className="text-studio-textSecondary group-hover:text-studio-text transition-colors" />
+            <label className="studio-label mb-1 block">Dimensions</label>
+            <ChevronDown size={16} className="text-studio-textSecondary transition-colors" />
           </div>
 
           {/* Width and Height inputs with Lock Button */}
           <div className="flex gap-2 items-end">
             <div className="flex-1">
-              <label className="studio-label text-xs">Width</label>
+              <label className="studio-label text-xs mb-1 block">Width</label>
               <input
                 type="number"
                 value={width}
@@ -223,7 +222,7 @@ const ResolutionPicker = ({
             </div>
 
             <div className="flex-1">
-              <label className="studio-label text-xs">Height</label>
+              <label className="studio-label text-xs mb-1 block">Height</label>
               <input
                 type="number"
                 value={height}
@@ -245,7 +244,7 @@ const ResolutionPicker = ({
                 e.stopPropagation() // Prevent toggling when clicking button
                 matchSourceResolution()
               }}
-              className="studio-btn-secondary w-full py-2 px-3 text-sm transition-all duration-200 hover:bg-studio-panelHover"
+              className="studio-btn-secondary w-full py-2 px-3 rounded-md text-sm transition-all duration-200 hover:bg-studio-panelHover"
               title="Match the resolution of the input image"
               type="button"
             >
@@ -258,14 +257,14 @@ const ResolutionPicker = ({
         <div className="space-y-4 animate-in slide-in-from-top-2 duration-200">
           {/* Header */}
           <div className="flex items-center justify-between">
-            <label className="studio-label">Dimensions</label>
-            <ChevronUp size={16} className="text-studio-textSecondary group-hover:text-studio-text transition-colors" />
+            <label className="studio-label mb-1 block">Dimensions</label>
+            <ChevronUp size={16} className="text-studio-textSecondary  transition-colors" />
           </div>
 
           {/* Width and Height inputs with Lock Button */}
           <div className="flex gap-2 items-end">
             <div className="flex-1">
-              <label className="studio-label text-xs">Width</label>
+              <label className="studio-label text-xs mb-1 block">Width</label>
               <input
                 type="number"
                 value={width}
@@ -300,7 +299,7 @@ const ResolutionPicker = ({
             </div>
 
             <div className="flex-1">
-              <label className="studio-label text-xs">Height</label>
+              <label className="studio-label text-xs mb-1 block">Height</label>
               <input
                 type="number"
                 value={height}
@@ -323,7 +322,7 @@ const ResolutionPicker = ({
                   e.stopPropagation() // Prevent toggling when clicking button
                   matchSourceResolution()
                 }}
-                className="studio-btn-secondary w-full py-2 px-3 text-sm transition-all duration-200 hover:bg-studio-panelHover"
+                className="studio-btn-secondary w-full py-2 px-3 rounded-md text-sm transition-all duration-200 hover:bg-studio-panelHover"
                 title="Match the resolution of the input image"
                 type="button"
               >
@@ -344,7 +343,7 @@ const ResolutionPicker = ({
                     setSelectedAspectRatio(aspect.ratio)
                   }}
                   className={cn(
-                    "studio-btn-secondary text-xs py-2 px-3 transition-all duration-200",
+                    "studio-btn-secondary text-xs py-2 px-3 rounded-md transition-all duration-200",
                     selectedAspectRatio === aspect.ratio
                       ? "bg-studio-accent text-black border-studio-accent shadow-lg font-semibold"
                       : "hover:bg-studio-panelHover"
@@ -372,7 +371,7 @@ const ResolutionPicker = ({
                     setHeight(resolution.h)
                   }}
                   className={cn(
-                    "studio-btn-secondary text-xs py-2 px-3 transition-all duration-200",
+                    "studio-btn-secondary text-xs py-2 px-3 rounded-md transition-all duration-200",
                     width === resolution.w && height === resolution.h
                       ? "bg-studio-accent text-black border-studio-accent shadow-lg font-semibold"
                       : "hover:bg-studio-panelHover"

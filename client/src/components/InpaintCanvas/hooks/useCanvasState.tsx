@@ -107,6 +107,7 @@ export function useCanvasState(props: UseCanvasStateProps) {
 
     // Mask visibility state
     const [showBorder, setShowBorder] = useState(true);
+    const [maskBorderMode, setMaskBorderMode] = useState(false);
     const [maskState, dispatchMaskState] = useReducer(maskReducer, initialMaskState);
     const { showMask } = maskState;
     const previewWasActiveRef = useRef<string | null>(null);
@@ -401,6 +402,8 @@ export function useCanvasState(props: UseCanvasStateProps) {
         showMask,
         showBorder,
         setShowBorder,
+        maskBorderMode,
+        setMaskBorderMode,
         footerCollapsed,
         setFooterCollapsed,
 
@@ -446,6 +449,8 @@ export function useCanvasState(props: UseCanvasStateProps) {
         showMask,
         showBorder,
         setShowBorder,
+        maskBorderMode,
+        setMaskBorderMode,
         footerCollapsed,
         setFooterCollapsed,
         getDisplayDimensions,

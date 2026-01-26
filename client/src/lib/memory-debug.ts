@@ -1,4 +1,3 @@
-// VITE UI - Memory debugging utilities
 // Run these in the browser console to help debug memory issues
 
 // Memory monitoring functions

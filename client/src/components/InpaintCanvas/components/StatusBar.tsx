@@ -1,4 +1,3 @@
-// VITE UI
 import { useState, useEffect } from 'react'
 import MemoryPanel from '../../MemoryPanel'
 import type { StatusBarProps } from '../../../types/components'
@@ -39,7 +38,7 @@ const StatusBar = ({
     const memoryUsage = useMemoryUsage()
     const [memoryPanelOpen, setMemoryPanelOpen] = useState(false)
     return (
-        <div className="studio-toolbar justify-between text-xs text-studio-textSecondary ps-2 pe-2">
+        <div className="studio-toolbar justify-between text-xs text-studio-textSecondary ps-2 pe-2 flex items-center">
             <div className="flex items-center gap-2">
                 <span>Inpaint Canvas</span>
                 {(displayImage || inputImage) && (

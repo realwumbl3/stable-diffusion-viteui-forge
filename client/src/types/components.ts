@@ -1,4 +1,3 @@
-// VITE UI
 import type { Generation } from '../Api'
 import type { PromptMode, PromptNode } from '../components/PromptComposer/types'
 
@@ -279,6 +278,8 @@ export interface CanvasAreaProps {
   setShowGrid: (show: boolean) => void
   showMask: boolean
   showBorder: boolean
+  maskBorderMode: boolean
+  setMaskBorderMode: (value: boolean) => void
   inpaintFullRes: boolean
   inpaintFullResPadding: number
   setInpaintFullResPadding: (value: number) => void
@@ -388,4 +389,6 @@ export interface InpaintParametersPanelProps {
   setInpaintingMaskInvert: (value: boolean) => void
   inpaintFullResPadding: number
   setInpaintFullResPadding: (value: number) => void
+  maskBorderMode: boolean
+  setMaskBorderMode: (value: boolean) => void
 }
