@@ -28,6 +28,8 @@ class WorkspaceImageServer:
             media_type = "application/json"
         elif asset.endswith('.png'):
             media_type = "image/png"
+        elif asset.endswith('.webp'):
+            media_type = "image/webp"
         else:
             media_type, _ = mimetypes.guess_type(str(asset_path))
 

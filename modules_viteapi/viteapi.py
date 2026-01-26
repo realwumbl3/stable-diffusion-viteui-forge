@@ -205,7 +205,7 @@ class ViteAPI:
         
         Args:
             workspace_name: Name of the workspace
-            workspace_image_path: Relative path within workspace (e.g., "commits/genid/full.png")
+            workspace_image_path: Relative path within workspace (e.g., "commits/genid/full.webp")
             
         Returns:
             Base64 data URL string (e.g., "data:image/png;base64,...")
@@ -266,7 +266,7 @@ class ViteAPI:
             raise HTTPException(status_code=422, detail="workspace_name is required")
 
         # Load image from workspace using generalized helper
-        workspace_image_path = f"commits/{genid}/full.png"
+        workspace_image_path = f"commits/{genid}/full.webp"
         image_data_url = self._load_image_from_workspace(workspace_name, workspace_image_path)
 
         # Create a new request dict with init_images instead of genid

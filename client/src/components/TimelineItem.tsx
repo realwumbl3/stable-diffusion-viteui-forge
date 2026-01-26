@@ -25,7 +25,7 @@ const TimelineItem = ({
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const imgRef = useRef<HTMLImageElement>(null);
     const workspaceActionsAvailable = Boolean(item.workspace && item.genid);
-    const workspaceAssetPath = item.genid ? `${item.status === "commit" ? "commits" : item.status === "reject" ? "rejects" : "candidates"}/${item.genid}/full.png` : "";
+    const workspaceAssetPath = item.genid ? `${item.status === "commit" ? "commits" : item.status === "reject" ? "rejects" : "candidates"}/${item.genid}/full.webp` : "";
 
     const handleOpenInExplorer = async (event: MouseEvent<HTMLButtonElement>): Promise<void> => {
         event.stopPropagation();

@@ -514,7 +514,7 @@ class Api:
                     shared.total_tqdm.clear()
 
         generated_images = processed.images + processed.extra_images
-        b64images = list(map(encode_pil_to_base64, generated_images)) if send_images else []
+        # b64images = list(map(encode_pil_to_base64, generated_images)) if send_images else []
 
         # Prepare generation metadata
         generation_metadata = {
@@ -538,7 +538,7 @@ class Api:
         filesystem_paths = self.viteapi.get_workspace_manager().save_generation_images(workspace_name, generated_images, generation_metadata=generation_metadata, destination=destination)
 
         return models.TextToImageResponse(
-            images=b64images,
+            # images=b64images,
             filesystem_paths=filesystem_paths,
             workspace_info={"workspace": workspace_name},
             parameters=vars(txt2imgreq),
@@ -630,7 +630,7 @@ class Api:
                     shared.total_tqdm.clear()
 
         generated_images = processed.images + processed.extra_images
-        b64images = list(map(encode_pil_to_base64, generated_images)) if send_images else []
+        # b64images = list(map(encode_pil_to_base64, generated_images)) if send_images else []
 
         # Prepare generation metadata
         generation_metadata = {
@@ -659,7 +659,7 @@ class Api:
             img2imgreq.mask = None
 
         return models.ImageToImageResponse(
-            images=b64images,
+            # images=b64images,
             filesystem_paths=filesystem_paths,
             workspace_info={"workspace": workspace_name},
             parameters=vars(img2imgreq),

@@ -55,7 +55,7 @@ export interface UpscalerInfo {
 
 export interface ExtrasSingleImageParams {
   image?: string; // Base64 image (fallback if workspace_image_path not provided)
-  workspace_image_path?: string; // Workspace-relative path (e.g., "commits/genid/full.png")
+  workspace_image_path?: string; // Workspace-relative path (e.g., "commits/genid/full.webp")
   upscaler_1: string;
   upscaling_resize: number;
   resize_mode: number;
@@ -87,6 +87,9 @@ export interface ProgressInfo {
   };
   current_image?: string;
   textinfo?: string;
+  current_batch?: number;
+  total_batches?: number;
+  eta?: number;
 }
 
 export interface WorkspaceInfo {
@@ -380,7 +383,7 @@ class StableDiffusionAPI {
     });
   }
 
-  // Get generation asset (meta.json, full.png, 512.png)
+  // Get generation asset (meta.json, full.webp, 512.webp)
   async getGenerationAsset(workspaceName: string, category: string, genid: string, asset: string): Promise<unknown> {
     const url = `/workspaces/${encodeURIComponent(workspaceName)}/${category}/${genid}/${asset}`;
     if (asset.endsWith('.json')) {

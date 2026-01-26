@@ -45,7 +45,7 @@ export function resolveImageSrc(value?: string | null, kind: "full" | "preview" 
   if (pathParts.length >= 2 && ['candidates', 'commits', 'rejects'].includes(pathParts[0])) {
     const category = pathParts[0]
     const genid = pathParts[1]
-    const asset = kind === "preview" ? "512.png" : "full.png"
+    const asset = kind === "preview" ? "512.webp" : "full.webp"
 
     // Build path for new unified endpoint
     const assetPath = `${category}/${genid}/${asset}`

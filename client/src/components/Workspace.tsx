@@ -128,7 +128,7 @@ const Workspace = ({ workspaceId, isActive }: WorkspaceProps) => {
         size: "preview" | "full" = "full"
     ): string | null => {
         if (!generationItem) return null;
-        const asset = size === "preview" ? "512.png" : "full.png";
+        const asset = size === "preview" ? "512.webp" : "full.webp";
         const category = generationItem.status === "commit"
             ? "commits"
             : generationItem.status === "reject"
@@ -597,7 +597,7 @@ const Workspace = ({ workspaceId, isActive }: WorkspaceProps) => {
                 parameters: {},
             };
 
-            await api.commitWorkspaceImage(workspaceId, `candidates/${genid}/full.png`);
+            await api.commitWorkspaceImage(workspaceId, `candidates/${genid}/full.webp`);
             const committedGeneration: Generation = { ...uploadedGeneration, status: "commit" };
 
             setGenerationState({ inputImage: getGenerationImageUrl(committedGeneration, "full") });
@@ -649,7 +649,7 @@ const Workspace = ({ workspaceId, isActive }: WorkspaceProps) => {
         const preview = timeline.currentPreview;
         if (!preview) return;
         try {
-            await api.rejectWorkspaceImage(preview.workspace, `candidates/${preview.genid}/full.png`);
+            await api.rejectWorkspaceImage(preview.workspace, `candidates/${preview.genid}/full.webp`);
             await loadWorkspaceGenerations();
         } catch (error) {
             console.error("Failed to reject generation:", error);
@@ -663,13 +663,13 @@ const Workspace = ({ workspaceId, isActive }: WorkspaceProps) => {
             const otherCandidates = timeline.generationQueue.filter((gen) => gen.genid !== preview.genid);
             for (const candidate of otherCandidates) {
                 try {
-                    await api.rejectWorkspaceImage(candidate.workspace, `candidates/${candidate.genid}/full.png`);
+                    await api.rejectWorkspaceImage(candidate.workspace, `candidates/${candidate.genid}/full.webp`);
                 } catch (error) {
                     console.error(`Failed to reject candidate ${candidate.genid}:`, error);
                 }
             }
 
-            await api.commitWorkspaceImage(preview.workspace, `candidates/${preview.genid}/full.png`);
+            await api.commitWorkspaceImage(preview.workspace, `candidates/${preview.genid}/full.webp`);
             await loadWorkspaceGenerations();
 
             const committedImageUrl = getGenerationImageUrl({ ...preview, status: "commit" });
@@ -690,7 +690,7 @@ const Workspace = ({ workspaceId, isActive }: WorkspaceProps) => {
                 : generationItem.status === "commit"
                     ? "commits"
                     : "rejects";
-            await api.deleteWorkspaceImage(generationItem.workspace, `${category}/${generationItem.genid}/full.png`);
+            await api.deleteWorkspaceImage(generationItem.workspace, `${category}/${generationItem.genid}/full.webp`);
             await loadWorkspaceGenerations();
         } catch (error) {
             console.error("Failed to delete generation:", error);
@@ -700,7 +700,7 @@ const Workspace = ({ workspaceId, isActive }: WorkspaceProps) => {
     const handleRestoreGeneration = async (generationItem: Generation): Promise<void> => {
         try {
             const category = generationItem.status === "reject" ? "rejects" : "commits";
-            await api.restoreWorkspaceImage(generationItem.workspace, `${category}/${generationItem.genid}/full.png`);
+            await api.restoreWorkspaceImage(generationItem.workspace, `${category}/${generationItem.genid}/full.webp`);
             await loadWorkspaceGenerations();
         } catch (error) {
             console.error("Failed to restore generation:", error);
@@ -709,7 +709,7 @@ const Workspace = ({ workspaceId, isActive }: WorkspaceProps) => {
 
     const handleUncommitGeneration = async (generationItem: Generation): Promise<void> => {
         try {
-            await api.uncommitWorkspaceImage(generationItem.workspace, `commits/${generationItem.genid}/full.png`);
+            await api.uncommitWorkspaceImage(generationItem.workspace, `commits/${generationItem.genid}/full.webp`);
             await loadWorkspaceGenerations();
         } catch (error) {
             console.error("Failed to uncommit generation:", error);
@@ -764,7 +764,7 @@ const Workspace = ({ workspaceId, isActive }: WorkspaceProps) => {
                 : sourceImage.status === "reject"
                     ? "rejects"
                     : "candidates";
-            return `${category}/${sourceImage.genid}/full.png`;
+            return `${category}/${sourceImage.genid}/full.webp`;
         }
         if ("type" in sourceImage && sourceImage.type === "canvas") {
             if (canvas.currentImage) {
@@ -774,13 +774,13 @@ const Workspace = ({ workspaceId, isActive }: WorkspaceProps) => {
                     if (pathParts.length >= 2 && ["candidates", "commits", "rejects"].includes(pathParts[0])) {
                         const category = pathParts[0];
                         const genid = pathParts[1];
-                        return `${category}/${genid}/full.png`;
+                        return `${category}/${genid}/full.webp`;
                     }
                 }
             }
             if (timeline.committedHistory.length > 0) {
                 const latestCommit = timeline.committedHistory[0];
-                return `commits/${latestCommit.genid}/full.png`;
+                return `commits/${latestCommit.genid}/full.webp`;
             }
         }
         return null;

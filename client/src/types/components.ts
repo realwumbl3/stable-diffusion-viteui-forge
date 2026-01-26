@@ -1,4 +1,4 @@
-import type { Generation } from '../Api'
+import type { Generation, ProgressInfo } from '../Api'
 import type { PromptMode, PromptNode } from '../components/PromptComposer/types'
 
 // OptionPicker opening direction type
@@ -187,7 +187,7 @@ export interface ImageUploaderProps {
   inputImage?: string | null
   onImageUpload: (image: string) => void
   loading?: boolean
-  progress?: Progress | null
+  progress?: ProgressInfo | null
   className?: string
 }
 

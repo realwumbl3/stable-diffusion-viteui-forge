@@ -214,10 +214,10 @@ class WorkspaceManager:
             candidate_path.mkdir(parents=True, exist_ok=False)
 
             # Create a temporary image file to pass to save_image_with_preview_and_meta
-            temp_image_path = candidate_path / "temp_image.png"
-            image.save(temp_image_path, format="PNG")
+            temp_image_path = candidate_path / "temp_image.webp"
+            image.save(temp_image_path, format="WEBP")
 
-            # Save with new format (full.png, preview, meta.json)
+            # Save with new format (full.webp, preview, meta.json)
             result = self.workspace_images.save_image_with_preview_and_meta(temp_image_path, candidate_path)
 
             # Remove temp file
@@ -235,10 +235,10 @@ class WorkspaceManager:
                 meta_path.write_text(json.dumps(updated_metadata, indent=2), encoding="utf-8")
 
             if mask_image is not None:
-                mask_path = candidate_path / "mask.png"
-                mask_image.save(mask_path, format="PNG")
+                mask_path = candidate_path / "mask.webp"
+                mask_image.save(mask_path, format="WEBP")
 
-            # Return path to full.png for backward compatibility
+            # Return path to full.webp for backward compatibility
             saved_paths.append(self._workspace_relative_path(workspace_name, result["full_path"]))
 
         return saved_paths
@@ -268,13 +268,13 @@ class WorkspaceManager:
         candidate_path = candidates_root / candidate_id
         candidate_path.mkdir(parents=True, exist_ok=False)
 
-        # Save with new format (full.png, preview, meta.json)
+        # Save with new format (full.webp, preview, meta.json)
         result = self.workspace_images.save_image_with_preview_and_meta(image_path, candidate_path)
 
         if mask_path and mask_path.exists():
-            shutil.copy2(mask_path, candidate_path / "mask.png")
+            shutil.copy2(mask_path, candidate_path / "mask.webp")
 
-        # Return path to full.png for backward compatibility
+        # Return path to full.webp for backward compatibility
         return self._workspace_relative_path(workspace_name, result["full_path"])
 
     def create_workspace_folder(self, payload: dict):
@@ -670,15 +670,15 @@ class WorkspaceImageManager:
     def save_preview(self, image_path: Path, output_path: Path, max_size: Optional[int] = None) -> Path:
         output_path.parent.mkdir(parents=True, exist_ok=True)
         preview_image = self.resize_for_preview(image_path, max_size=max_size)
-        preview_image.save(output_path, format="PNG")
+        preview_image.save(output_path, format="WEBP")
         return output_path
 
     def save_image_with_preview_and_meta(self, image_path: Path, output_dir: Path, max_size: Optional[int] = None) -> dict:
         """Save an image with preview and metadata files in the new format.
 
         Creates:
-        - full.png: The original full-size image
-        - {width}|{height}.png: Preview image resized to max_size
+        - full.webp: The original full-size image
+        - {width}|{height}.webp: Preview image resized to max_size
         - meta.json: Metadata including dimensions
 
         Returns dict with paths and metadata.
@@ -691,14 +691,14 @@ class WorkspaceImageManager:
             width, height = image.size
 
             # Save full image
-            full_path = output_dir / "full.png"
-            image.save(full_path, format="PNG")
+            full_path = output_dir / "full.webp"
+            image.save(full_path, format="WEBP")
 
-            # Save preview image as 512.png
+            # Save preview image as 512.webp
             preview_image = self.resize_for_preview(image_path, max_size=max_size)
             preview_width, preview_height = preview_image.size
-            preview_path = output_dir / "512.png"
-            preview_image.save(preview_path, format="PNG")
+            preview_path = output_dir / "512.webp"
+            preview_image.save(preview_path, format="WEBP")
 
             # Create metadata
             metadata = {
