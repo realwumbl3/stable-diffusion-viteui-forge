@@ -333,7 +333,9 @@ const InpaintCanvas = ({
                 showGrid={canvasState.showGrid}
                 setShowGrid={canvasState.setShowGrid}
                 showMask={canvasState.showMask}
+                setShowMask={canvasState.setMaskVisibility}
                 showBorder={canvasState.showBorder}
+                setShowBorder={canvasState.setShowBorder}
                 maskBorderMode={canvasState.maskBorderMode}
                 setMaskBorderMode={canvasState.setMaskBorderMode}
                 handleZoomOut={canvasState.handleZoomOut}
@@ -381,6 +383,7 @@ const InpaintCanvas = ({
                 <div className={`absolute top-1 left-1 z-10 transition-opacity duration-200 ${uiVisible ? 'opacity-100' : 'opacity-0'}`}>
                     {generationMode === "inpaint" ? (
                         <InpaintToolbar
+                        
                             drawingMode={drawingMode}
                             setDrawingMode={setDrawingMode}
                             brushSize={brushSize}
@@ -394,10 +397,6 @@ const InpaintCanvas = ({
                             fillOverfill={fillOverfill}
                             setFillOverfill={setFillOverfill}
                             zoom={canvasState.zoom}
-                            showMask={canvasState.showMask}
-                            setShowMask={canvasState.setMaskVisibility}
-                            showBorder={canvasState.showBorder}
-                            setShowBorder={canvasState.setShowBorder}
                             onClear={drawing.clearMask}
                             onUndo={drawing.undoMask}
                             onRedo={drawing.redoMask}

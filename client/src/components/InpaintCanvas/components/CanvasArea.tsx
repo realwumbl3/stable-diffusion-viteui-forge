@@ -25,7 +25,9 @@ const CanvasArea = ({
     showGrid,
     setShowGrid,
     showMask,
+    setShowMask,
     showBorder,
+    setShowBorder,
     maskBorderMode,
     setMaskBorderMode,
     inpaintFullRes,
@@ -425,6 +427,10 @@ const CanvasArea = ({
                                 setInpaintFullResPadding={setInpaintFullResPadding}
                                 maskBorderMode={maskBorderMode}
                                 setMaskBorderMode={setMaskBorderMode}
+                                showMask={showMask}
+                                setShowMask={setShowMask}
+                                showBorder={showBorder}
+                                setShowBorder={setShowBorder}
                             />
                         </div>
                     )}

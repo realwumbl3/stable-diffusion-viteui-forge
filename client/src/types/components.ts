@@ -277,7 +277,9 @@ export interface CanvasAreaProps {
   showGrid: boolean
   setShowGrid: (show: boolean) => void
   showMask: boolean
+  setShowMask: (value: boolean) => void
   showBorder: boolean
+  setShowBorder: (value: boolean) => void
   maskBorderMode: boolean
   setMaskBorderMode: (value: boolean) => void
   inpaintFullRes: boolean
@@ -337,10 +339,6 @@ export interface InpaintToolbarProps {
   fillOverfill: number
   setFillOverfill: (overfill: number) => void
   zoom?: number
-  showMask: boolean
-  setShowMask: (show: boolean) => void
-  showBorder: boolean
-  setShowBorder: (show: boolean) => void
   onUndo: () => void
   onRedo: () => void
   onClear: () => void
@@ -391,4 +389,8 @@ export interface InpaintParametersPanelProps {
   setInpaintFullResPadding: (value: number) => void
   maskBorderMode: boolean
   setMaskBorderMode: (value: boolean) => void
+  showMask: boolean
+  setShowMask: (value: boolean) => void
+  showBorder: boolean
+  setShowBorder: (value: boolean) => void
 }

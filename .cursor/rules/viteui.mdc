@@ -1,27 +1,20 @@
 ---
 alwaysApply: true
 ---
-VITEUI – HARD RULES
-Project Scope
+– HARD RULES
 
-viteui is a client-focused project.
-The goal is to abandon Gradio and the original WebUI frontend and instead:
-Wrap the original Forge (WebUI) API
+The goal is to abandon Gradio for the WebUI frontend and instead repurpose the original Forge (WebUI) API to serve a new ViteUI frontend.
 
-Build the UI entirely with Vite
-located in: client/src/
+Build the UI entirely with React and Vite (located in: /client/src/)
 
 This is a hybrid project:
 Original Forge code is kept only to:
-Pull upstream improvements
+- Pull upstream improvements
+- Maintain compatibility with extensions
+- Support future Forge/WebUI changes
 
-Maintain compatibility with extensions
-
-Support future Forge/WebUI changes
-
-Original Forge Code (READ-ONLY)
 The untouched reference copy of Forge lives in:
-original-forge/
+original-forge/ (READ-ONLY)
 This folder is FOR REFERENCE ONLY.
 
 🚫 NEVER modify, run, or depend on the following files or paths:
@@ -31,35 +24,15 @@ webui*.bat
 webui*.py
 webui*.sh
 viteui does not use these files at runtime.
-ViteUI Fork Rules
 
+ViteUI Fork:
 Modifying Forge Code (LAST RESORT)
-Only if absolutely unavoidable, you may touch code inside:/modules//modules_forge//extensions-builtin//extensions//backend//scripts/
+Only if absolutely unavoidable, you may touch code inside:
+/modules/, /modules_forge/, /extensions-builtin/, /extensions/, /backend/, /scripts/
 When this happens:
-Changes must be minimal
+Changes must be minimal and new business logic must be handled externally in modules_viteapi/ using wrappers, adapters, shims, etc.
 
-Logic must be handled externally via:/viteui-gradio/(e.g. wrappers, adapters, shims)
-Required Modification Markup
-
-Any change to original Forge code MUST use one of the following formats.
-Removing code; we keep the code but comment it out. Explain why we are removing it.
-#? explanation for following removal
-#- removed line
-#- removed line
-#?end
-
-Adding code
-#+ explanation for following addition
-added line
-added line
-#+end
-
-🚫 No unannotated edits
-🚫 No refactors
-🚫 No stylistic changes
-
-Client Testing
-
+Client Testing:
 To test client-side changes without conflicts, always run:
 cd client
-npm run dev --port 5174
+npm run dev --port 5170

@@ -1,4 +1,4 @@
-import { Brush, Eraser, PaintBucket, RotateCcw, Undo, Redo, Eye, EyeOff, Square } from "lucide-react";
+import { Brush, Eraser, PaintBucket, RotateCcw, Undo, Redo } from "lucide-react";
 import { cn } from "../../../lib/utils";
 import KeyIndicator from "../../KeyIndicator";
 import type { InpaintToolbarProps } from "../../../types/components";
@@ -9,10 +9,6 @@ const clampRange = (value: number, min: number, max: number) => Math.min(max, Ma
 const InpaintToolbar = ({
     drawingMode,
     setDrawingMode,
-    showMask,
-    setShowMask,
-    showBorder,
-    setShowBorder,
     fillTarget,
     setFillTarget,
     fillTolerance,
@@ -163,42 +159,6 @@ const InpaintToolbar = ({
                         <KeyIndicator keys="C" />
                     </button>
                 </div>
-
-                {/* Mask and Border Visibility Toggles */}
-                <div className="flex flex-col gap-1">
-                    <button
-                        onClick={() => setShowMask(!showMask)}
-                        className={cn(
-                            "relative flex flex-col items-center gap-1 p-2 rounded-md text-xs font-medium transition-all duration-200 flex-1 simple-block-fill",
-                            showMask
-                                ? "bg-studio-accent/20 text-studio-accent border border-studio-accent/30"
-                                : "text-studio-textSecondary hover:text-studio-text hover:bg-studio-surface"
-                        )}
-                        title="Toggle Mask Visibility (M)"
-                        type="button"
-                    >
-                        {showMask ? <Eye size={14} /> : <EyeOff size={14} />}
-                        <span className="text-center leading-tight">Mask</span>
-                        <KeyIndicator keys="M" />
-                    </button>
-
-                    <button
-                        onClick={() => setShowBorder(!showBorder)}
-                        className={cn(
-                            "relative flex flex-col items-center gap-1 p-2 rounded-md text-xs font-medium transition-all duration-200 flex-1 simple-block-fill",
-                            showBorder
-                                ? "bg-studio-accent/20 text-studio-accent border border-studio-accent/30"
-                                : "text-studio-textSecondary hover:text-studio-text hover:bg-studio-surface"
-                        )}
-                        title="Toggle Border Visualization (N)"
-                        type="button"
-                    >
-                        <Square size={14} />
-                        <span className="text-center leading-tight">Border</span>
-                        <KeyIndicator keys="N" />
-                    </button>
-                </div>
-
 
                 {/* Undo/Redo (Optional) */}
                 {(canUndo || canRedo) && (

@@ -1,5 +1,7 @@
+import { Eye, EyeOff, Square } from "lucide-react";
 import OptionPicker from "../../OptionPicker";
 import NumberSelector from "../../NumberSelector";
+import KeyIndicator from "../../KeyIndicator";
 import type { InpaintParametersPanelProps } from "../../../types/components";
 
 const InpaintParametersPanel = ({
@@ -24,6 +26,11 @@ const InpaintParametersPanel = ({
     // Mask border mode parameters
     maskBorderMode,
     setMaskBorderMode,
+    // Mask and border visibility parameters
+    showMask,
+    setShowMask,
+    showBorder,
+    setShowBorder,
 }: InpaintParametersPanelProps) => {
     const fillOptions = [
         { value: "0", label: "Fill" },
@@ -38,8 +45,40 @@ const InpaintParametersPanel = ({
     };
 
     return (
-        <div className="p-1 w-42 rounded-lg border border-studio-border bg-studio-bg/30 shadow-2xl backdrop-blur">
+        <div className="p-1 w-42 rounded-lg border border-studio-border bg-studio-bg/30 shadow-2xl backdrop-blur flex flex-col gap-1">
+            {/* Mask and Border Visibility Toggles */}
+            <div className="flex flex-row gap-1">
+                <button
+                    onClick={() => setShowMask(!showMask)}
+                    className={`flex flex-col items-center gap-1 p-2 rounded-md text-xs font-medium transition-all duration-200 flex-1 relative ${showMask
+                        ? "bg-studio-accent/20 text-studio-accent border border-studio-accent/30"
+                        : "text-studio-textSecondary hover:text-studio-text hover:bg-studio-surface"
+                        }`}
+                    title="Toggle Mask Visibility (M)"
+                    type="button"
+                >
+                    {showMask ? <Eye size={14} /> : <EyeOff size={14} />}
+                    <span className="text-center leading-tight">Mask</span>
+                    <KeyIndicator keys="M" />
+                </button>
+
+                {inpaintFullRes && <button
+                    onClick={() => setShowBorder(!showBorder)}
+                    className={`flex flex-col items-center gap-1 p-2 rounded-md text-xs font-medium transition-all duration-200 flex-1 relative ${showBorder
+                        ? "bg-studio-accent/20 text-studio-accent border border-studio-accent/30"
+                        : "text-studio-textSecondary hover:text-studio-text hover:bg-studio-surface"
+                        }`}
+                    title="Toggle Border Visualization (N)"
+                    type="button"
+                >
+                    <Square size={14} />
+                    <span className="text-center leading-tight">Border</span>
+                    <KeyIndicator keys="N" />
+                </button>
+                }
+            </div>
             <div className="grid grid-cols-2 gap-1 items-center">
+
                 <div className="flex justify-center">
                     <OptionPicker
                         options={fillOptions}
@@ -83,9 +122,9 @@ const InpaintParametersPanel = ({
                     title="Invert Mask"
                     type="button"
                 >
-                    Invert
+                    invert
                 </button>
-                
+
                 <button
                     onClick={() => setInpaintFullRes(!inpaintFullRes)}
                     className={`flex items-center justify-center px-2 py-1 rounded-md text-xs font-medium transition-all duration-200 ${inpaintFullRes
@@ -95,23 +134,9 @@ const InpaintParametersPanel = ({
                     title="Focused (Full Resolution)"
                     type="button"
                 >
-                    Focused
+                    focused
                 </button>
-
-                <button
-                    onClick={() => setMaskBorderMode(!maskBorderMode)}
-                    className={`flex items-center justify-center px-2 py-1 rounded-md text-xs font-medium transition-all duration-200 ${maskBorderMode
-                        ? "bg-studio-accent text-studio-bg shadow-sm"
-                        : "text-studio-textSecondary hover:text-studio-text hover:bg-studio-surface"
-                        }`}
-                    title="Mask Border Mode"
-                    type="button"
-                >
-                    Mask Border
-                </button>
-
-
-                {inpaintFullRes && (
+                {inpaintFullRes &&
                     <div className="flex justify-center">
                         <NumberSelector
                             value={inpaintFullResPadding}
@@ -123,7 +148,19 @@ const InpaintParametersPanel = ({
                             suffix="px"
                         />
                     </div>
-                )}
+                }
+                {inpaintFullRes && <button
+                    onClick={() => setMaskBorderMode(!maskBorderMode)}
+                    className={`flex items-center justify-center px-2 py-1 rounded-md text-xs font-medium transition-all duration-200 ${maskBorderMode
+                        ? "bg-studio-accent text-studio-bg shadow-sm"
+                        : "text-studio-textSecondary hover:text-studio-text hover:bg-studio-surface"
+                        }`}
+                    title="Mask Border Mode"
+                    type="button"
+                >
+                    blinds
+                </button>
+                }
             </div>
         </div>
     );

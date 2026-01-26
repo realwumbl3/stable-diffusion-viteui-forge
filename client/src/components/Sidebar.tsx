@@ -112,9 +112,9 @@ const Sidebar = ({
           collapsed ? "opacity-0 pointer-events-none" : "opacity-100"
         )}>
           {/* Sidebar Header */}
-          <div className="studio-sidebar-header flex-shrink-0 p-4">
+          <div className="studio-sidebar-header flex-shrink-0 p-2">
             {/* Generation Mode Buttons */}
-            <div className="flex items-center bg-studio-surface rounded-lg p-1 border border-studio-border mb-4 gap-1">
+            <div className="flex items-center bg-studio-surface rounded-lg p-1 border border-studio-border mb-2 gap-1">
               <button
                 onClick={() => {
                   if (generationMode === 'txt2img') {
@@ -134,7 +134,7 @@ const Sidebar = ({
               >
                 <Type size={16} />
                 <span className="hidden sm:inline">Text</span>
-                <KeyIndicator keys="Alt+T" />
+                <KeyIndicator keys="Alt.T" />
               </button>
               <button
                 onClick={() => {
@@ -155,7 +155,7 @@ const Sidebar = ({
               >
                 <ImageIcon size={16} />
                 <span className="hidden sm:inline">Image</span>
-                <KeyIndicator keys="Alt+I" />
+                <KeyIndicator keys="Alt.I" />
               </button>
 
               <button
@@ -177,7 +177,7 @@ const Sidebar = ({
               >
                 <Edit size={16} />
                 <span className="hidden sm:inline">Inpaint</span>
-                <KeyIndicator keys="Alt+N" />
+                <KeyIndicator keys="Alt.N" />
               </button>
             </div>
             <GenerationsNavigator

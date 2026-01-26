@@ -65,3 +65,4 @@ viteui-diff/diff-output/
 workspaces/
 workspaces-prewebp/
 .env
+.cursor/plans/*
