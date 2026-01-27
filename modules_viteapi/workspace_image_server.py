@@ -1,4 +1,4 @@
-# VITE UI
+
 import mimetypes
 from pathlib import Path
 from typing import Callable

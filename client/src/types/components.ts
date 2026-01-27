@@ -52,6 +52,13 @@ export interface CanvasTopControlsProps {
   inputImage: string | null
   pageLocked: boolean
   onToggleLock: () => void
+  // Timeline-related props for GenerationsNavigator
+  generationQueue: Generation[]
+  currentPreview: Generation | null
+  latestCommit: Generation | null
+  onPreviewSelect: (generation: Generation | null) => void
+  onCommit: () => void
+  onReject: () => void
 }
 
 // Sidebar component props
@@ -250,6 +257,8 @@ export interface InpaintCanvasProps {
   canvasControls: CanvasTopControlsProps
   promptMode: PromptMode
   onPromptModeChange: (mode: PromptMode) => void
+  footerCollapsed?: boolean
+  onToggleFooter?: () => void
 }
 
 // CanvasArea component props
@@ -367,7 +376,6 @@ export interface StatusBarProps {
   inputImage?: string | null
   zoom: number
   brushSize: number
-  brushHardness: number
   drawingMode: string
   progress?: Progress | null
   loading?: boolean

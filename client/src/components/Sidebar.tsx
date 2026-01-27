@@ -10,7 +10,6 @@ import {
 import { useState, useRef, useEffect } from 'react'
 import { cn, resolveImageSrc } from '../lib/utils'
 import TimelineItem from './TimelineItem'
-import GenerationsNavigator from './GenerationsNavigator'
 import KeyIndicator from './KeyIndicator'
 import type { Generation } from '../Api'
 import type { SidebarProps } from '../types/components'
@@ -180,14 +179,6 @@ const Sidebar = ({
                 <KeyIndicator keys="Alt.N" />
               </button>
             </div>
-            <GenerationsNavigator
-              generationQueue={timeline.generationQueue}
-              currentPreview={timeline.currentPreview}
-              latestCommit={timeline.committedHistory[0] ?? null}
-              onPreviewSelect={onPreviewSelect}
-              onCommit={onCommitPreview}
-              onReject={onRejectPreview}
-            />
           </div>
 
           {/* Sidebar Content */}

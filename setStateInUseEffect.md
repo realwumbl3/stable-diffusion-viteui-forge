@@ -1,5 +1,3 @@
- # VITE UI
-
  ## Summary
  - 33 documented `useEffect` hooks below call state setters. Each entry highlights where state is mutated and why the current wiring can be fragile (unbounded async updates, forced resets, event listeners firing off after unmount, etc.).
 

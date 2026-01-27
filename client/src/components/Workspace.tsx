@@ -866,11 +866,12 @@ const Workspace = ({ workspaceId, isActive }: WorkspaceProps) => {
         "h": () => {
             void handleRestart();
         },
+        "`": () => setCanvasState({ footerCollapsed: !canvas.footerCollapsed }),
+        "alt+`": () => handlePromptModeChange(ui.promptMode === "simple" ? "composer" : "simple"),
         "alt+t": () => handleGenerationModeChange("txt2img"),
         "alt+i": () => handleGenerationModeChange("img2img"),
         "alt+n": () => handleGenerationModeChange("inpaint"),
         "ctrl+b": () => setUiState({ sidebarCollapsed: !ui.sidebarCollapsed }),
-        "ctrl+p": () => setUiState({ propertiesCollapsed: !ui.propertiesCollapsed }),
         "arrowleft": () => navigateCandidate(-1),
         "arrowright": () => navigateCandidate(1),
         "backspace": () => {
@@ -909,6 +910,13 @@ const Workspace = ({ workspaceId, isActive }: WorkspaceProps) => {
         setSelectedSampler: (value: string) => setGenerationState({ selectedSampler: value }),
         cfgScale: generation.cfgScale,
         setCfgScale: (value: number) => setGenerationState({ cfgScale: value }),
+        // Timeline-related props for GenerationsNavigator
+        generationQueue: timeline.generationQueue,
+        currentPreview: timeline.currentPreview,
+        latestCommit: timeline.committedHistory[0] ?? null,
+        onPreviewSelect: handlePreviewSelect,
+        onCommit: handleCommitPreview,
+        onReject: handleRejectPreview,
     };
 
     const shouldRenderBrowser = isActive && workspaceBrowserOpen;
@@ -934,7 +942,7 @@ const Workspace = ({ workspaceId, isActive }: WorkspaceProps) => {
                 onRefreshCanvas={handleRefreshCanvas}
                 canvasRefreshKey={canvas.canvasRefreshKey}
             />
-
+            
             {mode.generationMode === "inpaint" ? (
                 <InpaintCanvas
                     currentImage={canvas.currentImage}
@@ -968,6 +976,8 @@ const Workspace = ({ workspaceId, isActive }: WorkspaceProps) => {
                     generationMode={mode.generationMode}
                     canvasRefreshKey={canvas.canvasRefreshKey}
                     canvasControls={canvasControls}
+                    footerCollapsed={canvas.footerCollapsed}
+                    onToggleFooter={() => setCanvasState({ footerCollapsed: !canvas.footerCollapsed })}
                 />
             ) : (
                 <InpaintCanvas
@@ -1002,6 +1012,8 @@ const Workspace = ({ workspaceId, isActive }: WorkspaceProps) => {
                     generationMode={mode.generationMode}
                     canvasRefreshKey={canvas.canvasRefreshKey}
                     canvasControls={canvasControls}
+                    footerCollapsed={canvas.footerCollapsed}
+                    onToggleFooter={() => setCanvasState({ footerCollapsed: !canvas.footerCollapsed })}
                 />
             )}
 

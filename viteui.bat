@@ -1,4 +1,3 @@
-:: # VITE UI
 @echo off
 
 rem AUTO_CLOSE_WINDOW is no longer used - SD server now runs in main window

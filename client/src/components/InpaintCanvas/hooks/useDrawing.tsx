@@ -66,7 +66,7 @@ export function useDrawing({
         const exportCtx = exportCanvas.getContext("2d");
         if (!exportCtx) return null;
 
-        // VITE UI: Optimized mask generation to avoid expensive getImageData
+        // Optimized mask generation to avoid expensive getImageData
         // Fill background with black
         exportCtx.fillStyle = "black";
         exportCtx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
@@ -244,7 +244,7 @@ export function useDrawing({
         logger.time('bounds', 'getMaskBounds');
         logger.memory('bounds', 'Original canvas size', canvas.width * canvas.height * 4);
 
-        // VITE UI: Optimize bounds calculation by using a smaller temporary canvas
+        // Optimize bounds calculation by using a smaller temporary canvas
         // This prevents "Out of memory" errors and improves performance on large images.
         const maxDim = 512;
         let scale = 1;

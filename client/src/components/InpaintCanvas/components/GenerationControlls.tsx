@@ -1,8 +1,9 @@
-// VITE UI
+import styled from "styled-components";
 import { SkipForward, Square, RotateCw, Zap } from "lucide-react";
 import ResolutionIndicator from "../../ResolutionIndicator";
 import NumberSelector from "../../NumberSelector";
 import KeyIndicator from "../../KeyIndicator";
+import GenerationsNavigator from "../../GenerationsNavigator";
 import { cn } from "../../../lib/utils";
 import type { CanvasTopControlsProps } from "../../../types/components";
 
@@ -10,6 +11,24 @@ interface Props {
     controls: CanvasTopControlsProps;
     visible: boolean;
 }
+
+const GenerationControlsContainer = styled.div`
+    &.generating {
+        animation: background-swipe-animation 3s linear infinite;
+        background-image: linear-gradient(125deg, transparent 25%, #ffffff61, transparent 75%);
+        background-size: 200% 100%;
+    }
+
+
+    @keyframes background-swipe-animation {
+        from {
+            background-position: -200% 0;
+        }
+        to {
+            background-position: 200% 0;
+        }
+    }
+`;
 
 const CanvasTopControls = ({ controls, visible }: Props) => {
     const {
@@ -30,12 +49,22 @@ const CanvasTopControls = ({ controls, visible }: Props) => {
         height,
         setHeight,
         inputImage,
+        // Timeline props for GenerationsNavigator
+        generationQueue,
+        currentPreview,
+        latestCommit,
+        onPreviewSelect,
+        onCommit,
+        onReject,
     } = controls;
 
+    const isGenerating = loading && progress;
+
     return (
-        <div className={`flex flex-wrap items-center gap-1 rounded-lg border border-studio-border 
-        bg-studio-bg/30 p-1 shadow-2xl backdrop-blur pointer-events-auto transition-opacity 
-        duration-200 ${visible ? "opacity-100" : "opacity-0"}`}>
+        <GenerationControlsContainer className={`flex flex-wrap items-center gap-1 rounded-lg border border-studio-border p-1 pointer-events-auto 
+        bg-studio-bg/30 shadow-2xl backdrop-blur 
+        transition-opacity duration-200 ${visible ? "opacity-100" : "opacity-0"} 
+        ${isGenerating ? "generating" : ""}`}>
             <div className="flex flex-col gap-1">
                 <ResolutionIndicator
                     width={width}
@@ -78,7 +107,7 @@ const CanvasTopControls = ({ controls, visible }: Props) => {
                         <div className="w-4 h-4 border-2 border-studio-bg border-t-transparent rounded-full animate-spin" />
                         <span className="text-sm">Restarting...</span>
                     </>
-                ) : loading && progress ? (
+                ) : isGenerating ? (
                     <>
                         <div className="flex flex-col items-center gap-1">
                             <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -146,7 +175,17 @@ const CanvasTopControls = ({ controls, visible }: Props) => {
                     </button>
                 </div>
             )}
-        </div>
+
+            {/* Generations Navigator */}
+            <GenerationsNavigator
+                generationQueue={generationQueue}
+                currentPreview={currentPreview}
+                latestCommit={latestCommit}
+                onPreviewSelect={onPreviewSelect}
+                onCommit={onCommit}
+                onReject={onReject}
+            />
+        </GenerationControlsContainer>
     );
 };
 

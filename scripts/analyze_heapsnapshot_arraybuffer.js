@@ -1,4 +1,4 @@
-// VITE UI
+
 // Temporary script to analyze heapsnapshot for JSArrayBufferData leaks.
 // Parses Chrome .heapsnapshot JSON: finds JSArrayBufferData nodes, aggregates
 // retained sizes by retainer (edges pointing to those nodes), outputs top retainers.

@@ -73,18 +73,18 @@ const CanvasArea = ({
 }: CanvasAreaProps) => {
     // Always use input image for canvas layout in edit mode - livePreview is purely cosmetic
     const baseImageSrc = viewMode === "edit" ? inputImage || displayImage : displayImage || inputImage;
-    const mainImageSrc = baseImageSrc && canvasRefreshKey > 0 
-        ? `${baseImageSrc}?refresh=${canvasRefreshKey}` 
+    const mainImageSrc = baseImageSrc && canvasRefreshKey > 0
+        ? `${baseImageSrc}?refresh = ${canvasRefreshKey} `
         : baseImageSrc;
 
     const previewOverlay = livePreview ? (
         <div
             className="absolute pointer-events-none"
             style={{
-                top: showBorder && inpaintFullRes && inpaintFullResPadding > 0 && focusBounds ? `${focusBounds.y || 0}px` : '0px',
-                left: showBorder && inpaintFullRes && inpaintFullResPadding > 0 && focusBounds ? `${focusBounds.x || 0}px` : '0px',
-                width: showBorder && inpaintFullRes && inpaintFullResPadding > 0 && focusBounds ? `${focusBounds.width || 0}px` : '100%',
-                height: showBorder && inpaintFullRes && inpaintFullResPadding > 0 && focusBounds ? `${focusBounds.height || 0}px` : '100%',
+                top: showBorder && inpaintFullRes && inpaintFullResPadding > 0 && focusBounds ? `${focusBounds.y || 0} px` : '0px',
+                left: showBorder && inpaintFullRes && inpaintFullResPadding > 0 && focusBounds ? `${focusBounds.x || 0} px` : '0px',
+                width: showBorder && inpaintFullRes && inpaintFullResPadding > 0 && focusBounds ? `${focusBounds.width || 0} px` : '100%',
+                height: showBorder && inpaintFullRes && inpaintFullResPadding > 0 && focusBounds ? `${focusBounds.height || 0} px` : '100%',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -93,7 +93,7 @@ const CanvasArea = ({
             <img
                 src={livePreview}
                 alt="Live preview"
-                className="w-full h-full object-contain shadow-studio-border rounded-lg"
+                className="w-full h-full object-contain shadow-studio-border  rounded-lg overflow-hidden"
                 draggable={false}
             />
         </div>
@@ -221,7 +221,7 @@ const CanvasArea = ({
                                 <div className="w-64 h-2 bg-studio-bg/30 rounded-full overflow-hidden mb-2">
                                     <div
                                         className="h-full bg-studio-accent transition-all duration-300 ease-out"
-                                        style={{ width: `${(progress.progress ?? 0) * 100}%` }}
+                                        style={{ width: `${(progress.progress ?? 0) * 100}% ` }}
                                     />
                                 </div>
                                 <p className="text-studio-textSecondary text-xs">
@@ -229,14 +229,14 @@ const CanvasArea = ({
                                     {typeof progress.total_batches === 'number' && progress.total_batches > 1 &&
                                         ` • Batch ${typeof progress.current_batch === 'number' ? progress.current_batch : '?'}/${progress.total_batches}`}
                                     {typeof progress.eta === 'number' && ` • ETA: ${Math.round(progress.eta)}s`}
-                                </p>
+                                </p >
                             </>
                         ) : (
                             <p className="text-studio-textSecondary text-sm">Starting generation...</p>
                         )}
-                    </div>
-                </div>
-            </div>
+                    </div >
+                </div >
+            </div >
         );
     }
 
@@ -277,15 +277,15 @@ const CanvasArea = ({
                                     ? "none"
                                     : "transform 0.2s ease-out",
                         }}
-                    onMouseDown={(e) => {
-                        if (previewImage && onClearPreview && e.button === 0) {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            onClearPreview();
-                            return;
-                        }
-                        handleMouseDown(e);
-                    }}
+                        onMouseDown={(e) => {
+                            if (previewImage && onClearPreview && e.button === 0) {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                onClearPreview();
+                                return;
+                            }
+                            handleMouseDown(e);
+                        }}
                         onMouseMove={handleMouseMove}
                         onMouseUp={handleMouseUp}
                         onMouseEnter={handleMouseEnter}
@@ -383,7 +383,7 @@ const CanvasArea = ({
                                     backgroundColor: drawingMode === 'erase'
                                         ? 'rgba(239, 68, 68, 0.1)' // Red with opacity
                                         : 'rgba(59, 130, 246, 0.1)', // Light blue with opacity
-                            opacity: isMouseOverCanvas ? 1 : 0.7,
+                                    opacity: isMouseOverCanvas ? 1 : 0.7,
                                 }}
                             />
                         </div>

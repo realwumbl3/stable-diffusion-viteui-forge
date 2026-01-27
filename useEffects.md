@@ -1,5 +1,3 @@
-# VITE UI
-
 ## Necessary UseEffects (keep as-is)
 - `client/src/App.jsx` – `useEffect(..., [])` (App startup) (Necessary). The initial data load + workspace initialization must run exactly once; this ref guard keeps the async work from re-triggering during StrictMode or re-renders without introducing new hooks.
 - `client/src/App.jsx` – `useEffect(..., [pageLocked])` (Necessary). Browser `beforeunload` can only be wired from an effect, so this listener is the only practical way to block navigation while `pageLocked` is true.

@@ -1,4 +1,3 @@
-# VITE UI
 
 import time
 import threading

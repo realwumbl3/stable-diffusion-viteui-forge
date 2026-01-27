@@ -47,6 +47,7 @@ export interface WorkspaceUiState {
 export interface WorkspaceCanvasState {
     currentImage: string | null;
     canvasRefreshKey: number;
+    footerCollapsed: boolean;
 }
 
 export interface WorkspaceState {
@@ -112,6 +113,7 @@ const createDefaultWorkspaceState = (): WorkspaceState => ({
     canvas: {
         currentImage: null,
         canvasRefreshKey: 0,
+        footerCollapsed: false,
     },
 });
 

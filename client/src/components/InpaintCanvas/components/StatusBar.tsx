@@ -30,7 +30,6 @@ const StatusBar = ({
     inputImage,
     zoom,
     brushSize,
-    brushHardness,
     drawingMode,
     progress,
     loading,
@@ -40,7 +39,7 @@ const StatusBar = ({
     return (
         <div className="studio-toolbar justify-between text-xs text-studio-textSecondary ps-2 pe-2 flex items-center">
             <div className="flex items-center gap-2">
-                <span>Inpaint Canvas</span>
+                <span>Inpaint Canvas [{drawingMode}]</span>
                 {(displayImage || inputImage) && (
                     <>
                         <span>•</span>
@@ -49,10 +48,6 @@ const StatusBar = ({
                             <>
                                 <span>•</span>
                                 <span>Brush: {brushSize}px</span>
-                                <span>•</span>
-                                <span>Hardness: {Math.round(brushHardness * 100)}%</span>
-                                <span>•</span>
-                                <span>Mode: {drawingMode}</span>
                             </>
                         )}
                     </>
@@ -76,7 +71,7 @@ const StatusBar = ({
                         {progress.eta && (
                             <>
                                 <span>•</span>
-                                <span>ETA: {Math.round(progress.eta)}s</span>
+                                <span>ETA~{Math.round(progress.eta)}s</span>
                             </>
                         )}
                     </>
@@ -88,13 +83,13 @@ const StatusBar = ({
                         type="button"
                         onClick={() => setMemoryPanelOpen(true)}
                         className="text-studio-textSecondary hover:text-studio-text hover:underline cursor-pointer transition-colors"
-                        title="Open memory panel"
+                        title="Open memory usage panel"
                     >
-                        mem: {memoryUsage}mb
+                        UI: {memoryUsage}mb
                     </button>
                 )}
                 <MemoryPanel open={memoryPanelOpen} onClose={() => setMemoryPanelOpen(false)} />
-                <span>Stable Diffusion viteUI</span>
+                <span>StableDiffusion viteUI</span>
                 {progress && loading && <span className="text-studio-accent">{progress.textinfo}</span>}
             </div>
         </div>

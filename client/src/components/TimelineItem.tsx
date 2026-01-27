@@ -1,4 +1,3 @@
-// VITE UI
 import { X, Maximize2, FolderOpen, Paintbrush } from "lucide-react";
 import { cn, resolveImageSrc } from "../lib/utils";
 import { useState, useRef, useEffect, type MouseEvent } from "react";

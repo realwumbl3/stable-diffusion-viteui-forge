@@ -1,4 +1,3 @@
-// # VITE UI
 import React, {
     useState,
     useRef,
@@ -685,7 +684,7 @@ function PromptComposer({
     return (
         <footer className="studio-panel border-t border-studio-border">
             <div className="p-2">
-                <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center justify-between mb-1">
                     <div
                         className="flex items-center gap-2 cursor-pointer grow"
                         onClick={() => onToggle?.()}

@@ -55,6 +55,8 @@ const InpaintCanvas = ({
     // Canvas refresh key
     canvasRefreshKey = 0,
     canvasControls,
+    footerCollapsed,
+    onToggleFooter,
 }: InpaintCanvasProps) => {
     const displayImage = previewImage || currentImage;
     const resolvedDisplayImage = resolveImageSrc(displayImage, "full");
@@ -424,8 +426,8 @@ const InpaintCanvas = ({
                 onNodesChange={onComposerNodesChange}
                 mode={promptMode}
                 onModeChange={onPromptModeChange}
-                collapsed={canvasState.footerCollapsed}
-                onToggle={() => canvasState.setFooterCollapsed(!canvasState.footerCollapsed)}
+                collapsed={footerCollapsed ?? canvasState.footerCollapsed}
+                onToggle={() => onToggleFooter?.() ?? canvasState.setFooterCollapsed(!canvasState.footerCollapsed)}
             />
 
             {/* Status Bar */}
@@ -434,7 +436,6 @@ const InpaintCanvas = ({
                 inputImage={inputImage || undefined}
                 zoom={canvasState.zoom}
                 brushSize={brushSize}
-                brushHardness={brushHardness}
                 drawingMode={drawingMode}
                 progress={progress || undefined}
                 loading={loading}
