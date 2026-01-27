@@ -335,42 +335,6 @@ export function useCanvasState(props: UseCanvasStateProps) {
         });
     }, [isPreviewActive]);
 
-    // Mouse and pointer lock event handlers
-    useEffect(() => {
-        const handlePointerLockChange = () => {
-            const locked = document.pointerLockElement === panTargetRef.current;
-            setIsPanning(locked);
-            if (!locked) {
-                setPanType(null);
-                setIsRightClickPanning(false);
-            }
-        };
-
-        const handleMouseMove = (e: MouseEvent) => {
-            if (document.pointerLockElement !== panTargetRef.current) return;
-            setPanOffset((prev) => ({
-                x: prev.x + e.movementX,
-                y: prev.y + e.movementY,
-            }));
-        };
-
-        const handleKeyUp = (e: KeyboardEvent) => {
-            if (e.key === "Shift" && document.pointerLockElement && panType === 'shift') {
-                document.exitPointerLock();
-            }
-        };
-
-        document.addEventListener("pointerlockchange", handlePointerLockChange);
-        document.addEventListener("mousemove", handleMouseMove);
-        window.addEventListener("keyup", handleKeyUp);
-
-        return () => {
-            document.removeEventListener("pointerlockchange", handlePointerLockChange);
-            document.removeEventListener("mousemove", handleMouseMove);
-            window.removeEventListener("keyup", handleKeyUp);
-        };
-    }, [panType, panTargetRef]);
-
     return useMemo(() => ({
         // State
         zoom,
@@ -384,6 +348,7 @@ export function useCanvasState(props: UseCanvasStateProps) {
         isDrawing,
         setIsDrawing,
         isPanning,
+        setIsPanning,
         panType,
         setPanType,
         lastDrawPosRef,
@@ -430,6 +395,7 @@ export function useCanvasState(props: UseCanvasStateProps) {
         isDrawing,
         setIsDrawing,
         isPanning,
+        setIsPanning,
         panType,
         setPanType,
         // lastDrawPosRef is a ref, doesn't need to be in dependencies for correctness,

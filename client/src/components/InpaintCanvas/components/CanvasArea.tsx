@@ -46,6 +46,10 @@ const CanvasArea = ({
     handleMouseMove,
     handleMouseUp,
     handleMouseEnter,
+    handlePointerDown,
+    handlePointerMove,
+    handlePointerUp,
+    handlePointerCancel,
     drawingMode,
     openFileDialog,
     onClearPreview,
@@ -79,15 +83,10 @@ const CanvasArea = ({
 
     const previewOverlay = livePreview ? (
         <div
-            className="absolute pointer-events-none"
+            className="absolute pointer-events-none w-full h-full inset-0"
             style={{
-                top: showBorder && inpaintFullRes && inpaintFullResPadding > 0 && focusBounds ? `${focusBounds.y || 0} px` : '0px',
-                left: showBorder && inpaintFullRes && inpaintFullResPadding > 0 && focusBounds ? `${focusBounds.x || 0} px` : '0px',
-                width: showBorder && inpaintFullRes && inpaintFullResPadding > 0 && focusBounds ? `${focusBounds.width || 0} px` : '100%',
-                height: showBorder && inpaintFullRes && inpaintFullResPadding > 0 && focusBounds ? `${focusBounds.height || 0} px` : '100%',
                 display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
+                placeItems: 'center'
             }}
         >
             <img
@@ -289,6 +288,10 @@ const CanvasArea = ({
                         onMouseMove={handleMouseMove}
                         onMouseUp={handleMouseUp}
                         onMouseEnter={handleMouseEnter}
+                        onPointerDown={handlePointerDown}
+                        onPointerMove={handlePointerMove}
+                        onPointerUp={handlePointerUp}
+                        onPointerCancel={handlePointerCancel}
                         onContextMenu={(e) => e.preventDefault()} // Prevent context menu on right-click
                         onMouseLeave={() => {
                             // Reset last draw position when leaving canvas to prevent connecting lines
@@ -341,14 +344,12 @@ const CanvasArea = ({
                                 opacity: showMask ? 0.8 : 0,
                             }}
                         />
-
-                        {previewOverlay}
-
                         {inpaintFullRes && inpaintFullResPadding > 0 && showBorder && focusBounds && (
                             <FullResBorderOverlay
                                 focusBounds={focusBounds}
                                 maskBounds={maskBounds}
                                 maskBorderMode={maskBorderMode}
+                                previewOverlay={previewOverlay}
                             />
                         )}
 

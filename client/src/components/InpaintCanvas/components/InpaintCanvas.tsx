@@ -12,6 +12,7 @@ import { useFileHandling } from "../hooks/useFileHandling";
 import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
 import CanvasArea from "./CanvasArea";
 import StatusBar from "./StatusBar";
+import { useCanvasPointerEvents } from "../hooks/useCanvasPointerEvents.tsx";
 import type { InpaintCanvasProps } from "../../../types/components";
 
 const InpaintCanvas = ({
@@ -135,7 +136,19 @@ const InpaintCanvas = ({
     });
 
     // Mouse event handlers
-    const handleDocumentMouseUp = useCallback((): void => {
+    const handleDocumentMouseUp = useCallback((e: MouseEvent): void => {
+        if (canvasState.isRightClickPanning && e.button === 2) {
+            console.debug("[VITEUI PANNING] document mouseup", {
+                button: e.button,
+                pointerLocked: Boolean(document.pointerLockElement),
+            });
+            if (document.pointerLockElement) {
+                document.exitPointerLock();
+            }
+            canvasState.setIsRightClickPanning(false);
+            return;
+        }
+
         if (canvasState.isDrawing) {
             canvasState.setIsDrawing(false);
             canvasState.setLastDrawPos(null); // Clear last position when done drawing
@@ -222,91 +235,15 @@ const InpaintCanvas = ({
         }
     };
 
-    // Mouse event handlers that use the hooks
-    const handleMouseDown = (e: React.MouseEvent): void => {
-        if (!(inputImage || displayImage || livePreview)) return;
-
-        // Handle right-click panning
-        if (e.button === 2) {
-            e.preventDefault();
-            e.stopPropagation();
-            canvasState.setPanType('right-click');
-            panTargetRef.current?.requestPointerLock();
-            canvasState.setIsRightClickPanning(true);
-            return;
-        }
-
-        // Only trigger drawing if clicking directly on the image or canvas elements and we're in inpaint mode
-        if (e.shiftKey) {
-            canvasState.startPan(e);
-            return;
-        }
-        if (generationMode === "inpaint") {
-            if (drawingMode === "fill") {
-                const { x, y } = drawing.getCanvasCoordinates(e as React.MouseEvent<HTMLImageElement>);
-                drawing.fillAtPoint(x, y);
-                return;
-            }
-            canvasState.setIsDrawing(true);
-            canvasState.setMouseButtonDown(true);
-            canvasState.setDrawingStartedOnCanvas(true);
-            const { x, y } = drawing.getCanvasCoordinates(e as React.MouseEvent<HTMLImageElement>);
-            canvasState.setLastDrawPos(null); // Reset last position for new stroke
-            drawing.drawBrush(x, y, null); // Start new stroke
-            canvasState.setLastDrawPos({ x, y });
-        }
-    };
-
-    const handleMouseMove = (e: React.MouseEvent): void => {
-        if (!canvasState.isDrawing || generationMode !== "inpaint") return;
-
-        const { x, y } = drawing.getCanvasCoordinates(e as React.MouseEvent<HTMLImageElement>);
-        const lastPos = canvasState.lastDrawPosRef.current;
-        if (lastPos) {
-            drawing.drawBrush(x, y, lastPos);
-        } else {
-            drawing.drawBrush(x, y, null);
-        }
-        canvasState.setLastDrawPos({ x, y });
-    };
-
-    const handleMouseEnter = (e: React.MouseEvent): void => {
-        // Resume drawing only if mouse button is held down, we're not currently drawing,
-        // drawing was started on canvas, we're in inpaint mode, and we're entering over a valid target
-        if (
-            drawingMode !== "fill" &&
-            canvasState.mouseButtonDown &&
-            !canvasState.isDrawing &&
-            canvasState.drawingStartedOnCanvas &&
-            inputImage &&
-            generationMode === "inpaint"
-        ) {
-            // Only resume if entering over a valid target
-            canvasState.setIsDrawing(true);
-            const { x, y } = drawing.getCanvasCoordinates(e as React.MouseEvent<HTMLImageElement>);
-            canvasState.setLastDrawPos(null); // Reset last position for resumed stroke
-            drawing.drawBrush(x, y, null); // Resume drawing at new position
-            canvasState.setLastDrawPos({ x, y });
-        }
-    };
-
-    const handleMouseUp = (e: React.MouseEvent): void => {
-        // Handle right-click panning release
-        if (canvasState.isRightClickPanning && e?.button === 2) {
-            if (document.pointerLockElement) {
-                document.exitPointerLock();
-            }
-            canvasState.setIsRightClickPanning(false);
-            return;
-        }
-
-        // Handle shift panning release
-        if (canvasState.isPanning || document.pointerLockElement === panTargetRef.current) {
-            canvasState.stopPan();
-            return;
-        }
-        // Drawing logic now handled at document level
-    };
+    // All canvas pointer event handlers
+    const pointerEventHandlers = useCanvasPointerEvents({
+        panTargetRef,
+        canvasState,
+        drawing,
+        inputImage,
+        generationMode,
+        drawingMode,
+    });
 
 
     return (
@@ -356,10 +293,14 @@ const InpaintCanvas = ({
                 handleDragOver={handleDragOver}
                 handleDragLeave={handleDragLeave}
                 handleDrop={handleDrop}
-                handleMouseDown={handleMouseDown}
-                handleMouseMove={handleMouseMove}
-                handleMouseUp={handleMouseUp}
-                handleMouseEnter={handleMouseEnter}
+                handleMouseDown={pointerEventHandlers.handleMouseDown}
+                handleMouseMove={pointerEventHandlers.handleMouseMove}
+                handleMouseUp={pointerEventHandlers.handleMouseUp}
+                handleMouseEnter={pointerEventHandlers.handleMouseEnter}
+                handlePointerDown={pointerEventHandlers.handlePointerDown}
+                handlePointerMove={pointerEventHandlers.handlePointerMove}
+                handlePointerUp={pointerEventHandlers.handlePointerUp}
+                handlePointerCancel={pointerEventHandlers.handlePointerCancel}
                 brushSize={brushSize}
                 setBrushSize={setBrushSize}
                 brushHardness={brushHardness}

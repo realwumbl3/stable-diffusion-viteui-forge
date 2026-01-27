@@ -10,6 +10,7 @@ interface FullResBorderOverlayProps {
     focusBounds: Bounds | null;
     maskBounds: Bounds | null;
     maskBorderMode: boolean;
+    previewOverlay: React.ReactNode;
 }
 
 const FocusBoundsOverlay = ({
@@ -67,13 +68,13 @@ const FullResBorderOverlay = ({
     focusBounds,
     maskBounds,
     maskBorderMode,
+    previewOverlay,
 }: FullResBorderOverlayProps) => {
     if (!focusBounds) {
         return null;
     }
 
     const commonBlindStyle = {
-        position: 'absolute' as const,
         backgroundColor: 'var(--studio-bg)' as const,
     };
 
@@ -86,8 +87,7 @@ const FullResBorderOverlay = ({
                         commonBlindStyle={commonBlindStyle}
                     />
                 </div>
-            ) : <div
-                className="absolute rounded-md outline outline-white mix-blend-difference"
+            ) : <div className="absolute inset-0 pointer-events-none rounded-md outline outline-white"
                 style={{
                     top: `${focusBounds.y}px`,
                     left: `${focusBounds.x}px`,
@@ -96,7 +96,9 @@ const FullResBorderOverlay = ({
                     outlineWidth: '2px',
                     outlineOffset: '2px',
                 }}
-            />}
+            >
+                {previewOverlay}
+            </div>}
 
             {
                 maskBounds && (

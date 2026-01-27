@@ -309,6 +309,10 @@ export interface CanvasAreaProps {
   handleMouseMove: (e: React.MouseEvent) => void
   handleMouseUp: (e: React.MouseEvent) => void
   handleMouseEnter: (e: React.MouseEvent) => void
+  handlePointerDown?: (e: React.PointerEvent) => void
+  handlePointerMove?: (e: React.PointerEvent) => void
+  handlePointerUp?: (e: React.PointerEvent) => void
+  handlePointerCancel?: (e: React.PointerEvent) => void
   drawingMode: string
   openFileDialog: () => void
   maskBlur: number
