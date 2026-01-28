@@ -141,6 +141,16 @@ const CanvasTopControls = ({ controls, visible }: Props) => {
 
             {loading && !pendingRestart && (
                 <div className="flex items-center gap-1">
+                    <button
+                        onClick={onRestart}
+                        className="studio-btn-secondary flex flex-col items-center gap-1 px-3 py-1 rounded-md text-sm hover:bg-studio-accent/20 relative"
+                        title="Restart generation after interrupting current work"
+                        type="button"
+                    >
+                        <RotateCw size={16} />
+                        <KeyIndicator keys="H" />
+                        Restart
+                    </button>
                     {progress && progress.total_batches && progress.total_batches > 1 && (
                         <button
                             onClick={onSkip}
@@ -153,16 +163,6 @@ const CanvasTopControls = ({ controls, visible }: Props) => {
                             <KeyIndicator keys="S" />
                         </button>
                     )}
-                    <button
-                        onClick={onRestart}
-                        className="studio-btn-secondary flex flex-col items-center gap-1 px-3 py-1 rounded-md text-sm hover:bg-studio-accent/20 relative"
-                        title="Restart generation after interrupting current work"
-                        type="button"
-                    >
-                        <RotateCw size={16} />
-                        <KeyIndicator keys="H" />
-                        Restart
-                    </button>
                     <button
                         onClick={onInterrupt}
                         className="studio-btn-secondary flex flex-col items-center gap-1 px-3 py-1 rounded-md text-sm hover:bg-studio-accent/20 relative"

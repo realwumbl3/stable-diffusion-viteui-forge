@@ -75,8 +75,16 @@ const FullResBorderOverlay = ({
     }
 
     const commonBlindStyle = {
+        position: 'absolute' as const,
         backgroundColor: 'var(--studio-bg)' as const,
     };
+
+    const outerBorderStyle = {
+        top: `${focusBounds.y}px`,
+        left: `${focusBounds.x}px`,
+        width: `${focusBounds.width}px`,
+        height: `${focusBounds.height}px`
+    }
 
     return (
         <div className="absolute inset-0 pointer-events-none">
@@ -87,18 +95,15 @@ const FullResBorderOverlay = ({
                         commonBlindStyle={commonBlindStyle}
                     />
                 </div>
-            ) : <div className="absolute inset-0 pointer-events-none rounded-md outline outline-white"
-                style={{
-                    top: `${focusBounds.y}px`,
-                    left: `${focusBounds.x}px`,
-                    width: `${focusBounds.width}px`,
-                    height: `${focusBounds.height}px`,
-                    outlineWidth: '2px',
-                    outlineOffset: '2px',
-                }}
-            >
-                {previewOverlay}
-            </div>}
+            ) : <>
+                <div className="absolute inset-0 pointer-events-none rounded-md outline outline-[2px] outline-offset-[2px] outline-white mix-blend-difference"
+                    style={outerBorderStyle}
+                ></div>
+                <div className="absolute inset-0 pointer-events-none rounded-md"
+                    style={outerBorderStyle}
+                >{previewOverlay}</div>
+            </>
+            }
 
             {
                 maskBounds && (

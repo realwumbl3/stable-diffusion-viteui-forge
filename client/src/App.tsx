@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import api from "./Api";
 import Header from "./components/Header";
 import Workspace from "./components/Workspace";
+import WorkspaceBrowser from "./components/WorkspaceBrowser";
 import { useTitleIconAnimation } from "./hooks/useTitleIconAnimation";
 import { useWorkspaceContext, useWorkspaceState } from "./contexts/WorkspaceContext";
 
@@ -67,35 +68,13 @@ function App() {
 
     const initializeWorkspace = useCallback(async (): Promise<void> => {
         try {
-            const data = await api.listWorkspaces();
-            const workspaces = data.workspaces || [];
-            if (workspaces.length > 0) {
-                const lastWorkspace = localStorage.getItem("viteui-current-workspace");
-                let selectedWorkspace = lastWorkspace
-                    ? workspaces.find((ws) => ws.name === lastWorkspace)
-                    : undefined;
-
-                if (!selectedWorkspace) {
-                    const sorted = [...workspaces].sort((a, b) => {
-                        const aTime = a.created ? new Date(a.created).getTime() : 0;
-                        const bTime = b.created ? new Date(b.created).getTime() : 0;
-                        return bTime - aTime;
-                    });
-                    selectedWorkspace = sorted[0];
-                }
-
-                openWorkspace(selectedWorkspace!.name);
-                return;
-            }
-
-            const created = await api.createWorkspace("untitled");
-            if (created?.name) {
-                openWorkspace(created.name);
-            }
+            // Just check that workspaces can be loaded, but don't open any automatically
+            await api.listWorkspaces();
+            // No automatic workspace opening
         } catch (error) {
             console.error("Failed to initialize workspace:", error);
         }
-    }, [openWorkspace]);
+    }, []);
 
     useEffect(() => {
         if (initialLoadRef.current) return;
@@ -177,6 +156,16 @@ function App() {
                     <div className="flex-1 flex items-center justify-center text-studio-text-muted text-sm">
                         No workspace open.
                     </div>
+                )}
+                {workspaceBrowserOpen && (
+                    <WorkspaceBrowser
+                        currentWorkspace={currentWorkspace}
+                        onSelectWorkspace={(name) => {
+                            void handleWorkspaceChange(name);
+                            setWorkspaceBrowserOpen(false);
+                        }}
+                        onClose={() => setWorkspaceBrowserOpen(false)}
+                    />
                 )}
             </div>
         </div>

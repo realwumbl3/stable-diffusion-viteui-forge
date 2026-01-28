@@ -1,4 +1,3 @@
-
 import json
 import os
 import shutil
@@ -270,6 +269,15 @@ class WorkspaceManager:
 
         # Save with new format (full.webp, preview, meta.json)
         result = self.workspace_images.save_image_with_preview_and_meta(image_path, candidate_path)
+
+        # Update metadata with upload info
+        updated_metadata = result["metadata"].copy()
+        updated_metadata["timestamp"] = int(datetime.now().timestamp() * 1000)  # milliseconds
+        updated_metadata["source"] = "upload"
+
+        # Save updated metadata
+        meta_path = candidate_path / "meta.json"
+        meta_path.write_text(json.dumps(updated_metadata, indent=2), encoding="utf-8")
 
         # Return path to full.webp for backward compatibility
         return self._workspace_relative_path(workspace_name, result["full_path"])
@@ -587,6 +595,28 @@ class WorkspaceManager:
         file_path = self.resolve_workspace_file(name, relative_path)
         if not file_path.exists():
             raise HTTPException(status_code=404, detail=f"Path not found: {relative_path}")
+
+        # Convert webp files to lossless png copies before revealing
+        if file_path.suffix.lower() == '.webp':
+            png_path = file_path.with_suffix('.png')
+            try:
+                with Image.open(file_path) as img:
+                    # Convert to RGB if necessary (webp might have transparency)
+                    if img.mode in ('RGBA', 'LA', 'P'):
+                        # Create white background for transparent images
+                        background = Image.new('RGB', img.size, (255, 255, 255))
+                        if img.mode == 'P':
+                            img = img.convert('RGBA')
+                        background.paste(img, mask=img.split()[-1] if img.mode == 'RGBA' else None)
+                        img = background
+                    elif img.mode != 'RGB':
+                        img = img.convert('RGB')
+                    # Save as lossless PNG
+                    img.save(png_path, 'PNG', optimize=False)
+                file_path = png_path
+            except Exception as e:
+                # If conversion fails, continue with original file
+                print(f"Warning: Failed to convert webp to png: {e}")
 
         self._open_in_file_explorer(file_path)
         return {"success": True, "path": self._workspace_relative_path(name, file_path)}

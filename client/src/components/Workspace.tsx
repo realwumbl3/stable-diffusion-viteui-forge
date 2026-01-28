@@ -6,7 +6,6 @@ import { useWebSocketProgress } from "../hooks/useWebSocketProgress";
 import Sidebar from "./Sidebar";
 import InpaintCanvas from "./InpaintCanvas/components/InpaintCanvas";
 import UpscaleDialog from "./UpscaleDialog";
-import WorkspaceBrowser from "./WorkspaceBrowser";
 import { parseWorkspaceImage, resolveImageSrc, API_BASE_URL } from "../lib/utils";
 import { composePromptsFromNodes } from "./PromptComposer/utils/promptUtils";
 import { encodeLegacy } from "./PromptComposer/utils/legacyEncoding";
@@ -33,8 +32,6 @@ const Workspace = ({ workspaceId, isActive }: WorkspaceProps) => {
         openWorkspace,
         switchWorkspace,
         openWorkspaces,
-        workspaceBrowserOpen,
-        setWorkspaceBrowserOpen,
     } = useWorkspaceContext();
 
     const { generation, mode, ui, canvas } = workspaceState;
@@ -843,14 +840,6 @@ const Workspace = ({ workspaceId, isActive }: WorkspaceProps) => {
         }
     };
 
-    const handleWorkspaceChange = async (workspaceName: string): Promise<void> => {
-        if (!workspaceName) return;
-        if (!openWorkspaces.includes(workspaceName)) {
-            openWorkspace(workspaceName);
-        } else {
-            switchWorkspace(workspaceName);
-        }
-    };
 
     useKeyboardShortcuts({
         "g": () => {
@@ -919,8 +908,6 @@ const Workspace = ({ workspaceId, isActive }: WorkspaceProps) => {
         onReject: handleRejectPreview,
     };
 
-    const shouldRenderBrowser = isActive && workspaceBrowserOpen;
-
     return (
         <div className={`flex-1 flex overflow-hidden ${isActive ? "" : "hidden"}`}>
             <Sidebar
@@ -942,7 +929,7 @@ const Workspace = ({ workspaceId, isActive }: WorkspaceProps) => {
                 onRefreshCanvas={handleRefreshCanvas}
                 canvasRefreshKey={canvas.canvasRefreshKey}
             />
-            
+
             {mode.generationMode === "inpaint" ? (
                 <InpaintCanvas
                     currentImage={canvas.currentImage}
@@ -1027,17 +1014,6 @@ const Workspace = ({ workspaceId, isActive }: WorkspaceProps) => {
                 loading={upscaleDialog.loading}
                 error={upscaleDialog.error}
             />
-
-            {shouldRenderBrowser && (
-                <WorkspaceBrowser
-                    currentWorkspace={workspaceId}
-                    onSelectWorkspace={(name) => {
-                        void handleWorkspaceChange(name);
-                        setWorkspaceBrowserOpen(false);
-                    }}
-                    onClose={() => setWorkspaceBrowserOpen(false)}
-                />
-            )}
         </div>
     );
 };

@@ -344,14 +344,14 @@ const CanvasArea = ({
                                 opacity: showMask ? 0.8 : 0,
                             }}
                         />
-                        {inpaintFullRes && inpaintFullResPadding > 0 && showBorder && focusBounds && (
+                        {inpaintFullRes && inpaintFullResPadding > 0 && showBorder && focusBounds ? (
                             <FullResBorderOverlay
                                 focusBounds={focusBounds}
                                 maskBounds={maskBounds}
                                 maskBorderMode={maskBorderMode}
                                 previewOverlay={previewOverlay}
                             />
-                        )}
+                        ) : previewOverlay}
 
                     </div>
 
