@@ -456,9 +456,9 @@ const InpaintCanvas = ({
                 isDrawing={isDrawing}
                 setLastDrawPos={setLastDrawPos}
                 isDragOver={isDragOver}
-                handleDragOver={handleDragOver}
-                handleDragLeave={handleDragLeave}
-                handleDrop={handleDrop}
+                handleDragOver={handleDragOver as (e: React.DragEvent) => void}
+                handleDragLeave={handleDragLeave as (e: React.DragEvent) => void}
+                handleDrop={handleDrop as (e: React.DragEvent) => void}
                 handleMouseDown={pointerEventHandlers.handleMouseDown}
                 handleMouseMove={pointerEventHandlers.handleMouseMove}
                 handleMouseUp={pointerEventHandlers.handleMouseUp}

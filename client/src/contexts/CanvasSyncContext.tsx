@@ -1,4 +1,3 @@
-// VITE UI: Canvas sync state
 import { useCallback, useEffect, useMemo, useReducer, useRef } from "react";
 import { createContext, useContextSelector } from "use-context-selector";
 import type { ReactNode, SetStateAction } from "react";

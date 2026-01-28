@@ -1,4 +1,3 @@
-// VITE UI
 import { useCallback, useEffect } from "react";
 import type { Dispatch, MouseEvent as ReactMouseEvent, PointerEvent, SetStateAction } from "react";
 
