@@ -33,25 +33,6 @@ const Workspace = ({ workspaceId, isActive }: WorkspaceProps) => {
     } = useWorkspaceContext();
 
     const { generation, mode, ui, canvas } = workspaceState;
-    const canvasSyncInitialState = useMemo(
-        () => ({
-            zoom: canvas.zoom,
-            panOffset: canvas.panOffset,
-            fitToScreen: canvas.fitToScreen,
-            showGrid: canvas.showGrid,
-            showMask: canvas.showMask,
-            showBorder: canvas.showBorder,
-            maskBorderMode: canvas.maskBorderMode,
-            brushSize: canvas.brushSize,
-            drawingMode: canvas.drawingMode,
-            brushHardness: canvas.brushHardness,
-            fillTarget: canvas.fillTarget,
-            fillTolerance: canvas.fillTolerance,
-            fillOverfill: canvas.fillOverfill,
-            footerCollapsed: canvas.footerCollapsed,
-        }),
-        [canvas]
-    );
 
     // Separate state for composer nodes (not part of workspace state syncing)
     const [composerNodes, setComposerNodes] = useState<PromptNode[]>([]);
@@ -947,7 +928,7 @@ const Workspace = ({ workspaceId, isActive }: WorkspaceProps) => {
                 canvasRefreshKey={canvas.canvasRefreshKey}
             />
 
-            <CanvasSyncProvider initialState={canvasSyncInitialState}>
+            <CanvasSyncProvider>
                 {mode.generationMode === "inpaint" ? (
                     <InpaintCanvas
                         currentImage={canvas.currentImage}

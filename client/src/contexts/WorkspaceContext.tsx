@@ -48,19 +48,6 @@ export interface WorkspaceCanvasState {
     currentImage: string | null;
     canvasRefreshKey: number;
     footerCollapsed: boolean;
-    zoom: number;
-    panOffset: { x: number; y: number };
-    showGrid: boolean;
-    fitToScreen: boolean;
-    showBorder: boolean;
-    maskBorderMode: boolean;
-    showMask: boolean;
-    brushSize: number;
-    drawingMode: string;
-    brushHardness: number;
-    fillTarget: string;
-    fillTolerance: number;
-    fillOverfill: number;
 }
 
 export interface WorkspaceTransientState {
@@ -139,19 +126,6 @@ const createDefaultWorkspaceState = (): WorkspaceState => ({
         currentImage: null,
         canvasRefreshKey: 0,
         footerCollapsed: false,
-        zoom: 1,
-        panOffset: { x: 0, y: 0 },
-        showGrid: false,
-        fitToScreen: true,
-        showBorder: true,
-        maskBorderMode: false,
-        showMask: true,
-        brushSize: 16,
-        drawingMode: "brush",
-        brushHardness: 1,
-        fillTarget: "image",
-        fillTolerance: 32,
-        fillOverfill: 0,
     },
 });
 

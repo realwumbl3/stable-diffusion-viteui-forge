@@ -82,23 +82,23 @@ const InpaintToolbar = ({ onUndo, onRedo, onClear, canUndo = false, canRedo = fa
                         <PaintBucket size={14} />
                         <span className="text-center leading-tight">Fill</span>
                         {drawingMode === "fill" && (
-                            <>
-                            {(["canvas", "image", "both"] as const).map((mode) => (
-                                <button
-                                    key={mode}
-                                    onClick={() => setFillTarget(mode)}
-                                    className={cn(
-                                        "flex items-center justify-center gap-1 px-1 rounded-md text-xs font-medium transition-all duration-200",
-                                        fillTarget === mode
-                                            ? "bg-studio-accent text-studio-bg shadow-sm"
-                                            : "text-studio-textSecondary hover:text-studio-text hover:bg-studio-surface"
-                                    )}
-                                    title={`Fill target: ${mode}`}
-                                    type="button"
-                                >
-                                    {mode}
-                                </button>
-                            ))}
+                            <div className="flex flex-col gap-1">
+                                {(["canvas", "image", "both"] as const).map((mode) => (
+                                    <button
+                                        key={mode}
+                                        onClick={() => setFillTarget(mode)}
+                                        className={cn(
+                                            "flex items-center justify-center gap-1 px-1 rounded-md text-xs font-medium transition-all duration-200",
+                                            fillTarget === mode
+                                                ? "bg-studio-accent text-studio-bg shadow-sm"
+                                                : "text-studio-textSecondary hover:text-studio-text hover:bg-studio-surface"
+                                        )}
+                                        title={`Fill target: ${mode}`}
+                                        type="button"
+                                    >
+                                        {mode}
+                                    </button>
+                                ))}
                                 <div className="flex flex-col gap-1">
                                     <input
                                         type="range"
@@ -135,7 +135,8 @@ const InpaintToolbar = ({ onUndo, onRedo, onClear, canUndo = false, canRedo = fa
                                         <span className="text-xs text-studio-textSecondary">overfill {fillOverfill}px</span>
                                     </div>
                                 </div>
-                            </>)}
+                            </div>
+                        )}
                         <KeyIndicator keys="F" />
                     </button>
                     <button

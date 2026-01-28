@@ -133,14 +133,14 @@ StableDiffusionImg2ImgProcessingAPI = PydanticModelGenerator(
 ).generate_model()
 
 class TextToImageResponse(BaseModel):
-    images: list[str] | None = Field(default=None, title="Image", description="The generated image in base64 format.")
+    # images: list[str] | None = Field(default=None, title="Image", description="The generated image in base64 format.")
     filesystem_paths: list[str] | None = Field(default=None, title="Filesystem paths", description="Relative filesystem paths for generated images.")
     workspace_info: dict | None = Field(default=None, title="Workspace info", description="Workspace metadata for generated images.")
     parameters: dict
     info: str
 
 class ImageToImageResponse(BaseModel):
-    images: list[str] | None = Field(default=None, title="Image", description="The generated image in base64 format.")
+    # images: list[str] | None = Field(default=None, title="Image", description="The generated image in base64 format.")
     filesystem_paths: list[str] | None = Field(default=None, title="Filesystem paths", description="Relative filesystem paths for generated images.")
     workspace_info: dict | None = Field(default=None, title="Workspace info", description="Workspace metadata for generated images.")
     parameters: dict

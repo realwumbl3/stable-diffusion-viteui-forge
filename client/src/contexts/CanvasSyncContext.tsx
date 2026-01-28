@@ -22,7 +22,6 @@ interface CanvasSyncState {
     fillTarget: string;
     fillTolerance: number;
     fillOverfill: number;
-    footerCollapsed: boolean;
 }
 
 const defaultCanvasSyncState: CanvasSyncState = {
@@ -39,7 +38,6 @@ const defaultCanvasSyncState: CanvasSyncState = {
     fillTarget: "image",
     fillTolerance: 32,
     fillOverfill: 0,
-    footerCollapsed: false,
 };
 
 type CanvasSyncAction =
@@ -56,7 +54,6 @@ type CanvasSyncAction =
     | { type: "SET_FILL_TARGET"; value: SetStateAction<string> }
     | { type: "SET_FILL_TOLERANCE"; value: SetStateAction<number> }
     | { type: "SET_FILL_OVERFILL"; value: SetStateAction<number> }
-    | { type: "SET_FOOTER_COLLAPSED"; value: SetStateAction<boolean> }
     | { type: "SYNC_STATE"; payload: Partial<CanvasSyncState> };
 
 const CanvasSyncContext = createContext<CanvasSyncContextValue | null>(null);
@@ -75,7 +72,6 @@ interface CanvasSyncContextValue extends CanvasSyncState {
     setFillTarget: (value: SetStateAction<string>) => void;
     setFillTolerance: (value: SetStateAction<number>) => void;
     setFillOverfill: (value: SetStateAction<number>) => void;
-    setFooterCollapsed: (value: SetStateAction<boolean>) => void;
 }
 
 const resolveActionValue = <T,>(current: T, value: SetStateAction<T>): T =>
@@ -94,7 +90,6 @@ const haveCanvasSyncStatesChanged = (prev: CanvasSyncState, next: CanvasSyncStat
     prev.fillTarget !== next.fillTarget ||
     prev.fillTolerance !== next.fillTolerance ||
     prev.fillOverfill !== next.fillOverfill ||
-    prev.footerCollapsed !== next.footerCollapsed ||
     prev.panOffset.x !== next.panOffset.x ||
     prev.panOffset.y !== next.panOffset.y
 );
@@ -127,8 +122,6 @@ function canvasSyncReducer(state: CanvasSyncState, action: CanvasSyncAction): Ca
             return { ...state, fillTolerance: resolveActionValue(state.fillTolerance, action.value) };
         case "SET_FILL_OVERFILL":
             return { ...state, fillOverfill: resolveActionValue(state.fillOverfill, action.value) };
-        case "SET_FOOTER_COLLAPSED":
-            return { ...state, footerCollapsed: resolveActionValue(state.footerCollapsed, action.value) };
         case "SYNC_STATE":
             return { ...state, ...action.payload };
         default:
@@ -209,9 +202,6 @@ export const CanvasSyncProvider = ({ children, initialState }: CanvasSyncProvide
         dispatch({ type: "SET_FILL_OVERFILL", value });
     }, []);
 
-    const setFooterCollapsed = useCallback((value: SetStateAction<boolean>) => {
-        dispatch({ type: "SET_FOOTER_COLLAPSED", value });
-    }, []);
 
     const value = useMemo(
         () => ({
@@ -229,7 +219,6 @@ export const CanvasSyncProvider = ({ children, initialState }: CanvasSyncProvide
             setFillTarget,
             setFillTolerance,
             setFillOverfill,
-            setFooterCollapsed,
         }),
         [
             state,
@@ -246,7 +235,6 @@ export const CanvasSyncProvider = ({ children, initialState }: CanvasSyncProvide
             setFillTarget,
             setFillTolerance,
             setFillOverfill,
-            setFooterCollapsed,
         ]
     );
 

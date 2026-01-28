@@ -343,7 +343,7 @@ const CanvasArea = ({
                                 width: "100%",
                                 height: "100%",
                                 imageRendering: "pixelated", // Prevent smoothing
-                                opacity: showMask ? 0.8 : 0,
+                                opacity: showMask && !previewImage ? 0.8 : 0,
                             }}
                         />
                         {inpaintFullRes && inpaintFullResPadding > 0 && showBorder && focusBounds ? (

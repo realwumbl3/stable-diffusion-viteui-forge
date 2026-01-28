@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import PromptComposer from "../../PromptComposer";
 import InpaintToolbar from "./InpaintToolbar";
 import Img2ImgToolbar from "./Img2ImgToolbar";
@@ -6,14 +6,13 @@ import { resolveImageSrc } from "../../../lib/utils";
 import GenerationControlls from "./GenerationControlls";
 
 // Import our extracted hooks and components
-import { useCanvasState } from "../hooks/useCanvasState";
 import { useDrawing } from "../hooks/useDrawing";
 import { useFileHandling } from "../hooks/useFileHandling";
 import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
 import CanvasArea from "./CanvasArea";
 import StatusBar from "./StatusBar";
 import { useCanvasPointerEvents } from "../hooks/useCanvasPointerEvents.tsx";
-import { useCanvasSyncSelector } from "../../../contexts/CanvasSyncContext";
+import { useCanvasSync } from "../../../contexts/CanvasSyncContext";
 import type { InpaintCanvasProps } from "../../../types/components";
 
 const InpaintCanvas = ({
@@ -75,31 +74,180 @@ const InpaintCanvas = ({
     // UI visibility state
     const [uiVisible, setUiVisible] = useState<boolean>(true);
 
-    // Initialize hooks
-    const canvasState = useCanvasState({
-        workspaceId,
-        displayImage: resolvedDisplayImage,
-        inputImage: resolvedInputImage,
-        livePreview: Boolean(livePreview),
-        generationWidth: generationWidth ?? null,
-        generationHeight: generationHeight ?? null,
-        forceEditMode,
-        previewImage: resolvedPreviewImage,
-        canvasRef,
-        imageRef,
-        panTargetRef,
-    });
+    // Drawing state (previously in useCanvasState)
+    const [isDrawing, setIsDrawing] = useState(false);
+    const [isPanning, setIsPanning] = useState(false);
+    const [panType, setPanType] = useState<'shift' | 'right-click' | null>(null);
+    const lastDrawPosRef = useRef<{ x: number; y: number } | null>(null);
+    const [mouseButtonDown, setMouseButtonDown] = useState(false);
+    const [drawingStartedOnCanvas, setDrawingStartedOnCanvas] = useState(false);
+    const [isRightClickPanning, setIsRightClickPanning] = useState(false);
+    const [rightClickStartPos, setRightClickStartPos] = useState({ x: 0, y: 0 });
+    const [rightClickStartPan, setRightClickStartPan] = useState({ x: 0, y: 0 });
 
-    const footerCollapsedFromCanvas = useCanvasSyncSelector((state) => state.footerCollapsed);
-    const setCanvasFooterCollapsed = useCanvasSyncSelector((state) => state.setFooterCollapsed);
-    const effectiveFooterCollapsed = footerCollapsed ?? footerCollapsedFromCanvas;
+    const setLastDrawPos = useCallback((pos: { x: number; y: number } | null) => {
+        lastDrawPosRef.current = pos;
+    }, []);
+
+    // Canvas sync state
+    const {
+        setZoom,
+        setFitToScreen,
+        panOffset,
+        setPanOffset,
+        brushSize,
+        setBrushSize,
+        drawingMode,
+        setDrawingMode,
+        brushHardness,
+        setBrushHardness,
+        fillTarget,
+        fillTolerance,
+        fillOverfill,
+        showBorder,
+        setShowBorder,
+        showMask,
+        setShowMask,
+    } = useCanvasSync();
+
+    const effectiveFooterCollapsed = footerCollapsed;
     const handleToggleFooter = useCallback(() => {
         if (onToggleFooter) {
             onToggleFooter();
             return;
         }
-        setCanvasFooterCollapsed((prev) => !prev);
-    }, [onToggleFooter, setCanvasFooterCollapsed]);
+        // Footer toggle is handled by parent component
+    }, [onToggleFooter]);
+
+    // View mode calculation (previously in useCanvasState)
+    const isTimelinePreview = Boolean(resolvedPreviewImage);
+    const viewMode = useMemo(() => {
+        if (isTimelinePreview) {
+            return "result";
+        }
+        if (forceEditMode || livePreview) {
+            return "edit";
+        }
+        if (resolvedDisplayImage) {
+            return "result";
+        }
+        if (resolvedInputImage) {
+            return "edit";
+        }
+        return "edit";
+    }, [forceEditMode, isTimelinePreview, livePreview, resolvedDisplayImage, resolvedInputImage]);
+
+    // Utility functions (previously in useCanvasState)
+    const getDisplayDimensions = useCallback(() => {
+        if (!imageRef.current) {
+            return { width: 1, height: 1 };
+        }
+
+        // Always use input image dimensions for canvas sizing in edit mode
+        // Live preview should be purely cosmetic and not affect canvas layout
+        if (viewMode === "edit" && resolvedInputImage) {
+            return {
+                width: imageRef.current.naturalWidth || 1,
+                height: imageRef.current.naturalHeight || 1,
+            };
+        }
+
+        if (livePreview && generationWidth && generationHeight) {
+            return { width: generationWidth, height: generationHeight };
+        }
+
+        return {
+            width: imageRef.current.naturalWidth || 1,
+            height: imageRef.current.naturalHeight || 1,
+        };
+    }, [viewMode, resolvedInputImage, livePreview, generationWidth, generationHeight, imageRef]);
+
+    const calculateFitToScreenScale = useCallback(() => {
+        if (!canvasRef.current || !imageRef.current) return 1;
+
+        const container = canvasRef.current.getBoundingClientRect();
+        const { width: imageWidth, height: imageHeight } = getDisplayDimensions();
+
+        // Ensure we have valid image dimensions (minimum 1px to prevent division by zero)
+        if (imageWidth <= 0 || imageHeight <= 0) return 1;
+
+        // Get available space (accounting for fit-to-screen padding)
+        const availableWidth = Math.max(container.width - 16, 1);
+        const availableHeight = Math.max(container.height - 16, 1);
+
+        // Calculate scale to fit the longest side
+        const scaleX = availableWidth / imageWidth;
+        const scaleY = availableHeight / imageHeight;
+        const scale = Math.min(scaleX, scaleY);
+
+        // Add bounds checking to prevent extreme zoom values
+        return Math.max(0.01, Math.min(scale, 5.0));
+    }, [canvasRef, imageRef, getDisplayDimensions]);
+
+    const calculateCenterOffset = useCallback(() => {
+        return { x: -8, y: 0 };
+    }, []);
+
+    // Zoom functions (previously in useCanvasState)
+    const handleZoomIn = useCallback(() => {
+        const zoomFactor = 1.2;
+        setZoom((prev) => {
+            const newZoom = Math.min(prev * zoomFactor, 5.0);
+            setFitToScreen(false);
+
+            setPanOffset((prevPan) => {
+                const centerX = 0;
+                const centerY = 0;
+                const imageX = (centerX - prevPan.x) / prev;
+                const imageY = (centerY - prevPan.y) / prev;
+                const newPanX = centerX - imageX * newZoom;
+                const newPanY = centerY - imageY * newZoom;
+                return { x: newPanX, y: newPanY };
+            });
+
+            return newZoom;
+        });
+    }, [setFitToScreen, setPanOffset, setZoom]);
+
+    const handleZoomOut = useCallback(() => {
+        const zoomFactor = 1.2;
+        setZoom((prev) => {
+            const newZoom = Math.max(prev / zoomFactor, 0.01);
+            setFitToScreen(false);
+
+            setPanOffset((prevPan) => {
+                const centerX = 0;
+                const centerY = 0;
+                const imageX = (centerX - prevPan.x) / prev;
+                const imageY = (centerY - prevPan.y) / prev;
+                const newPanX = centerX - imageX * newZoom;
+                const newPanY = centerY - imageY * newZoom;
+                return { x: newPanX, y: newPanY };
+            });
+
+            return newZoom;
+        });
+    }, [setFitToScreen, setPanOffset, setZoom]);
+
+    const handleResetZoom = useCallback(() => {
+        setZoom(1);
+        setPanOffset(calculateCenterOffset());
+        setFitToScreen(true);
+    }, [calculateCenterOffset]);
+
+    const handleFitToScreen = useCallback(() => {
+        if (!canvasRef.current || !imageRef.current) return;
+
+        const scale = calculateFitToScreenScale();
+        setZoom(scale);
+        setPanOffset(calculateCenterOffset());
+        setFitToScreen(true);
+    }, [canvasRef, imageRef, calculateFitToScreenScale, calculateCenterOffset]);
+
+    // Custom mask setter (previously in useCanvasState)
+    const setMaskVisibility = useCallback((newVisibility: boolean) => {
+        setShowMask(newVisibility);
+    }, [setShowMask]);
 
     const drawing = useDrawing({
         workspaceId,
@@ -109,12 +257,12 @@ const InpaintCanvas = ({
         inpaintFullResPadding,
         imageRef,
         maskCanvasRef,
-        brushSize: canvasState.brushSize,
-        drawingMode: canvasState.drawingMode,
-        brushHardness: canvasState.brushHardness,
-        fillTarget: canvasState.fillTarget,
-        fillTolerance: canvasState.fillTolerance,
-        fillOverfill: canvasState.fillOverfill,
+        brushSize,
+        drawingMode,
+        brushHardness,
+        fillTarget,
+        fillTolerance,
+        fillOverfill,
         generationWidth: generationWidth ?? null,
         generationHeight: generationHeight ?? null,
     });
@@ -125,24 +273,24 @@ const InpaintCanvas = ({
 
     // Initialize keyboard shortcuts
     useKeyboardShortcuts({
-        brushSize: canvasState.brushSize,
-        setBrushSize: canvasState.setBrushSize,
-        brushHardness: canvasState.brushHardness,
-        setBrushHardness: canvasState.setBrushHardness,
-        setDrawingMode: canvasState.setDrawingMode,
+        brushSize,
+        setBrushSize,
+        brushHardness,
+        setBrushHardness,
+        setDrawingMode,
         clearMask: drawing.clearMask,
         undoMask: drawing.undoMask,
         redoMask: drawing.redoMask,
-        showMask: canvasState.showMask,
-        setMaskVisibility: canvasState.setMaskVisibility,
-        showBorder: canvasState.showBorder,
-        setShowBorder: canvasState.setShowBorder,
-        handleFitToScreen: canvasState.handleFitToScreen,
+        showMask,
+        setMaskVisibility,
+        showBorder,
+        setShowBorder,
+        handleFitToScreen,
     });
 
     // Mouse event handlers
     const handleDocumentMouseUp = useCallback((e: MouseEvent): void => {
-        if (canvasState.isRightClickPanning && e.button === 2) {
+        if (isRightClickPanning && e.button === 2) {
             console.debug("[VITEUI PANNING] document mouseup", {
                 button: e.button,
                 pointerLocked: Boolean(document.pointerLockElement),
@@ -150,15 +298,15 @@ const InpaintCanvas = ({
             if (document.pointerLockElement) {
                 document.exitPointerLock();
             }
-            canvasState.setIsRightClickPanning(false);
+            setIsRightClickPanning(false);
             return;
         }
 
-        if (canvasState.isDrawing) {
-            canvasState.setIsDrawing(false);
-            canvasState.setLastDrawPos(null); // Clear last position when done drawing
-            canvasState.setMouseButtonDown(false);
-            canvasState.setDrawingStartedOnCanvas(false);
+        if (isDrawing) {
+            setIsDrawing(false);
+            setLastDrawPos(null); // Clear last position when done drawing
+            setMouseButtonDown(false);
+            setDrawingStartedOnCanvas(false);
             // Export mask as base64
             const maskDataURL = drawing.getMaskDataUrl();
             if (maskDataURL) {
@@ -166,11 +314,11 @@ const InpaintCanvas = ({
             }
             drawing.saveMaskState();
         }
-    }, [canvasState, drawing, setInpaintMask]);
+    }, [isRightClickPanning, setIsRightClickPanning, isDrawing, setIsDrawing, setLastDrawPos, setMouseButtonDown, setDrawingStartedOnCanvas, drawing, setInpaintMask]);
 
     const handleDocumentMouseDown = useCallback((e: MouseEvent): void => {
-        canvasState.setMouseButtonDown(e.button === 0); // Left mouse button
-    }, [canvasState]);
+        setMouseButtonDown(e.button === 0); // Left mouse button
+    }, []);
 
     // Register document-level event listeners
     useEffect(() => {
@@ -200,25 +348,28 @@ const InpaintCanvas = ({
             const zoomFactor = 1.1;
             const delta = e.deltaY > 0 ? 1 / zoomFactor : zoomFactor;
 
-            // Get mouse position relative to the canvas container
+            // Get mouse position relative to the canvas center
+            // For zoom-to-cursor to work properly, we need coordinates relative to the transform origin
             const rect = canvasElement.getBoundingClientRect();
-            const mouseX = e.clientX - rect.left - rect.width / 2;
-            const mouseY = e.clientY - rect.top - rect.height / 2;
+            const centerX = rect.width / 2;
+            const centerY = rect.height / 2;
+            const mouseX = e.clientX - rect.left - centerX;
+            const mouseY = e.clientY - rect.top - centerY;
 
-            canvasState.setZoom((prev: number) => {
+            setZoom((prev: number) => {
                 const newZoom = Math.max(0.01, Math.min(5.0, prev * delta));
-                canvasState.setFitToScreen(false);
+                setFitToScreen(false);
 
                 // Calculate the position in the untransformed coordinate system
                 // First, undo the current pan offset, then scale by current zoom
-                const imageX = (mouseX - canvasState.panOffset.x) / prev;
-                const imageY = (mouseY - canvasState.panOffset.y) / prev;
+                const imageX = (mouseX - panOffset.x) / prev;
+                const imageY = (mouseY - panOffset.y) / prev;
 
                 // Now calculate new pan offset so the same image point stays under cursor
                 const newPanX = mouseX - imageX * newZoom;
                 const newPanY = mouseY - imageY * newZoom;
 
-                canvasState.setPanOffset({
+                setPanOffset({
                     x: newPanX,
                     y: newPanY,
                 });
@@ -229,7 +380,7 @@ const InpaintCanvas = ({
 
         panElement.addEventListener("wheel", handleWheelEvent);
         return () => panElement.removeEventListener("wheel", handleWheelEvent);
-    }, [canvasState, displayImage, inputImage, livePreview]);
+    }, [panOffset, displayImage, inputImage, livePreview]);
 
 
     // File handling functions (delegate to hook)
@@ -243,11 +394,32 @@ const InpaintCanvas = ({
     // All canvas pointer event handlers
     const pointerEventHandlers = useCanvasPointerEvents({
         panTargetRef,
-        canvasState,
+        canvasState: {
+            panOffset,
+            rightClickStartPos,
+            setPanOffset,
+            setPanType,
+            setIsRightClickPanning,
+            setIsPanning,
+            isRightClickPanning,
+            isPanning,
+            rightClickStartPan,
+            setRightClickStartPos,
+            setRightClickStartPan,
+            lastDrawPosRef,
+            setLastDrawPos,
+            isDrawing,
+            setIsDrawing,
+            mouseButtonDown,
+            setMouseButtonDown,
+            drawingStartedOnCanvas,
+            setDrawingStartedOnCanvas,
+            panType,
+        },
         drawing,
         inputImage,
         generationMode,
-        drawingMode: canvasState.drawingMode,
+        drawingMode,
     });
 
 
@@ -269,20 +441,20 @@ const InpaintCanvas = ({
                 generationHeight={generationHeight}
                 loading={loading}
                 progress={progress}
-                isPanning={canvasState.isPanning}
-                isRightClickPanning={canvasState.isRightClickPanning}
-                handleZoomOut={canvasState.handleZoomOut}
-                handleZoomIn={canvasState.handleZoomIn}
-                handleResetZoom={canvasState.handleResetZoom}
-                handleFitToScreen={canvasState.handleFitToScreen}
+                isPanning={isPanning}
+                isRightClickPanning={isRightClickPanning}
+                handleZoomOut={handleZoomOut}
+                handleZoomIn={handleZoomIn}
+                handleResetZoom={handleResetZoom}
+                handleFitToScreen={handleFitToScreen}
                 setUiVisible={setUiVisible}
                 inpaintFullRes={inpaintFullRes}
                 inpaintFullResPadding={inpaintFullResPadding}
                 setInpaintFullResPadding={setInpaintFullResPadding}
                 canvasRefreshKey={canvasRefreshKey}
-                viewMode={canvasState.viewMode}
-                isDrawing={canvasState.isDrawing}
-                setLastDrawPos={canvasState.setLastDrawPos}
+                viewMode={viewMode}
+                isDrawing={isDrawing}
+                setLastDrawPos={setLastDrawPos}
                 isDragOver={isDragOver}
                 handleDragOver={handleDragOver}
                 handleDragLeave={handleDragLeave}
@@ -311,7 +483,7 @@ const InpaintCanvas = ({
                 maskBounds={drawing.maskBounds}
             />
             {/* Left Toolbar - Mode-specific Controls */}
-            {((generationMode === "inpaint" && (displayImage || inputImage)) || generationMode === "img2img") && !canvasState.isDrawing && (
+            {((generationMode === "inpaint" && (displayImage || inputImage)) || generationMode === "img2img") && !isDrawing && (
                 <div className={`absolute top-1 left-1 z-10 transition-opacity duration-200 ${uiVisible ? 'opacity-100' : 'opacity-0'}`}>
                     {generationMode === "inpaint" ? (
                         <InpaintToolbar
