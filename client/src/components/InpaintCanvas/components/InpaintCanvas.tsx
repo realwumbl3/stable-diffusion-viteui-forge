@@ -13,6 +13,7 @@ import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
 import CanvasArea from "./CanvasArea";
 import StatusBar from "./StatusBar";
 import { useCanvasPointerEvents } from "../hooks/useCanvasPointerEvents.tsx";
+import { useCanvasSyncSelector } from "../../../contexts/CanvasSyncContext";
 import type { InpaintCanvasProps } from "../../../types/components";
 
 const InpaintCanvas = ({
@@ -28,10 +29,9 @@ const InpaintCanvas = ({
     onComposerNodesChange,
     promptMode,
     onPromptModeChange,
+    workspaceId,
     // Inpainting specific props
     setInpaintMask,
-    brushSize: initialBrushSize = 16,
-    drawingMode: initialDrawingMode = "brush",
     // Image upload props
     inputImage,
     onImageUpload,
@@ -72,19 +72,12 @@ const InpaintCanvas = ({
     const imageRef = useRef<HTMLImageElement>(null);
     const panTargetRef = useRef<HTMLDivElement>(null);
 
-    // State for brush settings
-    const [brushSize, setBrushSize] = useState<number>(initialBrushSize);
-    const [drawingMode, setDrawingMode] = useState<string>(initialDrawingMode);
-    const [brushHardness, setBrushHardness] = useState<number>(1.0); // 1.0 = 100% opacity/hardness
-    const [fillTarget, setFillTarget] = useState<string>("image");
-    const [fillTolerance, setFillTolerance] = useState<number>(32);
-    const [fillOverfill, setFillOverfill] = useState<number>(0);
-
     // UI visibility state
     const [uiVisible, setUiVisible] = useState<boolean>(true);
 
     // Initialize hooks
     const canvasState = useCanvasState({
+        workspaceId,
         displayImage: resolvedDisplayImage,
         inputImage: resolvedInputImage,
         livePreview: Boolean(livePreview),
@@ -97,19 +90,31 @@ const InpaintCanvas = ({
         panTargetRef,
     });
 
+    const footerCollapsedFromCanvas = useCanvasSyncSelector((state) => state.footerCollapsed);
+    const setCanvasFooterCollapsed = useCanvasSyncSelector((state) => state.setFooterCollapsed);
+    const effectiveFooterCollapsed = footerCollapsed ?? footerCollapsedFromCanvas;
+    const handleToggleFooter = useCallback(() => {
+        if (onToggleFooter) {
+            onToggleFooter();
+            return;
+        }
+        setCanvasFooterCollapsed((prev) => !prev);
+    }, [onToggleFooter, setCanvasFooterCollapsed]);
+
     const drawing = useDrawing({
+        workspaceId,
         inputImage: resolvedInputImage,
         setInpaintMask,
         inpaintFullRes,
         inpaintFullResPadding,
         imageRef,
         maskCanvasRef,
-        brushSize,
-        drawingMode,
-        brushHardness,
-        fillTarget,
-        fillTolerance,
-        fillOverfill,
+        brushSize: canvasState.brushSize,
+        drawingMode: canvasState.drawingMode,
+        brushHardness: canvasState.brushHardness,
+        fillTarget: canvasState.fillTarget,
+        fillTolerance: canvasState.fillTolerance,
+        fillOverfill: canvasState.fillOverfill,
         generationWidth: generationWidth ?? null,
         generationHeight: generationHeight ?? null,
     });
@@ -120,11 +125,11 @@ const InpaintCanvas = ({
 
     // Initialize keyboard shortcuts
     useKeyboardShortcuts({
-        brushSize,
-        setBrushSize,
-        brushHardness,
-        setBrushHardness,
-        setDrawingMode,
+        brushSize: canvasState.brushSize,
+        setBrushSize: canvasState.setBrushSize,
+        brushHardness: canvasState.brushHardness,
+        setBrushHardness: canvasState.setBrushHardness,
+        setDrawingMode: canvasState.setDrawingMode,
         clearMask: drawing.clearMask,
         undoMask: drawing.undoMask,
         redoMask: drawing.redoMask,
@@ -242,7 +247,7 @@ const InpaintCanvas = ({
         drawing,
         inputImage,
         generationMode,
-        drawingMode,
+        drawingMode: canvasState.drawingMode,
     });
 
 
@@ -264,19 +269,8 @@ const InpaintCanvas = ({
                 generationHeight={generationHeight}
                 loading={loading}
                 progress={progress}
-                zoom={canvasState.zoom}
-                panOffset={canvasState.panOffset}
-                fitToScreen={canvasState.fitToScreen}
                 isPanning={canvasState.isPanning}
                 isRightClickPanning={canvasState.isRightClickPanning}
-                showGrid={canvasState.showGrid}
-                setShowGrid={canvasState.setShowGrid}
-                showMask={canvasState.showMask}
-                setShowMask={canvasState.setMaskVisibility}
-                showBorder={canvasState.showBorder}
-                setShowBorder={canvasState.setShowBorder}
-                maskBorderMode={canvasState.maskBorderMode}
-                setMaskBorderMode={canvasState.setMaskBorderMode}
                 handleZoomOut={canvasState.handleZoomOut}
                 handleZoomIn={canvasState.handleZoomIn}
                 handleResetZoom={canvasState.handleResetZoom}
@@ -301,11 +295,6 @@ const InpaintCanvas = ({
                 handlePointerMove={pointerEventHandlers.handlePointerMove}
                 handlePointerUp={pointerEventHandlers.handlePointerUp}
                 handlePointerCancel={pointerEventHandlers.handlePointerCancel}
-                brushSize={brushSize}
-                setBrushSize={setBrushSize}
-                brushHardness={brushHardness}
-                setBrushHardness={setBrushHardness}
-                drawingMode={drawingMode}
                 openFileDialog={openFileDialog}
                 maskBlur={maskBlur}
                 setMaskBlur={setMaskBlur}
@@ -326,20 +315,6 @@ const InpaintCanvas = ({
                 <div className={`absolute top-1 left-1 z-10 transition-opacity duration-200 ${uiVisible ? 'opacity-100' : 'opacity-0'}`}>
                     {generationMode === "inpaint" ? (
                         <InpaintToolbar
-                        
-                            drawingMode={drawingMode}
-                            setDrawingMode={setDrawingMode}
-                            brushSize={brushSize}
-                            setBrushSize={setBrushSize}
-                            brushHardness={brushHardness}
-                            setBrushHardness={setBrushHardness}
-                            fillTarget={fillTarget}
-                            setFillTarget={setFillTarget}
-                            fillTolerance={fillTolerance}
-                            setFillTolerance={setFillTolerance}
-                            fillOverfill={fillOverfill}
-                            setFillOverfill={setFillOverfill}
-                            zoom={canvasState.zoom}
                             onClear={drawing.clearMask}
                             onUndo={drawing.undoMask}
                             onRedo={drawing.redoMask}
@@ -367,17 +342,14 @@ const InpaintCanvas = ({
                 onNodesChange={onComposerNodesChange}
                 mode={promptMode}
                 onModeChange={onPromptModeChange}
-                collapsed={footerCollapsed ?? canvasState.footerCollapsed}
-                onToggle={() => onToggleFooter?.() ?? canvasState.setFooterCollapsed(!canvasState.footerCollapsed)}
+                collapsed={effectiveFooterCollapsed}
+                onToggle={handleToggleFooter}
             />
 
             {/* Status Bar */}
             <StatusBar
                 displayImage={displayImage || undefined}
                 inputImage={inputImage || undefined}
-                zoom={canvasState.zoom}
-                brushSize={brushSize}
-                drawingMode={drawingMode}
                 progress={progress || undefined}
                 loading={loading}
             />

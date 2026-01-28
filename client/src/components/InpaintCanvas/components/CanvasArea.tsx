@@ -5,6 +5,7 @@ import InpaintParametersPanel from "./InpaintParametersPanel";
 import ZoomToolbar from "./ZoomToolbar";
 import FullResBorderOverlay from "./FullResBorderOverlay";
 import type { CanvasAreaProps } from "../../../types/components";
+import { useCanvasSync } from "../../../contexts/CanvasSyncContext";
 
 const CanvasArea = ({
     canvasRef,
@@ -17,27 +18,14 @@ const CanvasArea = ({
     livePreview,
     loading,
     progress,
-    zoom,
-    panOffset,
-    fitToScreen,
     isPanning,
     isRightClickPanning,
-    showGrid,
-    setShowGrid,
-    showMask,
-    setShowMask,
-    showBorder,
-    setShowBorder,
-    maskBorderMode,
-    setMaskBorderMode,
     inpaintFullRes,
     inpaintFullResPadding,
     setInpaintFullResPadding,
     viewMode,
     isDrawing,
     setLastDrawPos,
-    brushSize,
-    setBrushSize,
     isDragOver,
     handleDragOver,
     handleDragLeave,
@@ -50,7 +38,6 @@ const CanvasArea = ({
     handlePointerMove,
     handlePointerUp,
     handlePointerCancel,
-    drawingMode,
     openFileDialog,
     onClearPreview,
     // Inpaint parameters
@@ -75,6 +62,21 @@ const CanvasArea = ({
     handleResetZoom,
     handleFitToScreen,
 }: CanvasAreaProps) => {
+    const {
+        zoom,
+        panOffset,
+        fitToScreen,
+        showGrid,
+        showMask,
+        setShowMask,
+        showBorder,
+        setShowBorder,
+        maskBorderMode,
+        setMaskBorderMode,
+        brushSize,
+        setBrushSize,
+        drawingMode,
+    } = useCanvasSync();
     // Always use input image for canvas layout in edit mode - livePreview is purely cosmetic
     const baseImageSrc = viewMode === "edit" ? inputImage || displayImage : displayImage || inputImage;
     const mainImageSrc = baseImageSrc && canvasRefreshKey > 0
@@ -392,19 +394,14 @@ const CanvasArea = ({
 
 
                     {/* Zoom Toolbar - Bottom Left */}
-                    {(displayImage || inputImage) && !isDrawing && setShowGrid && setUiVisible && (
+                    {(displayImage || inputImage) && !isDrawing && setUiVisible && (
                         <div className={`absolute bottom-1 left-1 z-20 transition-opacity duration-200 ${uiVisible ? 'opacity-100' : 'opacity-0'}`}>
                             <ZoomToolbar
-                                zoom={zoom}
-                                showGrid={showGrid}
-                                setShowGrid={setShowGrid}
-                                fitToScreen={fitToScreen}
                                 handleZoomOut={handleZoomOut}
                                 handleZoomIn={handleZoomIn}
                                 handleResetZoom={handleResetZoom}
                                 handleFitToScreen={handleFitToScreen}
                                 openFileDialog={openFileDialog}
-                                uiVisible={uiVisible}
                                 setUiVisible={setUiVisible}
                             />
                         </div>

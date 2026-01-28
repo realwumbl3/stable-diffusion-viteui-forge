@@ -1,26 +1,21 @@
 import { Brush, Eraser, PaintBucket, RotateCcw, Undo, Redo } from "lucide-react";
 import { cn } from "../../../lib/utils";
 import KeyIndicator from "../../KeyIndicator";
+import { useCanvasSyncSelector } from "../../../contexts/CanvasSyncContext";
 import type { InpaintToolbarProps } from "../../../types/components";
 import type { WheelEvent } from "react";
 
 const clampRange = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
-const InpaintToolbar = ({
-    drawingMode,
-    setDrawingMode,
-    fillTarget,
-    setFillTarget,
-    fillTolerance,
-    setFillTolerance,
-    fillOverfill,
-    setFillOverfill,
-    onUndo,
-    onRedo,
-    onClear,
-    canUndo = false,
-    canRedo = false,
-}: InpaintToolbarProps) => {
+const InpaintToolbar = ({ onUndo, onRedo, onClear, canUndo = false, canRedo = false }: InpaintToolbarProps) => {
+    const drawingMode = useCanvasSyncSelector((state) => state.drawingMode);
+    const setDrawingMode = useCanvasSyncSelector((state) => state.setDrawingMode);
+    const fillTarget = useCanvasSyncSelector((state) => state.fillTarget);
+    const setFillTarget = useCanvasSyncSelector((state) => state.setFillTarget);
+    const fillTolerance = useCanvasSyncSelector((state) => state.fillTolerance);
+    const setFillTolerance = useCanvasSyncSelector((state) => state.setFillTolerance);
+    const fillOverfill = useCanvasSyncSelector((state) => state.fillOverfill);
+    const setFillOverfill = useCanvasSyncSelector((state) => state.setFillOverfill);
 
     const handleWheelChange = (
         event: WheelEvent<HTMLInputElement>,
@@ -88,22 +83,22 @@ const InpaintToolbar = ({
                         <span className="text-center leading-tight">Fill</span>
                         {drawingMode === "fill" && (
                             <>
-                                {(["canvas", "image", "both"] as const).map((mode) => (
-                                    <button
-                                        key={mode}
-                                        onClick={() => setFillTarget(mode)}
-                                        className={cn(
-                                            "flex items-center justify-center gap-1 px-1 rounded-md text-xs font-medium transition-all duration-200",
-                                            fillTarget === mode
-                                                ? "bg-studio-accent text-studio-bg shadow-sm"
-                                                : "text-studio-textSecondary hover:text-studio-text hover:bg-studio-surface"
-                                        )}
-                                        title={`Fill target: ${mode}`}
-                                        type="button"
-                                    >
-                                        {mode}
-                                    </button>
-                                ))}
+                            {(["canvas", "image", "both"] as const).map((mode) => (
+                                <button
+                                    key={mode}
+                                    onClick={() => setFillTarget(mode)}
+                                    className={cn(
+                                        "flex items-center justify-center gap-1 px-1 rounded-md text-xs font-medium transition-all duration-200",
+                                        fillTarget === mode
+                                            ? "bg-studio-accent text-studio-bg shadow-sm"
+                                            : "text-studio-textSecondary hover:text-studio-text hover:bg-studio-surface"
+                                    )}
+                                    title={`Fill target: ${mode}`}
+                                    type="button"
+                                >
+                                    {mode}
+                                </button>
+                            ))}
                                 <div className="flex flex-col gap-1">
                                     <input
                                         type="range"

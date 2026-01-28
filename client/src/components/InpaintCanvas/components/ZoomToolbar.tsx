@@ -1,12 +1,9 @@
 import { ZoomIn, ZoomOut, Maximize, Grid3X3, Upload, Eye } from "lucide-react";
 import KeyIndicator from "../../KeyIndicator";
+import { useCanvasSyncSelector } from "../../../contexts/CanvasSyncContext";
 import type { ZoomToolbarProps } from "../../../types/components";
 
 const ZoomToolbar = ({
-    zoom,
-    showGrid,
-    setShowGrid,
-    fitToScreen,
     handleZoomOut,
     handleZoomIn,
     handleResetZoom,
@@ -14,6 +11,10 @@ const ZoomToolbar = ({
     openFileDialog,
     setUiVisible,
 }: ZoomToolbarProps) => {
+    const zoom = useCanvasSyncSelector((state) => state.zoom);
+    const showGrid = useCanvasSyncSelector((state) => state.showGrid);
+    const setShowGrid = useCanvasSyncSelector((state) => state.setShowGrid);
+    const fitToScreen = useCanvasSyncSelector((state) => state.fitToScreen);
     return (
         <div className="p-2 rounded-2xl border border-studio-border bg-studio-bg/30 p-1 shadow-2xl backdrop-blur">
             <div className="flex gap-1">

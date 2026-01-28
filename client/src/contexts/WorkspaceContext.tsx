@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { Dispatch, ReactNode, SetStateAction } from "react";
 import { useWorkspaceTabs } from "../hooks/useWorkspaceTabs";
 import type { GenerationMode } from "../types/components";
@@ -48,6 +48,28 @@ export interface WorkspaceCanvasState {
     currentImage: string | null;
     canvasRefreshKey: number;
     footerCollapsed: boolean;
+    zoom: number;
+    panOffset: { x: number; y: number };
+    showGrid: boolean;
+    fitToScreen: boolean;
+    showBorder: boolean;
+    maskBorderMode: boolean;
+    showMask: boolean;
+    brushSize: number;
+    drawingMode: string;
+    brushHardness: number;
+    fillTarget: string;
+    fillTolerance: number;
+    fillOverfill: number;
+}
+
+export interface WorkspaceTransientState {
+    canvasElement: HTMLCanvasElement | null;
+    canvasContext: CanvasRenderingContext2D | null;
+    maskHistory: ImageData[];
+    historyIndex: number;
+    width: number;
+    height: number;
 }
 
 export interface WorkspaceState {
@@ -74,6 +96,9 @@ interface WorkspaceContextValue {
     setSamplers: Dispatch<SetStateAction<SamplerInfo[]>>;
     workspaceBrowserOpen: boolean;
     setWorkspaceBrowserOpen: Dispatch<SetStateAction<boolean>>;
+    ensureWorkspaceTransientState: (workspaceId: string) => WorkspaceTransientState | null;
+    getWorkspaceTransientState: (workspaceId: string) => WorkspaceTransientState | null;
+    removeWorkspaceTransientState: (workspaceId: string) => void;
 }
 
 const createDefaultWorkspaceState = (): WorkspaceState => ({
@@ -114,6 +139,19 @@ const createDefaultWorkspaceState = (): WorkspaceState => ({
         currentImage: null,
         canvasRefreshKey: 0,
         footerCollapsed: false,
+        zoom: 1,
+        panOffset: { x: 0, y: 0 },
+        showGrid: false,
+        fitToScreen: true,
+        showBorder: true,
+        maskBorderMode: false,
+        showMask: true,
+        brushSize: 16,
+        drawingMode: "brush",
+        brushHardness: 1,
+        fillTarget: "image",
+        fillTolerance: 32,
+        fillOverfill: 0,
     },
 });
 
@@ -176,6 +214,43 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
     const [samplers, setSamplers] = useState<SamplerInfo[]>([]);
     const [workspaceBrowserOpen, setWorkspaceBrowserOpen] = useState(false);
 
+    const transientStateRef = useRef(new Map<string, WorkspaceTransientState>());
+
+    const ensureWorkspaceTransientState = useCallback((workspaceId: string) => {
+        if (transientStateRef.current.has(workspaceId)) {
+            return transientStateRef.current.get(workspaceId) ?? null;
+        }
+
+        let canvasElement: HTMLCanvasElement | null = null;
+        let canvasContext: CanvasRenderingContext2D | null = null;
+        if (typeof document !== "undefined") {
+            canvasElement = document.createElement("canvas");
+            canvasContext = canvasElement.getContext("2d");
+            canvasElement.width = 1;
+            canvasElement.height = 1;
+        }
+
+        const next: WorkspaceTransientState = {
+            canvasElement,
+            canvasContext,
+            maskHistory: [],
+            historyIndex: -1,
+            width: canvasElement?.width ?? 0,
+            height: canvasElement?.height ?? 0,
+        };
+
+        transientStateRef.current.set(workspaceId, next);
+        return next;
+    }, []);
+
+    const getWorkspaceTransientState = useCallback((workspaceId: string) => {
+        return transientStateRef.current.get(workspaceId) ?? null;
+    }, []);
+
+    const removeWorkspaceTransientState = useCallback((workspaceId: string) => {
+        transientStateRef.current.delete(workspaceId);
+    }, []);
+
     const ensureWorkspaceState = useCallback((workspaceId: string) => {
         setWorkspaceStates((prev) => {
             if (prev[workspaceId]) return prev;
@@ -184,7 +259,8 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
                 [workspaceId]: createDefaultWorkspaceState(),
             };
         });
-    }, []);
+        ensureWorkspaceTransientState(workspaceId);
+    }, [ensureWorkspaceTransientState]);
 
     const updateWorkspaceState = useCallback((workspaceId: string, updater: (prev: WorkspaceState) => WorkspaceState) => {
         setWorkspaceStates((prev) => {
@@ -201,7 +277,8 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
             delete next[workspaceId];
             return next;
         });
-    }, []);
+        removeWorkspaceTransientState(workspaceId);
+    }, [removeWorkspaceTransientState]);
 
     useEffect(() => {
         if (openWorkspaces.length === 0) return;
@@ -214,6 +291,19 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
             }
             return next;
         });
+    }, [openWorkspaces]);
+
+    useEffect(() => {
+        if (openWorkspaces.length === 0) {
+            transientStateRef.current.clear();
+            return;
+        }
+
+        for (const workspaceId of transientStateRef.current.keys()) {
+            if (!openWorkspaces.includes(workspaceId)) {
+                transientStateRef.current.delete(workspaceId);
+            }
+        }
     }, [openWorkspaces]);
 
     useEffect(() => {
@@ -246,6 +336,9 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
         setSamplers,
         workspaceBrowserOpen,
         setWorkspaceBrowserOpen,
+        ensureWorkspaceTransientState,
+        getWorkspaceTransientState,
+        removeWorkspaceTransientState,
     }), [
         openWorkspaces,
         currentWorkspace,
@@ -260,6 +353,9 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
         models,
         samplers,
         workspaceBrowserOpen,
+        ensureWorkspaceTransientState,
+        getWorkspaceTransientState,
+        removeWorkspaceTransientState,
     ]);
 
     return (

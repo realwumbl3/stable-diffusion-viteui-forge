@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
-import { logger } from "../../../lib/logger";
+import { useWorkspaceContext } from "../../../contexts/WorkspaceContext";
+import type { WorkspaceTransientState } from "../../../contexts/WorkspaceContext";
 
 interface Bounds {
     x: number;
@@ -24,6 +25,7 @@ interface UseDrawingParams {
     fillOverfill: number;
     generationWidth: number | null;
     generationHeight: number | null;
+    workspaceId: string | null;
 }
 
 export function useDrawing({
@@ -41,7 +43,10 @@ export function useDrawing({
     fillOverfill,
     generationWidth,
     generationHeight,
+    workspaceId,
 }: UseDrawingParams) {
+    const { ensureWorkspaceTransientState } = useWorkspaceContext();
+    const transientEntryRef = useRef<WorkspaceTransientState | null>(null);
     // Undo/Redo system
     const [maskHistory, setMaskHistory] = useState<ImageData[]>([]);
     const [historyIndex, setHistoryIndex] = useState(-1);
@@ -49,15 +54,35 @@ export function useDrawing({
     // Track previous image dimensions to properly scale mask on image changes
     const previousImageDimensions = useRef<{width: number, height: number} | null>(null);
 
+    useEffect(() => {
+        if (!workspaceId) {
+            transientEntryRef.current = null;
+            setMaskHistory([]);
+            setHistoryIndex(-1);
+            return;
+        }
+        const entry = ensureWorkspaceTransientState(workspaceId);
+        transientEntryRef.current = entry;
+        if (entry?.maskHistory.length && entry.historyIndex >= 0) {
+            setMaskHistory(entry.maskHistory);
+            setHistoryIndex(entry.historyIndex);
+        }
+    }, [workspaceId, ensureWorkspaceTransientState]);
+
+    const updateTransientHistory = useCallback((historyData: ImageData[], index: number) => {
+        const entry = transientEntryRef.current;
+        if (entry) {
+            entry.maskHistory = historyData;
+            entry.historyIndex = index;
+        }
+    }, []);
+
 
     const getMaskDataUrl = useCallback(() => {
         if (!maskCanvasRef.current) return null;
 
         const sourceCanvas = maskCanvasRef.current;
         if (sourceCanvas.width === 0 || sourceCanvas.height === 0) return null;
-
-        logger.time('canvas', 'getMaskDataUrl');
-        logger.memory('canvas', 'Creating export canvas', sourceCanvas.width * sourceCanvas.height * 4);
 
         const exportCanvas = document.createElement("canvas");
         exportCanvas.width = sourceCanvas.width;
@@ -79,11 +104,6 @@ export function useDrawing({
         exportCtx.filter = "none";
 
         const dataUrl = exportCanvas.toDataURL("image/png");
-        logger.timeEnd('canvas', 'getMaskDataUrl');
-
-        // Log data URL size (approximate)
-        const dataUrlSize = dataUrl.length * 2; // Rough estimate: 2 bytes per character
-        logger.memory('canvas', 'Generated mask data URL', dataUrlSize);
 
         return dataUrl;
     }, [maskCanvasRef]);
@@ -98,9 +118,6 @@ export function useDrawing({
             const naturalWidth = img.naturalWidth;
             const naturalHeight = img.naturalHeight;
 
-            logger.time('canvas', 'initializeCanvases');
-            logger.memory('canvas', 'Image dimensions', naturalWidth * naturalHeight * 4);
-
             // Ensure we have valid dimensions
             if (naturalWidth > 0 && naturalHeight > 0) {
                 // Store current dimensions before resizing (if this is not the first image)
@@ -109,7 +126,6 @@ export function useDrawing({
 
                 if (maskCanvasRef.current && maskCanvasRef.current.width > 0 && maskCanvasRef.current.height > 0) {
                     // Capture the current mask before resizing
-                    logger.info('canvas', 'Preserving existing mask for scaling');
                     previousMaskCanvas = document.createElement("canvas");
                     previousMaskCanvas.width = maskCanvasRef.current.width;
                     previousMaskCanvas.height = maskCanvasRef.current.height;
@@ -117,7 +133,6 @@ export function useDrawing({
                     if (prevCtx) {
                         prevCtx.drawImage(maskCanvasRef.current, 0, 0);
                     }
-                    logger.memory('canvas', 'Previous mask canvas', previousMaskCanvas.width * previousMaskCanvas.height * 4);
                 }
 
                 // Set canvas dimensions to match natural image dimensions
@@ -140,14 +155,12 @@ export function useDrawing({
                         const offsetX = (naturalWidth - scaledWidth) / 2;
                         const offsetY = (naturalHeight - scaledHeight) / 2;
 
-                        logger.info('canvas', `Scaling mask: ${currentDimensions.width}x${currentDimensions.height} -> ${scaledWidth.toFixed(1)}x${scaledHeight.toFixed(1)} (scale: ${scale.toFixed(3)})`);
-
                         ctx.drawImage(previousMaskCanvas, offsetX, offsetY, scaledWidth, scaledHeight);
 
                         const imageData = ctx.getImageData(0, 0, naturalWidth, naturalHeight);
-                        logger.memory('canvas', 'Scaled mask ImageData for history', imageData.data.length);
                         setMaskHistory([imageData]);
                         setHistoryIndex(0);
+                        updateTransientHistory([imageData], 0);
 
                         // Update the parent's inpaint mask state with the scaled mask
                         const scaledMaskDataUrl = getMaskDataUrl();
@@ -156,11 +169,10 @@ export function useDrawing({
                         }
                     } else if (ctx) {
                         // Initialize history with empty state (first-time setup or no previous mask)
-                        logger.info('canvas', 'Initializing empty mask history');
                         const emptyImageData = ctx.getImageData(0, 0, naturalWidth, naturalHeight);
-                        logger.memory('canvas', 'Empty mask ImageData for history', emptyImageData.data.length);
                         setMaskHistory([emptyImageData]);
                         setHistoryIndex(0);
+                        updateTransientHistory([emptyImageData], 0);
                     }
 
                     // Update previous dimensions for next change
@@ -170,8 +182,6 @@ export function useDrawing({
                 }
             }
 
-            logger.timeEnd('canvas', 'initializeCanvases');
-            logger.getMemoryUsage();
         };
 
         if (img.complete && img.naturalWidth > 0 && img.naturalHeight > 0) {
@@ -241,9 +251,6 @@ export function useDrawing({
         const ctx = canvas.getContext("2d");
         if (!ctx) return null;
 
-        logger.time('bounds', 'getMaskBounds');
-        logger.memory('bounds', 'Original canvas size', canvas.width * canvas.height * 4);
-
         // Optimize bounds calculation by using a smaller temporary canvas
         // This prevents "Out of memory" errors and improves performance on large images.
         const maxDim = 512;
@@ -255,21 +262,15 @@ export function useDrawing({
         const scaledWidth = Math.ceil(canvas.width * scale);
         const scaledHeight = Math.ceil(canvas.height * scale);
 
-        logger.info('bounds', `Scaling ${canvas.width}x${canvas.height} to ${scaledWidth}x${scaledHeight} (scale: ${scale.toFixed(3)})`);
-
         const offscreen = document.createElement("canvas");
         offscreen.width = scaledWidth;
         offscreen.height = scaledHeight;
         const offCtx = offscreen.getContext("2d");
         if (!offCtx) return null;
 
-        logger.memory('bounds', 'Offscreen canvas created', scaledWidth * scaledHeight * 4);
-
         offCtx.drawImage(canvas, 0, 0, scaledWidth, scaledHeight);
         const imageData = offCtx.getImageData(0, 0, scaledWidth, scaledHeight);
         const { data, width, height } = imageData;
-
-        logger.memory('bounds', 'ImageData created', data.length);
 
         let minX = width;
         let maxX = 0;
@@ -295,10 +296,7 @@ export function useDrawing({
             }
         }
 
-        logger.info('bounds', `Found ${pixelCount} masked pixels out of ${width * height} total`);
-
         if (!hasMask) {
-            logger.timeEnd('bounds', 'getMaskBounds');
             return null;
         }
 
@@ -309,9 +307,6 @@ export function useDrawing({
             width: Math.ceil((maxX - minX + 1) / scale),
             height: Math.ceil((maxY - minY + 1) / scale),
         };
-
-        logger.timeEnd('bounds', 'getMaskBounds');
-        logger.info('bounds', `Bounds: ${result.width}x${result.height} at (${result.x}, ${result.y})`);
 
         return result;
     }, [maskCanvasRef]);
@@ -326,10 +321,7 @@ export function useDrawing({
         const ctx = canvas.getContext("2d");
         if (!ctx) return;
 
-        logger.time('history', 'saveMaskState');
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const imageDataSize = imageData.data.length;
-        logger.memory('history', 'Created ImageData for history', imageDataSize);
 
         setMaskHistory((prev) => {
             // Remove any history after current index (for when user drew after undoing)
@@ -338,21 +330,21 @@ export function useDrawing({
             // Add current state
             newHistory.push(imageData);
 
-            logger.info('history', `History length: ${newHistory.length}, total memory: ~${(newHistory.length * imageDataSize / (1024 * 1024)).toFixed(2)}MB`);
-
             // Limit history to 10 states to prevent memory issues (especially with large images)
             if (newHistory.length > 10) {
-                logger.warn('history', 'History limit reached, removing oldest state');
                 newHistory.shift();
-                setHistoryIndex(newHistory.length - 1);
+                const nextIndex = newHistory.length - 1;
+                setHistoryIndex(nextIndex);
+                updateTransientHistory(newHistory, nextIndex);
                 return newHistory;
             }
-            setHistoryIndex(newHistory.length - 1);
+            const nextIndex = newHistory.length - 1;
+            setHistoryIndex(nextIndex);
+            updateTransientHistory(newHistory, nextIndex);
             return newHistory;
         });
 
-        logger.timeEnd('history', 'saveMaskState');
-    }, [historyIndex, maskCanvasRef]);
+    }, [historyIndex, maskCanvasRef, updateTransientHistory]);
 
     const clearMask = useCallback(() => {
         if (maskCanvasRef.current) {
@@ -374,19 +366,13 @@ export function useDrawing({
         const startY = Math.floor(y);
         if (startX < 0 || startY < 0 || startX >= canvas.width || startY >= canvas.height) return;
 
-        logger.time('drawing', 'fillAtPoint');
-        logger.memory('drawing', 'Canvas size for flood fill', canvas.width * canvas.height * 4);
-
         const maskCtx = canvas.getContext("2d");
         if (!maskCtx) return;
         const maskImageData = maskCtx.getImageData(0, 0, canvas.width, canvas.height);
         const maskData = maskImageData.data;
 
-        logger.memory('drawing', 'Mask ImageData created', maskData.length);
-
         let sourceData: Uint8ClampedArray | null = null;
         if (fillTarget !== "canvas") {
-            logger.info('drawing', `Creating source canvas for ${fillTarget} flood fill`);
             const sourceCanvas = document.createElement("canvas");
             sourceCanvas.width = canvas.width;
             sourceCanvas.height = canvas.height;
@@ -396,7 +382,6 @@ export function useDrawing({
             sourceCtx.drawImage(imageRef.current, 0, 0, canvas.width, canvas.height);
             const sourceImageData = sourceCtx.getImageData(0, 0, canvas.width, canvas.height);
             sourceData = sourceImageData.data;
-            logger.memory('drawing', 'Source ImageData created', sourceData.length);
         }
 
         const startIndex = startY * canvas.width + startX;
@@ -423,9 +408,6 @@ export function useDrawing({
         const visited = new Uint8Array(totalPixels);
         const newlyFilled = new Uint8Array(totalPixels);
         const stack = [startIndex];
-
-        logger.memory('drawing', 'Flood fill arrays created', totalPixels * 2); // 2 Uint8Arrays
-        logger.info('drawing', `Starting flood fill at (${startX}, ${startY}) with tolerance ${colorTolerance}`);
 
         let iterations = 0;
         while (stack.length) {
@@ -512,13 +494,9 @@ export function useDrawing({
             }
         }
 
-        logger.info('drawing', `Flood fill completed: ${iterations} iterations, ${newlyFilled.filter(v => v).length} pixels filled`);
-
         // Apply overfill expansion to newly filled pixels only
         if (fillOverfill > 0) {
-            logger.info('drawing', `Applying overfill with radius ${fillOverfill}`);
             const overfillMask = new Uint8Array(canvas.width * canvas.height);
-            logger.memory('drawing', 'Overfill mask array created', overfillMask.length);
 
             for (let i = 0; i < newlyFilled.length; i++) {
                 if (newlyFilled[i]) {
@@ -551,7 +529,6 @@ export function useDrawing({
                 }
             }
 
-            logger.info('drawing', `Overfill added ${overfillPixels} additional pixels`);
         }
 
         maskCtx.putImageData(maskImageData, 0, 0);
@@ -560,7 +537,6 @@ export function useDrawing({
             setInpaintMask(maskDataURL);
         }
         saveMaskState();
-        logger.timeEnd('drawing', 'fillAtPoint');
     }, [fillTarget, fillTolerance, fillOverfill, getMaskDataUrl, imageRef, maskCanvasRef, saveMaskState, setInpaintMask]);
 
     const [focusBounds, setFocusBounds] = useState<Bounds | null>(null);
@@ -683,6 +659,7 @@ export function useDrawing({
         if (historyIndex > 0) {
             const newIndex = historyIndex - 1;
             setHistoryIndex(newIndex);
+            updateTransientHistory(maskHistory, newIndex);
 
             const canvas = maskCanvasRef.current;
             if (canvas && maskHistory[newIndex]) {
@@ -698,12 +675,13 @@ export function useDrawing({
                 applyBounds(newMaskBounds, newFocusBounds);
             }
         }
-    }, [historyIndex, maskHistory, getMaskDataUrl, setInpaintMask, calculateBounds, maskCanvasRef, applyBounds]);
+    }, [historyIndex, maskHistory, getMaskDataUrl, setInpaintMask, calculateBounds, maskCanvasRef, applyBounds, updateTransientHistory]);
 
     const redoMask = useCallback(() => {
         if (historyIndex < maskHistory.length - 1) {
             const newIndex = historyIndex + 1;
             setHistoryIndex(newIndex);
+            updateTransientHistory(maskHistory, newIndex);
 
             const canvas = maskCanvasRef.current;
             if (canvas && maskHistory[newIndex]) {
@@ -719,10 +697,23 @@ export function useDrawing({
                 applyBounds(newMaskBounds, newFocusBounds);
             }
         }
-    }, [historyIndex, maskHistory, getMaskDataUrl, setInpaintMask, calculateBounds, maskCanvasRef, applyBounds]);
+    }, [historyIndex, maskHistory, getMaskDataUrl, setInpaintMask, calculateBounds, maskCanvasRef, applyBounds, updateTransientHistory]);
 
     const canUndo = historyIndex > 0;
     const canRedo = historyIndex < maskHistory.length - 1;
+
+    useEffect(() => {
+        const canvas = maskCanvasRef.current;
+        const entry = transientEntryRef.current;
+        if (!canvas || !entry) return;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
+        if (entry.historyIndex >= 0 && entry.maskHistory[entry.historyIndex]) {
+            ctx.putImageData(entry.maskHistory[entry.historyIndex], 0, 0);
+            return;
+        }
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }, [maskHistory, historyIndex, maskCanvasRef]);
 
     return useMemo(() => ({
         // Functions

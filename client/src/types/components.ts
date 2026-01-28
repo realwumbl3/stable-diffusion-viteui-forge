@@ -224,6 +224,7 @@ export interface UpscaleDialogProps {
 
 // InpaintCanvas component props
 export interface InpaintCanvasProps {
+  workspaceId: string;
   currentImage?: string | null
   previewImage?: string | null
   onClearPreview?: () => void
@@ -235,8 +236,6 @@ export interface InpaintCanvasProps {
   composerNodes: PromptNode[]
   onComposerNodesChange: (nodes: PromptNode[]) => void
   setInpaintMask: React.Dispatch<React.SetStateAction<string | null>>
-  brushSize?: number
-  drawingMode?: string
   inputImage?: string | null
   onImageUpload?: (image: string) => void
   inpaintFullRes: boolean
@@ -278,29 +277,14 @@ export interface CanvasAreaProps {
   generationHeight?: number
   loading?: boolean
   progress?: Progress | null
-  zoom: number
-  panOffset: { x: number; y: number }
-  fitToScreen: boolean
   isPanning: boolean
   isRightClickPanning: boolean
-  showGrid: boolean
-  setShowGrid: (show: boolean) => void
-  showMask: boolean
-  setShowMask: (value: boolean) => void
-  showBorder: boolean
-  setShowBorder: (value: boolean) => void
-  maskBorderMode: boolean
-  setMaskBorderMode: (value: boolean) => void
   inpaintFullRes: boolean
   inpaintFullResPadding: number
   setInpaintFullResPadding: (value: number) => void
   viewMode: 'edit' | 'result'
   isDrawing: boolean
   setLastDrawPos: (pos: { x: number; y: number } | null) => void
-  brushSize: number
-  setBrushSize: (size: number | ((prev: number) => number)) => void
-  brushHardness?: number
-  setBrushHardness?: (hardness: number) => void
   isDragOver: boolean
   handleDragOver: (e: React.DragEvent) => void
   handleDragLeave: (e: React.DragEvent) => void
@@ -313,7 +297,6 @@ export interface CanvasAreaProps {
   handlePointerMove?: (e: React.PointerEvent) => void
   handlePointerUp?: (e: React.PointerEvent) => void
   handlePointerCancel?: (e: React.PointerEvent) => void
-  drawingMode: string
   openFileDialog: () => void
   maskBlur: number
   setMaskBlur: (value: number) => void
@@ -339,19 +322,6 @@ export interface CanvasAreaProps {
 
 // InpaintToolbar component props
 export interface InpaintToolbarProps {
-  drawingMode: string
-  setDrawingMode: (mode: string) => void
-  brushSize?: number
-  setBrushSize?: (size: number) => void
-  brushHardness?: number
-  setBrushHardness?: (hardness: number) => void
-  fillTarget: string
-  setFillTarget: (target: string) => void
-  fillTolerance: number
-  setFillTolerance: (tolerance: number) => void
-  fillOverfill: number
-  setFillOverfill: (overfill: number) => void
-  zoom?: number
   onUndo: () => void
   onRedo: () => void
   onClear: () => void
@@ -361,16 +331,11 @@ export interface InpaintToolbarProps {
 
 // ZoomToolbar component props
 export interface ZoomToolbarProps {
-  zoom: number
-  showGrid: boolean
-  setShowGrid: (show: boolean) => void
-  fitToScreen: boolean
   handleZoomOut: () => void
   handleZoomIn: () => void
   handleResetZoom: () => void
   handleFitToScreen: () => void
   openFileDialog: () => void
-  uiVisible: boolean
   setUiVisible: (visible: boolean) => void
 }
 
@@ -378,9 +343,6 @@ export interface ZoomToolbarProps {
 export interface StatusBarProps {
   displayImage?: string | null
   inputImage?: string | null
-  zoom: number
-  brushSize: number
-  drawingMode: string
   progress?: Progress | null
   loading?: boolean
 }

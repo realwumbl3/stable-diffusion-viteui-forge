@@ -1,6 +1,9 @@
 import { useState, useEffect, useRef, useCallback, useMemo, useReducer } from "react";
 
+import { useCanvasSync } from "../../../contexts/CanvasSyncContext";
+
 interface UseCanvasStateProps {
+    workspaceId: string | null;
     displayImage: string | null;
     inputImage: string | null;
     livePreview: boolean;
@@ -26,12 +29,6 @@ type MaskAction =
     | { type: "SET_VISIBILITY"; visible: boolean; inPreview: boolean }
     | { type: "ENTER_PREVIEW" }
     | { type: "EXIT_PREVIEW" };
-
-const initialMaskState: MaskState = {
-    showMask: true,
-    lastMaskVisibility: true,
-    hasRememberedMaskSetting: false,
-};
 
 function maskReducer(state: MaskState, action: MaskAction): MaskState {
     switch (action.type) {
@@ -81,14 +78,39 @@ export function useCanvasState(props: UseCanvasStateProps) {
         previewImage,
         canvasRef,
         imageRef,
-        panTargetRef,
-        fitToScreenPadding = 16
-    } = props;
-    // Zoom and pan state
-    const [zoom, setZoom] = useState(1);
-    const [showGrid, setShowGrid] = useState(false);
-    const [fitToScreen, setFitToScreen] = useState(true);
-    const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
+    panTargetRef,
+    fitToScreenPadding = 16
+} = props;
+const {
+    zoom,
+    setZoom,
+    showGrid,
+    setShowGrid,
+    fitToScreen,
+    setFitToScreen,
+    panOffset,
+    setPanOffset,
+    footerCollapsed,
+    setFooterCollapsed,
+    brushSize,
+    setBrushSize,
+    drawingMode,
+    setDrawingMode,
+    brushHardness,
+    setBrushHardness,
+    fillTarget,
+    setFillTarget,
+    fillTolerance,
+    setFillTolerance,
+    fillOverfill,
+    setFillOverfill,
+    showBorder,
+    setShowBorder,
+    maskBorderMode,
+    setMaskBorderMode,
+    showMask,
+    setShowMask,
+} = useCanvasSync();
 
     // Drawing state
     const [isDrawing, setIsDrawing] = useState(false);
@@ -105,11 +127,16 @@ export function useCanvasState(props: UseCanvasStateProps) {
         lastDrawPosRef.current = pos;
     }, []);
 
-    // Mask visibility state
-    const [showBorder, setShowBorder] = useState(true);
-    const [maskBorderMode, setMaskBorderMode] = useState(false);
-    const [maskState, dispatchMaskState] = useReducer(maskReducer, initialMaskState);
-    const { showMask } = maskState;
+    const [maskState, dispatchMaskState] = useReducer(
+        maskReducer,
+        showMask,
+        (initialShowMask) => ({
+            showMask: initialShowMask,
+            lastMaskVisibility: initialShowMask,
+            hasRememberedMaskSetting: false,
+        })
+    );
+    const maskVisibility = maskState.showMask;
     const previewWasActiveRef = useRef<string | null>(null);
     const isPreviewActive = Boolean(previewImage);
     const isTimelinePreview = Boolean(previewImage);
@@ -123,6 +150,18 @@ export function useCanvasState(props: UseCanvasStateProps) {
         }
         previewWasActiveRef.current = previewImage;
     }, [isPreviewActive, previewImage]);
+
+    useEffect(() => {
+        if (!maskState.hasRememberedMaskSetting && showMask !== maskVisibility) {
+            setShowMask(maskVisibility);
+        }
+    }, [showMask, maskState.hasRememberedMaskSetting, maskVisibility, setShowMask]);
+
+    useEffect(() => {
+        if (!maskState.hasRememberedMaskSetting && maskVisibility !== showMask) {
+            dispatchMaskState({ type: "SET_VISIBILITY", visible: showMask, inPreview: false });
+        }
+    }, [showMask, maskState.hasRememberedMaskSetting, maskVisibility]);
 
     const viewMode = useMemo<ViewMode>(() => {
         if (isTimelinePreview) {
@@ -139,9 +178,6 @@ export function useCanvasState(props: UseCanvasStateProps) {
         }
         return "edit";
     }, [forceEditMode, isTimelinePreview, livePreview, displayImage, inputImage]);
-
-    // Footer state
-    const [footerCollapsed, setFooterCollapsed] = useState(false);
 
     // Utility functions
     const getDisplayDimensions = useCallback(() => {
@@ -328,12 +364,15 @@ export function useCanvasState(props: UseCanvasStateProps) {
 
     // Custom mask setter that preserves setting when in canvas mode
     const setMaskVisibility = useCallback((newVisibility: boolean) => {
+        if (!isPreviewActive) {
+            setShowMask(newVisibility);
+        }
         dispatchMaskState({
             type: "SET_VISIBILITY",
             visible: newVisibility,
             inPreview: isPreviewActive,
         });
-    }, [isPreviewActive]);
+    }, [isPreviewActive, setShowMask]);
 
     return useMemo(() => ({
         // State
@@ -369,6 +408,18 @@ export function useCanvasState(props: UseCanvasStateProps) {
         setShowBorder,
         maskBorderMode,
         setMaskBorderMode,
+        brushSize,
+        setBrushSize,
+        drawingMode,
+        setDrawingMode,
+        brushHardness,
+        setBrushHardness,
+        fillTarget,
+        setFillTarget,
+        fillTolerance,
+        setFillTolerance,
+        fillOverfill,
+        setFillOverfill,
         footerCollapsed,
         setFooterCollapsed,
 
@@ -417,6 +468,18 @@ export function useCanvasState(props: UseCanvasStateProps) {
         setShowBorder,
         maskBorderMode,
         setMaskBorderMode,
+        brushSize,
+        setBrushSize,
+        drawingMode,
+        setDrawingMode,
+        brushHardness,
+        setBrushHardness,
+        fillTarget,
+        setFillTarget,
+        fillTolerance,
+        setFillTolerance,
+        fillOverfill,
+        setFillOverfill,
         footerCollapsed,
         setFooterCollapsed,
         getDisplayDimensions,

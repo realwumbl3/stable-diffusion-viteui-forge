@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import MemoryPanel from '../../MemoryPanel'
+import { useCanvasSyncSelector } from '../../../contexts/CanvasSyncContext'
 import type { StatusBarProps } from '../../../types/components'
 
 // Hook to track memory usage
@@ -28,12 +29,12 @@ const useMemoryUsage = (): number | null => {
 const StatusBar = ({
     displayImage,
     inputImage,
-    zoom,
-    brushSize,
-    drawingMode,
     progress,
     loading,
 }: StatusBarProps) => {
+    const zoom = useCanvasSyncSelector((state) => state.zoom);
+    const brushSize = useCanvasSyncSelector((state) => state.brushSize);
+    const drawingMode = useCanvasSyncSelector((state) => state.drawingMode);
     const memoryUsage = useMemoryUsage()
     const [memoryPanelOpen, setMemoryPanelOpen] = useState(false)
     return (
