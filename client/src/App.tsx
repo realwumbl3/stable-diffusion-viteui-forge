@@ -4,39 +4,49 @@ import Header from "./components/Header";
 import Workspace from "./components/Workspace";
 import WorkspaceBrowser from "./components/WorkspaceBrowser";
 import { useTitleIconAnimation } from "./hooks/useTitleIconAnimation";
-import { useWorkspaceContext, useWorkspaceState } from "./contexts/WorkspaceContext";
+import { useWorkspaceStore, createDefaultWorkspaceState } from "./contexts/WorkspaceContext";
 
 function App() {
-    const {
-        openWorkspaces,
-        currentWorkspace,
-        openWorkspace,
-        closeWorkspace,
-        switchWorkspace,
-        removeWorkspaceState,
-        models,
-        samplers,
-        workspaceBrowserOpen,
-        setWorkspaceBrowserOpen,
-    } = useWorkspaceContext();
-    const { workspaceState: activeWorkspaceState, updateWorkspaceState } = useWorkspaceState(currentWorkspace);
+    const openWorkspaces = useWorkspaceStore((state) => state.openWorkspaces);
+    const currentWorkspace = useWorkspaceStore((state) => state.currentWorkspace);
+    const openWorkspace = useWorkspaceStore((state) => state.openWorkspace);
+    const closeWorkspace = useWorkspaceStore((state) => state.closeWorkspace);
+    const switchWorkspace = useWorkspaceStore((state) => state.switchWorkspace);
+    const removeWorkspaceState = useWorkspaceStore((state) => state.removeWorkspaceState);
+    const models = useWorkspaceStore((state) => state.models);
+    const samplers = useWorkspaceStore((state) => state.samplers);
+    const workspaceBrowserOpen = useWorkspaceStore((state) => state.workspaceBrowserOpen);
+    const setWorkspaceBrowserOpen = useWorkspaceStore((state) => state.setWorkspaceBrowserOpen);
+
+    const activeWorkspaceState = useWorkspaceStore(useCallback(state => {
+        if (!currentWorkspace) {
+            return createDefaultWorkspaceState();
+        }
+        return state.workspaceStates[currentWorkspace] ?? createDefaultWorkspaceState();
+    }, [currentWorkspace]));
+
+    const updateWorkspaceState = useWorkspaceStore(useCallback(state => state.updateWorkspaceState, []));
     const [recentWorkspaceIds, setRecentWorkspaceIds] = useState<string[]>([]);
     const [revealHotkeys, setRevealHotkeys] = useState(true);
     const initialLoadRef = useRef(false);
 
     const setActiveGenerationState = useCallback((updates: Partial<typeof activeWorkspaceState.generation>) => {
-        updateWorkspaceState((prev) => ({
-            ...prev,
-            generation: { ...prev.generation, ...updates },
-        }));
-    }, [updateWorkspaceState]);
+        if (currentWorkspace) {
+            updateWorkspaceState(currentWorkspace, (prev) => ({
+                ...prev,
+                generation: { ...prev.generation, ...updates },
+            }));
+        }
+    }, [updateWorkspaceState, currentWorkspace]);
 
     const setActiveUiState = useCallback((updates: Partial<typeof activeWorkspaceState.ui>) => {
-        updateWorkspaceState((prev) => ({
-            ...prev,
-            ui: { ...prev.ui, ...updates },
-        }));
-    }, [updateWorkspaceState]);
+        if (currentWorkspace) {
+            updateWorkspaceState(currentWorkspace, (prev) => ({
+                ...prev,
+                ui: { ...prev.ui, ...updates },
+            }));
+        }
+    }, [updateWorkspaceState, currentWorkspace]);
 
     useTitleIconAnimation(activeWorkspaceState.generation.loading);
 
@@ -125,24 +135,6 @@ function App() {
 
     return (
         <div className={`h-screen flex flex-col bg-studio-bg ${revealHotkeys ? 'reveal-hotkeys' : ''}`}>
-            <Header
-                openWorkspaces={openWorkspaces}
-                currentWorkspace={currentWorkspace}
-                onWorkspaceChange={handleWorkspaceChange}
-                onWorkspaceClose={handleWorkspaceClose}
-                onCreateWorkspace={handleCreateWorkspace}
-                onOpenWorkspaceBrowser={() => setWorkspaceBrowserOpen(true)}
-                pageLocked={activeWorkspaceState.ui.pageLocked}
-                onToggleLock={() => setActiveUiState({ pageLocked: !activeWorkspaceState.ui.pageLocked })}
-                models={models}
-                selectedModel={activeWorkspaceState.generation.selectedModel}
-                onModelChange={handleModelChange}
-                samplers={samplers}
-                selectedSampler={activeWorkspaceState.generation.selectedSampler}
-                setSelectedSampler={(value) => setActiveGenerationState({ selectedSampler: value })}
-                cfgScale={activeWorkspaceState.generation.cfgScale}
-                setCfgScale={(value) => setActiveGenerationState({ cfgScale: value })}
-            />
 
             <div className="flex-1 flex overflow-hidden">
                 {cachedWorkspaceIds.map((workspaceId) => (
