@@ -181,6 +181,19 @@ const Workspace = ({ workspaceId, isActive }: WorkspaceProps) => {
         }
     }, [workspaceId]);
 
+    const maskSnapshotProviderRef = useRef<(() => string | null) | null>(null);
+
+    const handleRegisterMaskSnapshotProvider = useCallback((provider: (() => string | null) | null) => {
+        maskSnapshotProviderRef.current = provider;
+    }, []);
+
+    const handleBeforeGenerate = useCallback(() => {
+        if (mode.generationMode !== "inpaint") return;
+        const provider = maskSnapshotProviderRef.current;
+        const snapshot = provider ? provider() : null;
+        setModeState({ inpaintMaskSnapshot: snapshot });
+    }, [mode.generationMode, setModeState]);
+
     const handleGenerationModeChange = (nextMode: GenerationMode): void => {
         setModeState({ generationMode: nextMode });
         if (nextMode === "inpaint") {
@@ -431,6 +444,12 @@ const Workspace = ({ workspaceId, isActive }: WorkspaceProps) => {
     }, [workspaceId, loadWorkspaceGenerations, loadWorkspacePrompt, setCanvasState, setGenerationState, setTimelineState]);
 
     useEffect(() => {
+        return () => {
+            maskSnapshotProviderRef.current = null;
+        };
+    }, []);
+
+    useEffect(() => {
         if (!workspaceId || workspaceChangingRef.current) return;
         if (mode.generationMode !== "inpaint") return;
         if (!canvas.currentImage || generation.inputImage) return;
@@ -476,6 +495,12 @@ const Workspace = ({ workspaceId, isActive }: WorkspaceProps) => {
             void generateImage();
         }
     }, [composerPrompt, generateImage, generation.loading, generation.pendingRestart, setGenerationState]);
+
+    useEffect(() => {
+        if (!generation.loading && mode.inpaintMaskSnapshot) {
+            setModeState({ inpaintMaskSnapshot: null });
+        }
+    }, [generation.loading, mode.inpaintMaskSnapshot, setModeState]);
 
     useEffect(() => {
         if (!isActive) return;
@@ -873,6 +898,7 @@ const Workspace = ({ workspaceId, isActive }: WorkspaceProps) => {
         loading: generation.loading,
         progress,
         onGenerate: generateImage,
+        onBeforeGenerate: handleBeforeGenerate,
         canGenerate: !!composerPrompt.trim(),
         onSkip: handleSkip,
         onRestart: handleRestart,
@@ -934,6 +960,8 @@ const Workspace = ({ workspaceId, isActive }: WorkspaceProps) => {
                         currentImage={canvas.currentImage}
                         previewImage={getGenerationImageUrl(timeline.currentPreview)}
                         onClearPreview={() => handlePreviewSelect(null)}
+                        onRegisterMaskSnapshotProvider={handleRegisterMaskSnapshotProvider}
+                        previewMaskSnapshot={mode.inpaintMaskSnapshot}
                         inputImage={generation.inputImage}
                         workspaceId={workspaceId}
                         livePreview={livePreview}
@@ -971,6 +999,8 @@ const Workspace = ({ workspaceId, isActive }: WorkspaceProps) => {
                         currentImage={canvas.currentImage}
                         previewImage={getGenerationImageUrl(timeline.currentPreview)}
                         onClearPreview={() => handlePreviewSelect(null)}
+                        onRegisterMaskSnapshotProvider={handleRegisterMaskSnapshotProvider}
+                        previewMaskSnapshot={mode.inpaintMaskSnapshot}
                         workspaceId={workspaceId}
                         livePreview={livePreview}
                         loading={generation.loading}

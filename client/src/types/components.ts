@@ -59,6 +59,7 @@ export interface CanvasTopControlsProps {
   onPreviewSelect: (generation: Generation | null) => void
   onCommit: () => void
   onReject: () => void
+  onBeforeGenerate?: () => void
 }
 
 // Sidebar component props
@@ -228,6 +229,7 @@ export interface InpaintCanvasProps {
   currentImage?: string | null
   previewImage?: string | null
   onClearPreview?: () => void
+  previewMaskSnapshot?: string | null
   livePreview?: string | null
   loading?: boolean
   progress?: Progress | null
@@ -258,6 +260,7 @@ export interface InpaintCanvasProps {
   onPromptModeChange: (mode: PromptMode) => void
   footerCollapsed?: boolean
   onToggleFooter?: () => void
+  onRegisterMaskSnapshotProvider?: (provider: (() => string | null) | null) => void
 }
 
 // CanvasArea component props
@@ -270,6 +273,7 @@ export interface CanvasAreaProps {
   displayImage?: string | null
   inputImage?: string | null
   previewImage?: string | null
+  previewMaskSnapshot?: string | null
   onClearPreview?: () => void
   currentImage?: string | null
   livePreview?: string | null

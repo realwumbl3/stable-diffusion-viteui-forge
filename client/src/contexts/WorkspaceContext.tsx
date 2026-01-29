@@ -29,6 +29,7 @@ export interface WorkspaceGenerationState {
 export interface WorkspaceModeState {
     generationMode: GenerationMode;
     inpaintMask: string | null;
+    inpaintMaskSnapshot: string | null;
     maskBlur: number;
     inpaintingFill: number;
     inpaintFullRes: boolean;
@@ -109,6 +110,7 @@ const createDefaultWorkspaceState = (): WorkspaceState => ({
     mode: {
         generationMode: "txt2img",
         inpaintMask: null,
+        inpaintMaskSnapshot: null,
         maskBlur: 4,
         inpaintingFill: 0,
         inpaintFullRes: true,

@@ -19,6 +19,7 @@ const InpaintCanvas = ({
     currentImage,
     previewImage,
     onClearPreview,
+    previewMaskSnapshot,
     livePreview,
     loading,
     progress,
@@ -34,6 +35,7 @@ const InpaintCanvas = ({
     // Image upload props
     inputImage,
     onImageUpload,
+    onRegisterMaskSnapshotProvider,
     // Full resolution inpainting props
     inpaintFullRes,
     inpaintFullResPadding,
@@ -267,6 +269,13 @@ const InpaintCanvas = ({
         generationHeight: generationHeight ?? null,
     });
 
+    const { getCroppedMaskSnapshot } = drawing;
+    useEffect(() => {
+        if (!onRegisterMaskSnapshotProvider) return;
+        onRegisterMaskSnapshotProvider(getCroppedMaskSnapshot);
+        return () => onRegisterMaskSnapshotProvider(null);
+    }, [getCroppedMaskSnapshot, onRegisterMaskSnapshotProvider]);
+
     const fileHandling = useFileHandling({ onImageUpload });
     // Destructure to avoid ref access warnings
     const { isDragOver, fileInputRef, openFileDialog, handleDragOver, handleDragLeave, handleDrop } = fileHandling;
@@ -434,6 +443,7 @@ const InpaintCanvas = ({
                 displayImage={resolvedDisplayImage}
                 inputImage={resolvedInputImage}
                 previewImage={resolvedPreviewImage}
+                previewMaskSnapshot={previewMaskSnapshot}
                 onClearPreview={onClearPreview}
                 currentImage={resolvedCurrentImage}
                 livePreview={livePreview}

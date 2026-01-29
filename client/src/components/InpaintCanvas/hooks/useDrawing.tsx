@@ -52,7 +52,7 @@ export function useDrawing({
     const [historyIndex, setHistoryIndex] = useState(-1);
 
     // Track previous image dimensions to properly scale mask on image changes
-    const previousImageDimensions = useRef<{width: number, height: number} | null>(null);
+    const previousImageDimensions = useRef<{ width: number, height: number } | null>(null);
 
     useEffect(() => {
         if (!workspaceId) {
@@ -563,6 +563,54 @@ export function useDrawing({
         setFocusBounds(newFocusBounds);
     }, []);
 
+
+    const getCroppedMaskSnapshot = useCallback(() => {
+        if (!maskCanvasRef.current) return null;
+
+        // For masked previews, prioritize maskBounds over focusBounds
+        // maskBounds represents the actual mask area, focusBounds is the padded area
+        const bounds = maskBounds ?? focusBounds ?? getMaskBounds();
+        if (!bounds || bounds.width === 0 || bounds.height === 0) return null;
+
+        const exportCanvas = document.createElement("canvas");
+        exportCanvas.width = bounds.width;
+        exportCanvas.height = bounds.height;
+
+        const ctx = exportCanvas.getContext("2d");
+        if (!ctx) return null;
+
+        ctx.clearRect(0, 0, bounds.width, bounds.height);
+
+        ctx.filter = "none";
+        ctx.drawImage(
+            maskCanvasRef.current,
+            bounds.x,
+            bounds.y,
+            bounds.width,
+            bounds.height,
+            0,
+            0,
+            bounds.width,
+            bounds.height
+        );
+        const imageData = ctx.getImageData(0, 0, bounds.width, bounds.height);
+        const data = imageData.data;
+        for (let i = 0; i < data.length; i += 4) {
+            const alpha = data[i + 3];
+            if (alpha > 0) {
+                data[i] = 255;
+                data[i + 1] = 255;
+                data[i + 2] = 255;
+                data[i + 3] = 255;
+            } else {
+                data[i + 3] = 0;
+            }
+        }
+        ctx.putImageData(imageData, 0, 0);
+
+        return exportCanvas.toDataURL("image/png");
+    }, [focusBounds, maskBounds, getMaskBounds, maskCanvasRef]);
+
     // Calculate focus bounds (independent of canvas) - pure function that returns both bounds
     const calculateBounds = useCallback((): { maskBounds: Bounds | null; focusBounds: Bounds | null } => {
         if (!inpaintFullRes) {
@@ -637,7 +685,7 @@ export function useDrawing({
             const { maskBounds: newMaskBounds, focusBounds: newFocusBounds } = calculateBounds();
             applyBounds(newMaskBounds, newFocusBounds);
         };
-        
+
         // Defer setState to avoid synchronous setState in effect
         requestAnimationFrame(updateBounds);
     }, [applyBounds, calculateBounds]);
@@ -649,7 +697,7 @@ export function useDrawing({
                 const { maskBounds: newMaskBounds, focusBounds: newFocusBounds } = calculateBounds();
                 applyBounds(newMaskBounds, newFocusBounds);
             };
-            
+
             // Defer setState to avoid synchronous setState in effect
             requestAnimationFrame(updateBounds);
         }
@@ -720,6 +768,7 @@ export function useDrawing({
         getCanvasCoordinates,
         drawBrush,
         getMaskDataUrl,
+        getCroppedMaskSnapshot,
         clearMask,
         fillAtPoint,
         saveMaskState,
@@ -734,6 +783,7 @@ export function useDrawing({
         getCanvasCoordinates,
         drawBrush,
         getMaskDataUrl,
+        getCroppedMaskSnapshot,
         clearMask,
         fillAtPoint,
         saveMaskState,
