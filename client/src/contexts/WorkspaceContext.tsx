@@ -177,12 +177,41 @@ interface WorkspaceStore {
 
 export const useWorkspaceStore = create<WorkspaceStore>()(
     subscribeWithSelector((set, get) => ({
-        openWorkspaces: [], // Will be set by useWorkspaceTabs
-        currentWorkspace: null, // Will be set by useWorkspaceTabs
-        openWorkspace: (workspaceName: string) => {},
-        closeWorkspace: (workspaceName: string) => {},
-        switchWorkspace: (workspaceName: string) => {},
-        closeAllWorkspaces: () => {},
+        openWorkspaces: initialTabs.openWorkspaces,
+        currentWorkspace: initialTabs.currentWorkspace,
+        openWorkspace: (workspaceName: string) => {
+            set((state) => {
+                if (!state.openWorkspaces.includes(workspaceName)) {
+                    return {
+                        openWorkspaces: [...state.openWorkspaces, workspaceName],
+                        currentWorkspace: workspaceName,
+                    };
+                }
+                return { currentWorkspace: workspaceName };
+            });
+        },
+        closeWorkspace: (workspaceName: string) => {
+            set((state) => {
+                const remaining = state.openWorkspaces.filter(name => name !== workspaceName);
+                return {
+                    openWorkspaces: remaining,
+                    currentWorkspace: state.currentWorkspace === workspaceName
+                        ? (remaining.length > 0 ? remaining[remaining.length - 1] : null)
+                        : state.currentWorkspace,
+                };
+            });
+        },
+        switchWorkspace: (workspaceName: string) => {
+            set((state) => {
+                if (state.openWorkspaces.includes(workspaceName)) {
+                    return { currentWorkspace: workspaceName };
+                }
+                return state;
+            });
+        },
+        closeAllWorkspaces: () => {
+            set({ openWorkspaces: [], currentWorkspace: null });
+        },
         workspaceStates: loadWorkspaceStates(),
         updateWorkspaceState: (workspaceId, updater) => {
             set((state) => {
@@ -256,3 +285,53 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
         },
     }))
 );
+
+// Persistence effects
+if (typeof window !== "undefined") {
+    useWorkspaceStore.subscribe((state) => state.openWorkspaces, (openWorkspaces) => {
+        try {
+            localStorage.setItem(STORAGE_KEY_OPEN_WORKSPACES, JSON.stringify(openWorkspaces));
+        } catch (error) {
+            console.warn('Failed to save open workspaces to localStorage:', error);
+        }
+    });
+
+    useWorkspaceStore.subscribe((state) => state.currentWorkspace, (currentWorkspace) => {
+        try {
+            if (currentWorkspace) {
+                localStorage.setItem(STORAGE_KEY_CURRENT_WORKSPACE, currentWorkspace);
+            } else {
+                localStorage.removeItem(STORAGE_KEY_CURRENT_WORKSPACE);
+            }
+        } catch (error) {
+            console.warn('Failed to save current workspace to localStorage:', error);
+        }
+    });
+
+    useWorkspaceStore.subscribe((state) => state.workspaceStates, (workspaceStates) => {
+        try {
+            const persistable = Object.entries(workspaceStates).reduce<Record<string, WorkspaceState>>((acc, [id, state]) => {
+                acc[id] = stripTransientState(state);
+                return acc;
+            }, {});
+            localStorage.setItem(STORAGE_KEY_WORKSPACE_STATE, JSON.stringify(persistable));
+        } catch (error) {
+            console.warn("Failed to persist workspace state bundle:", error);
+        }
+    });
+
+    // Clear transient state when workspaces change
+    useWorkspaceStore.subscribe((state) => state.openWorkspaces, (openWorkspaces) => {
+        const transientRef = useWorkspaceStore.getState().transientStateRef;
+        if (openWorkspaces.length === 0) {
+            transientRef.current.clear();
+            return;
+        }
+
+        for (const workspaceId of transientRef.current.keys()) {
+            if (!openWorkspaces.includes(workspaceId)) {
+                transientRef.current.delete(workspaceId);
+            }
+        }
+    });
+}
