@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
-import { useWorkspaceContext } from "../../../contexts/WorkspaceContext";
+import { useWorkspaceStore } from "../../../contexts/WorkspaceContext";
 import type { WorkspaceTransientState } from "../../../contexts/WorkspaceContext";
 
 interface Bounds {
@@ -45,14 +45,14 @@ export function useDrawing({
     generationHeight,
     workspaceId,
 }: UseDrawingParams) {
-    const { ensureWorkspaceTransientState } = useWorkspaceContext();
+    const ensureWorkspaceTransientState = useWorkspaceStore((state) => state.ensureWorkspaceTransientState);
     const transientEntryRef = useRef<WorkspaceTransientState | null>(null);
     // Undo/Redo system
     const [maskHistory, setMaskHistory] = useState<ImageData[]>([]);
     const [historyIndex, setHistoryIndex] = useState(-1);
 
     // Track previous image dimensions to properly scale mask on image changes
-    const previousImageDimensions = useRef<{ width: number, height: number } | null>(null);
+    const previousImageDimensions = useRef<{ width: number; height: number } | null>(null);
 
     useEffect(() => {
         if (!workspaceId) {
@@ -393,10 +393,8 @@ export function useDrawing({
         let targetG = 0;
         let targetB = 0;
         let targetA = 0;
-        let source: Uint8ClampedArray | null = null;
-        if (fillTarget !== "canvas") {
-            if (!sourceData) return;
-            source = sourceData;
+        if (fillTarget !== "canvas" && sourceData) {
+            const source = sourceData as Uint8ClampedArray;
             targetR = source[startOffset];
             targetG = source[startOffset + 1];
             targetB = source[startOffset + 2];
@@ -684,6 +682,9 @@ export function useDrawing({
         const updateBounds = () => {
             const { maskBounds: newMaskBounds, focusBounds: newFocusBounds } = calculateBounds();
             applyBounds(newMaskBounds, newFocusBounds);
+            if (newFocusBounds) {
+                setInpaintMask(getMaskDataUrl());
+            }
         };
 
         // Defer setState to avoid synchronous setState in effect
@@ -779,20 +780,5 @@ export function useDrawing({
         focusBounds,
         maskBounds,
         getMaskBounds,
-    }), [
-        getCanvasCoordinates,
-        drawBrush,
-        getMaskDataUrl,
-        getCroppedMaskSnapshot,
-        clearMask,
-        fillAtPoint,
-        saveMaskState,
-        undoMask,
-        redoMask,
-        canUndo,
-        focusBounds,
-        maskBounds,
-        canRedo,
-        getMaskBounds,
-    ]);
+    }), [getCanvasCoordinates, drawBrush, getMaskDataUrl, getCroppedMaskSnapshot, clearMask, fillAtPoint, saveMaskState, undoMask, redoMask, canUndo, focusBounds, maskBounds, canRedo, getMaskBounds, setInpaintMask]);
 }

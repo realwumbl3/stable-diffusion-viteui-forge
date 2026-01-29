@@ -20,18 +20,18 @@ interface WorkspaceProps {
 }
 
 const Workspace = ({ workspaceId, isActive }: WorkspaceProps) => {
-    const workspaceState = useWorkspaceStore(useCallback(state => {
+    const workspaceState = useWorkspaceStore(useCallback((state: any) => {
         if (!workspaceId) {
             return createDefaultWorkspaceState();
         }
         return state.workspaceStates[workspaceId] ?? createDefaultWorkspaceState();
     }, [workspaceId]));
-    const updateWorkspaceState = useWorkspaceStore(useCallback(state => state.updateWorkspaceState, []));
+    const updateWorkspaceState = useWorkspaceStore(useCallback((state: any) => state.updateWorkspaceState, []));
 
-    const models = useWorkspaceStore((state) => state.models);
-    const setModels = useWorkspaceStore((state) => state.setModels);
-    const samplers = useWorkspaceStore((state) => state.samplers);
-    const setSamplers = useWorkspaceStore((state) => state.setSamplers);
+    const models = useWorkspaceStore((state: any) => state.models);
+    const setModels = useWorkspaceStore((state: any) => state.setModels);
+    const samplers = useWorkspaceStore((state: any) => state.samplers);
+    const setSamplers = useWorkspaceStore((state: any) => state.setSamplers);
 
     const { generation, mode, ui, canvas } = workspaceState;
 
@@ -76,21 +76,21 @@ const Workspace = ({ workspaceId, isActive }: WorkspaceProps) => {
     ), [progressData]);
 
     const setGenerationState = useCallback((updates: Partial<typeof generation>) => {
-        updateWorkspaceState((prev) => ({
+        updateWorkspaceState((prev: any) => ({
             ...prev,
             generation: { ...prev.generation, ...updates },
         }));
     }, [updateWorkspaceState]);
 
     const setModeState = useCallback((updates: Partial<typeof mode>) => {
-        updateWorkspaceState((prev) => ({
+        updateWorkspaceState((prev: any) => ({
             ...prev,
             mode: { ...prev.mode, ...updates },
         }));
     }, [updateWorkspaceState]);
 
     const setUiState = useCallback((updates: Partial<typeof ui>) => {
-        updateWorkspaceState((prev) => ({
+        updateWorkspaceState((prev: any) => ({
             ...prev,
             ui: { ...prev.ui, ...updates },
         }));
@@ -101,7 +101,7 @@ const Workspace = ({ workspaceId, isActive }: WorkspaceProps) => {
     }, [setUiState]);
 
     const setCanvasState = useCallback((updates: Partial<typeof canvas>) => {
-        updateWorkspaceState((prev) => ({
+        updateWorkspaceState((prev: any) => ({
             ...prev,
             canvas: { ...prev.canvas, ...updates },
         }));
@@ -209,7 +209,7 @@ const Workspace = ({ workspaceId, isActive }: WorkspaceProps) => {
     };
 
     const handleRefreshCanvas = (): void => {
-        updateWorkspaceState((prev) => ({
+        updateWorkspaceState((prev: any) => ({
             ...prev,
             canvas: {
                 ...prev.canvas,
@@ -406,7 +406,7 @@ const Workspace = ({ workspaceId, isActive }: WorkspaceProps) => {
     };
 
     const handleInpaintMaskChange = useCallback((value: SetStateAction<string | null>) => {
-        updateWorkspaceState((prev) => {
+        updateWorkspaceState((prev: any) => {
             const nextValue = typeof value === "function"
                 ? value(prev.mode.inpaintMask)
                 : value;
