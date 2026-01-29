@@ -18,12 +18,16 @@ function App() {
     const workspaceBrowserOpen = useWorkspaceStore((state) => state.workspaceBrowserOpen);
     const setWorkspaceBrowserOpen = useWorkspaceStore((state) => state.setWorkspaceBrowserOpen);
 
-    const activeWorkspaceState = useWorkspaceStore(useCallback(state => {
+    const { workspaceStates } = useWorkspaceStore(useCallback(state => ({
+        workspaceStates: state.workspaceStates
+    }), []));
+
+    const activeWorkspaceState = useMemo(() => {
         if (!currentWorkspace) {
             return createDefaultWorkspaceState();
         }
-        return state.workspaceStates[currentWorkspace] ?? createDefaultWorkspaceState();
-    }, [currentWorkspace]));
+        return workspaceStates[currentWorkspace] ?? createDefaultWorkspaceState();
+    }, [currentWorkspace, workspaceStates]);
 
     const updateWorkspaceState = useWorkspaceStore(useCallback(state => state.updateWorkspaceState, []));
     const [recentWorkspaceIds, setRecentWorkspaceIds] = useState<string[]>([]);
