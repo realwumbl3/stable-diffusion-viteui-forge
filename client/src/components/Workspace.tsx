@@ -9,8 +9,7 @@ import UpscaleDialog from "./UpscaleDialog";
 import { parseWorkspaceImage, resolveImageSrc, API_BASE_URL } from "../lib/utils";
 import { composePromptsFromNodes } from "./PromptComposer/utils/promptUtils";
 import { encodeLegacy } from "./PromptComposer/utils/legacyEncoding";
-import { useWorkspaceContext, useWorkspaceState } from "../contexts/WorkspaceContext";
-import { CanvasSyncProvider } from "../contexts/CanvasSyncContext";
+import { useWorkspaceStore, createDefaultWorkspaceState } from "../contexts/WorkspaceContext";
 import type { Generation, ExtrasSingleImageParams } from "../Api";
 import type { PromptMode, PromptNode } from "./PromptComposer/types";
 import type { GenerationMode, Progress, Timeline } from "../types/components";
@@ -21,16 +20,18 @@ interface WorkspaceProps {
 }
 
 const Workspace = ({ workspaceId, isActive }: WorkspaceProps) => {
-    const {
-        workspaceState,
-        updateWorkspaceState,
-    } = useWorkspaceState(workspaceId);
-    const {
-        models,
-        setModels,
-        samplers,
-        setSamplers
-    } = useWorkspaceContext();
+    const workspaceState = useWorkspaceStore(useCallback(state => {
+        if (!workspaceId) {
+            return createDefaultWorkspaceState();
+        }
+        return state.workspaceStates[workspaceId] ?? createDefaultWorkspaceState();
+    }, [workspaceId]));
+    const updateWorkspaceState = useWorkspaceStore(useCallback(state => state.updateWorkspaceState, []));
+
+    const models = useWorkspaceStore((state) => state.models);
+    const setModels = useWorkspaceStore((state) => state.setModels);
+    const samplers = useWorkspaceStore((state) => state.samplers);
+    const setSamplers = useWorkspaceStore((state) => state.setSamplers);
 
     const { generation, mode, ui, canvas } = workspaceState;
 
@@ -954,8 +955,7 @@ const Workspace = ({ workspaceId, isActive }: WorkspaceProps) => {
                 canvasRefreshKey={canvas.canvasRefreshKey}
             />
 
-            <CanvasSyncProvider>
-                {mode.generationMode === "inpaint" ? (
+            {mode.generationMode === "inpaint" ? (
                     <InpaintCanvas
                         currentImage={canvas.currentImage}
                         previewImage={getGenerationImageUrl(timeline.currentPreview)}
@@ -1034,7 +1034,6 @@ const Workspace = ({ workspaceId, isActive }: WorkspaceProps) => {
                         onToggleFooter={() => setCanvasState({ footerCollapsed: !canvas.footerCollapsed })}
                     />
                 )}
-            </CanvasSyncProvider>
 
             <UpscaleDialog
                 isOpen={upscaleDialog.isOpen}
