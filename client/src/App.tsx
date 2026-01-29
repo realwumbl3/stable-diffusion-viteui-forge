@@ -18,9 +18,7 @@ function App() {
     const workspaceBrowserOpen = useWorkspaceStore((state) => state.workspaceBrowserOpen);
     const setWorkspaceBrowserOpen = useWorkspaceStore((state) => state.setWorkspaceBrowserOpen);
 
-    const { workspaceStates } = useWorkspaceStore(useCallback(state => ({
-        workspaceStates: state.workspaceStates
-    }), []));
+    const workspaceStates = useWorkspaceStore(useCallback(state => state.workspaceStates, []));
 
     const activeWorkspaceState = useMemo(() => {
         if (!currentWorkspace) {
@@ -139,6 +137,24 @@ function App() {
 
     return (
         <div className={`h-screen flex flex-col bg-studio-bg ${revealHotkeys ? 'reveal-hotkeys' : ''}`}>
+            <Header
+                openWorkspaces={openWorkspaces}
+                currentWorkspace={currentWorkspace}
+                onWorkspaceChange={handleWorkspaceChange}
+                onWorkspaceClose={handleWorkspaceClose}
+                onCreateWorkspace={handleCreateWorkspace}
+                onOpenWorkspaceBrowser={() => setWorkspaceBrowserOpen(true)}
+                pageLocked={activeWorkspaceState.ui.pageLocked}
+                onToggleLock={() => setActiveUiState({ pageLocked: !activeWorkspaceState.ui.pageLocked })}
+                models={models}
+                selectedModel={activeWorkspaceState.generation.selectedModel}
+                onModelChange={handleModelChange}
+                samplers={samplers}
+                selectedSampler={activeWorkspaceState.generation.selectedSampler}
+                setSelectedSampler={(value) => setActiveGenerationState({ selectedSampler: value })}
+                cfgScale={activeWorkspaceState.generation.cfgScale}
+                setCfgScale={(value) => setActiveGenerationState({ cfgScale: value })}
+            />
 
             <div className="flex-1 flex overflow-hidden">
                 {cachedWorkspaceIds.map((workspaceId) => (
