@@ -271,7 +271,10 @@ const InpaintCanvas = ({
 
     const { getCroppedMaskSnapshot } = drawing;
     useEffect(() => {
-        if (!onRegisterMaskSnapshotProvider) return;
+        if (!onRegisterMaskSnapshotProvider) {
+            console.error("No mask snapshot provider found");
+            return;
+        }
         onRegisterMaskSnapshotProvider(getCroppedMaskSnapshot);
         return () => onRegisterMaskSnapshotProvider(null);
     }, [getCroppedMaskSnapshot, onRegisterMaskSnapshotProvider]);

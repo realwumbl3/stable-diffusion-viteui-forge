@@ -35,4 +35,6 @@ Changes must be minimal and new business logic must be handled externally in mod
 Client Testing:
 To test client-side changes without conflicts, always run:
 cd client
-npm run dev --port 5170
+npm run build
+
+NEVER RUN npm run dev

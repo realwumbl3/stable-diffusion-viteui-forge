@@ -82,7 +82,7 @@ const CanvasArea = ({
         ? `${baseImageSrc}?refresh = ${canvasRefreshKey} `
         : baseImageSrc;
     const isInpaintGenerating = generationMode === "inpaint" && Boolean(loading);
-    
+
     // Loading State - Show when generating
     if (loading && !displayImage && !inputImage) {
         // Create preview overlay for loading state
@@ -95,8 +95,6 @@ const CanvasArea = ({
                         maskBorderMode={maskBorderMode}
                         livePreview={livePreview ?? null}
                         previewMaskSnapshot={previewMaskSnapshot ?? null}
-                        generationMode={generationMode}
-                        isInpaintGenerating={isInpaintGenerating}
                     />
                     <div className="text-center z-10">
                         <div className="w-16 h-16 border-3 border-studio-accent border-t-transparent rounded-full animate-spin mx-auto mb-2" />
@@ -239,8 +237,6 @@ const CanvasArea = ({
                             maskBorderMode={maskBorderMode}
                             livePreview={livePreview ?? null}
                             previewMaskSnapshot={previewMaskSnapshot ?? null}
-                            generationMode={generationMode}
-                            isInpaintGenerating={isInpaintGenerating}
                         />
                     </div>
 

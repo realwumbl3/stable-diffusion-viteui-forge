@@ -59,7 +59,6 @@ export interface CanvasTopControlsProps {
   onPreviewSelect: (generation: Generation | null) => void
   onCommit: () => void
   onReject: () => void
-  onBeforeGenerate?: () => void
 }
 
 // Sidebar component props

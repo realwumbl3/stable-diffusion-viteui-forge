@@ -4,51 +4,39 @@ import Header from "./components/Header";
 import Workspace from "./components/Workspace";
 import WorkspaceBrowser from "./components/WorkspaceBrowser";
 import { useTitleIconAnimation } from "./hooks/useTitleIconAnimation";
-import { useWorkspaceStore, createDefaultWorkspaceState } from "./contexts/WorkspaceContext";
+import { useWorkspaceContext, useWorkspaceState } from "./contexts/WorkspaceContext";
 
 function App() {
-    const openWorkspaces = useWorkspaceStore((state) => state.openWorkspaces);
-    const currentWorkspace = useWorkspaceStore((state) => state.currentWorkspace);
-    const openWorkspace = useWorkspaceStore((state) => state.openWorkspace);
-    const closeWorkspace = useWorkspaceStore((state) => state.closeWorkspace);
-    const switchWorkspace = useWorkspaceStore((state) => state.switchWorkspace);
-    const removeWorkspaceState = useWorkspaceStore((state) => state.removeWorkspaceState);
-    const models = useWorkspaceStore((state) => state.models);
-    const samplers = useWorkspaceStore((state) => state.samplers);
-    const workspaceBrowserOpen = useWorkspaceStore((state) => state.workspaceBrowserOpen);
-    const setWorkspaceBrowserOpen = useWorkspaceStore((state) => state.setWorkspaceBrowserOpen);
-
-    const workspaceStates = useWorkspaceStore(useCallback(state => state.workspaceStates, []));
-
-    const activeWorkspaceState = useMemo(() => {
-        if (!currentWorkspace) {
-            return createDefaultWorkspaceState();
-        }
-        return workspaceStates[currentWorkspace] ?? createDefaultWorkspaceState();
-    }, [currentWorkspace, workspaceStates]);
-
-    const updateWorkspaceState = useWorkspaceStore(useCallback(state => state.updateWorkspaceState, []));
+    const {
+        openWorkspaces,
+        currentWorkspace,
+        openWorkspace,
+        closeWorkspace,
+        switchWorkspace,
+        removeWorkspaceState,
+        models,
+        samplers,
+        workspaceBrowserOpen,
+        setWorkspaceBrowserOpen,
+    } = useWorkspaceContext();
+    const { workspaceState: activeWorkspaceState, updateWorkspaceState } = useWorkspaceState(currentWorkspace);
     const [recentWorkspaceIds, setRecentWorkspaceIds] = useState<string[]>([]);
     const [revealHotkeys, setRevealHotkeys] = useState(true);
     const initialLoadRef = useRef(false);
 
     const setActiveGenerationState = useCallback((updates: Partial<typeof activeWorkspaceState.generation>) => {
-        if (currentWorkspace) {
-            updateWorkspaceState(currentWorkspace, (prev) => ({
-                ...prev,
-                generation: { ...prev.generation, ...updates },
-            }));
-        }
-    }, [updateWorkspaceState, currentWorkspace]);
+        updateWorkspaceState((prev) => ({
+            ...prev,
+            generation: { ...prev.generation, ...updates },
+        }));
+    }, [updateWorkspaceState]);
 
     const setActiveUiState = useCallback((updates: Partial<typeof activeWorkspaceState.ui>) => {
-        if (currentWorkspace) {
-            updateWorkspaceState(currentWorkspace, (prev) => ({
-                ...prev,
-                ui: { ...prev.ui, ...updates },
-            }));
-        }
-    }, [updateWorkspaceState, currentWorkspace]);
+        updateWorkspaceState((prev) => ({
+            ...prev,
+            ui: { ...prev.ui, ...updates },
+        }));
+    }, [updateWorkspaceState]);
 
     useTitleIconAnimation(activeWorkspaceState.generation.loading);
 

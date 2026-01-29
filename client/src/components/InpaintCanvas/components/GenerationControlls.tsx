@@ -60,11 +60,6 @@ const CanvasTopControls = ({ controls, visible }: Props) => {
 
     const isGenerating = loading && progress;
 
-    const handleGenerateClick = () => {
-        controls.onBeforeGenerate?.();
-        onGenerate();
-    };
-
     return (
         <GenerationControlsContainer className={`flex flex-wrap items-center gap-1 rounded-lg border border-studio-border p-1 pointer-events-auto 
         bg-studio-bg/30 shadow-2xl backdrop-blur 
@@ -99,7 +94,7 @@ const CanvasTopControls = ({ controls, visible }: Props) => {
             </div>
 
             <button
-                onClick={handleGenerateClick}
+                onClick={onGenerate}
                 disabled={!canGenerate || loading}
                 className={cn(
                     "studio-btn-primary flex flex-col items-center gap-1 px-4 py-2 rounded-md relative self-stretch justify-center line-height-1 simple-block-fill",

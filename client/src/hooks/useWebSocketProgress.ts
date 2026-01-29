@@ -243,13 +243,6 @@ export const useWebSocketProgress = (taskId: string | null = null): UseWebSocket
   // Handle WebSocket messages
   useEffect(() => {
     const unsubscribe = progressManager.subscribe((data) => {
-      // Debug logging with timestamp
-      if (data.timestamp) {
-        const now = Date.now() / 1000
-        const latency = now - data.timestamp
-        console.log(`Progress update: ${data.progress?.toFixed(3) || 'N/A'} (${latency.toFixed(3)}s latency)`, data)
-      }
-
       // Handle connection status
       if (data.type === 'connected') {
         setIsConnected(true)

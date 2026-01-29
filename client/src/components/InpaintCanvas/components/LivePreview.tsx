@@ -57,8 +57,6 @@ interface LivePreviewProps {
     maskBorderMode: boolean;
     livePreview: string | null;
     previewMaskSnapshot: string | null;
-    generationMode: string;
-    isInpaintGenerating: boolean;
 }
 
 const LivePreview = ({
@@ -67,46 +65,40 @@ const LivePreview = ({
     maskBorderMode,
     livePreview,
     previewMaskSnapshot,
-    generationMode,
-    isInpaintGenerating,
 }: LivePreviewProps) => {
     // Create preview overlay
     let previewOverlay: React.ReactNode = null;
-    if (livePreview) {
-        const livePreviewElement = (
-            <img
-                src={livePreview}
-                alt="Live preview"
-                className="w-full h-full object-contain shadow-studio-border rounded-lg overflow-hidden"
-                draggable={false}
-            />
-        );
+    let livePreviewElement = <img
+        src={livePreview ?? undefined}
+        alt="Live preview"
+        className="w-full h-full object-contain shadow-studio-border rounded-lg overflow-hidden"
+        draggable={false}
+        style={{
+            visibility: livePreview ? 'visible' : 'hidden',
+        }}
+    />
 
-        if (previewMaskSnapshot && generationMode === "inpaint") {
-            previewOverlay = (
-                <MaskedLivePreviewContainer $maskSrc={previewMaskSnapshot}>
-                    {livePreviewElement}
-                    {isInpaintGenerating && <MaskedLivePreviewGradient />}
-                </MaskedLivePreviewContainer>
-            );
-        } else {
-            previewOverlay = (
-                <div
-                    className="absolute pointer-events-none w-full h-full inset-0 flex place-items-center"
-                >
-                    {livePreviewElement}
-                </div>
-            );
-        }
+    if (previewMaskSnapshot) {
+        previewOverlay = (
+            <MaskedLivePreviewContainer $maskSrc={previewMaskSnapshot}>
+                {livePreviewElement}
+                <MaskedLivePreviewGradient />
+            </MaskedLivePreviewContainer>
+        );
+    } else {
+        previewOverlay = (
+            <div
+                className="absolute pointer-events-none w-full h-full inset-0 flex place-items-center"
+            >
+                {livePreviewElement}
+            </div>
+        );
     }
+
 
     // Handle full canvas preview when no focus bounds
     if (!focusBounds) {
-        return previewOverlay ? (
-            <div className="absolute inset-0 pointer-events-none">
-                {previewOverlay}
-            </div>
-        ) : null;
+        return previewOverlay;
     }
 
     const outerBorderStyle = {
@@ -118,33 +110,31 @@ const LivePreview = ({
 
     return (
         <div className="absolute inset-0 pointer-events-none">
-            {maskBorderMode ? (
-                <div style={{ opacity: 0.9 }}>
-                    <FocusBoundsOverlay
-                        focusBounds={focusBounds}
-                    />
-                </div>
-            ) : <>
-                <div className="absolute inset-0 pointer-events-none rounded-md outline outline-[2px] outline-offset-[2px] outline-white mix-blend-difference"
-                    style={outerBorderStyle}
-                ></div>
-                <div className="absolute inset-0 pointer-events-none rounded-md"
-                    style={outerBorderStyle}
-                >{previewOverlay}</div>
-            </>
-            }
+            {maskBorderMode && <div style={{ opacity: 0.9 }}>
+                <FocusBoundsOverlay
+                    focusBounds={focusBounds}
+                />
+            </div>}
+
+            <div className="absolute inset-0 pointer-events-none rounded-md outline outline-[2px] outline-offset-[2px] outline-white mix-blend-difference"
+                style={outerBorderStyle}
+            ></div>
+            <div className="absolute inset-0 pointer-events-none rounded-md"
+                style={outerBorderStyle}
+            >{previewOverlay}</div>
 
             {
                 maskBounds && (
                     <div
-                        className="absolute outline-dashed outline-white mix-blend-difference rounded-md"
+                        className="absolute outline-dashed outline-white mix-blend-difference rounded-sm"
                         style={{
                             top: `${maskBounds.y}px`,
                             left: `${maskBounds.x}px`,
                             width: `${maskBounds.width}px`,
                             height: `${maskBounds.height}px`,
-                            outlineWidth: '2px',
-                            outlineOffset: '2px',
+                            outlineWidth: '1px',
+                            outlineOffset: '1px',
+                            opacity: 0.2,
                         }}
                     />
                 )

@@ -1,4 +1,3 @@
-// VITE UI
 import React, { useState, useRef, useCallback, useMemo, useEffect } from "react";
 import { useCanvasSync } from "../../../contexts/CanvasSyncContext";
 

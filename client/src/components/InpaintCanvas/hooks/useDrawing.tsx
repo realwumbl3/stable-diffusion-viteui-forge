@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
-import { useWorkspaceStore } from "../../../contexts/WorkspaceContext";
+import { useWorkspaceContext } from "../../../contexts/WorkspaceContext";
 import type { WorkspaceTransientState } from "../../../contexts/WorkspaceContext";
 
 interface Bounds {
@@ -45,14 +45,14 @@ export function useDrawing({
     generationHeight,
     workspaceId,
 }: UseDrawingParams) {
-    const ensureWorkspaceTransientState = useWorkspaceStore((state) => state.ensureWorkspaceTransientState);
+    const { ensureWorkspaceTransientState } = useWorkspaceContext();
     const transientEntryRef = useRef<WorkspaceTransientState | null>(null);
     // Undo/Redo system
     const [maskHistory, setMaskHistory] = useState<ImageData[]>([]);
     const [historyIndex, setHistoryIndex] = useState(-1);
 
     // Track previous image dimensions to properly scale mask on image changes
-    const previousImageDimensions = useRef<{ width: number; height: number } | null>(null);
+    const previousImageDimensions = useRef<{ width: number, height: number } | null>(null);
 
     useEffect(() => {
         if (!workspaceId) {
@@ -393,8 +393,10 @@ export function useDrawing({
         let targetG = 0;
         let targetB = 0;
         let targetA = 0;
-        if (fillTarget !== "canvas" && sourceData) {
-            const source = sourceData as Uint8ClampedArray;
+        let source: Uint8ClampedArray | null = null;
+        if (fillTarget !== "canvas") {
+            if (!sourceData) return;
+            source = sourceData;
             targetR = source[startOffset];
             targetG = source[startOffset + 1];
             targetB = source[startOffset + 2];
@@ -563,19 +565,28 @@ export function useDrawing({
 
 
     const getCroppedMaskSnapshot = useCallback(() => {
-        if (!maskCanvasRef.current) return null;
+        if (!maskCanvasRef.current) {
+            console.error("No mask canvas found");
+            return null;
+        }
 
         // For masked previews, prioritize maskBounds over focusBounds
         // maskBounds represents the actual mask area, focusBounds is the padded area
-        const bounds = maskBounds ?? focusBounds ?? getMaskBounds();
-        if (!bounds || bounds.width === 0 || bounds.height === 0) return null;
+        const bounds = focusBounds ?? maskBounds ?? getMaskBounds();
+        if (!bounds || bounds.width === 0 || bounds.height === 0) {
+            console.error("No bounds found");
+            return null;
+        }
 
         const exportCanvas = document.createElement("canvas");
         exportCanvas.width = bounds.width;
         exportCanvas.height = bounds.height;
 
         const ctx = exportCanvas.getContext("2d");
-        if (!ctx) return null;
+        if (!ctx) {
+            console.error("No context found");
+            return null;
+        }
 
         ctx.clearRect(0, 0, bounds.width, bounds.height);
 
@@ -682,9 +693,6 @@ export function useDrawing({
         const updateBounds = () => {
             const { maskBounds: newMaskBounds, focusBounds: newFocusBounds } = calculateBounds();
             applyBounds(newMaskBounds, newFocusBounds);
-            if (newFocusBounds) {
-                setInpaintMask(getMaskDataUrl());
-            }
         };
 
         // Defer setState to avoid synchronous setState in effect
@@ -780,5 +788,20 @@ export function useDrawing({
         focusBounds,
         maskBounds,
         getMaskBounds,
-    }), [getCanvasCoordinates, drawBrush, getMaskDataUrl, getCroppedMaskSnapshot, clearMask, fillAtPoint, saveMaskState, undoMask, redoMask, canUndo, focusBounds, maskBounds, canRedo, getMaskBounds, setInpaintMask]);
+    }), [
+        getCanvasCoordinates,
+        drawBrush,
+        getMaskDataUrl,
+        getCroppedMaskSnapshot,
+        clearMask,
+        fillAtPoint,
+        saveMaskState,
+        undoMask,
+        redoMask,
+        canUndo,
+        focusBounds,
+        maskBounds,
+        canRedo,
+        getMaskBounds,
+    ]);
 }

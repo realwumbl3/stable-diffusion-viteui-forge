@@ -1,9 +1,9 @@
-// VITE UI
-import { create } from "zustand";
-import { subscribeWithSelector } from "zustand/middleware";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import type { Dispatch, ReactNode, SetStateAction } from "react";
+import { useWorkspaceTabs } from "../hooks/useWorkspaceTabs";
 import type { GenerationMode } from "../types/components";
-import type { PromptMode } from "../components/PromptComposer/types";
 import type { ModelInfo, SamplerInfo } from "../Api";
+import type { PromptMode } from "../components/PromptComposer/types";
 
 const STORAGE_KEY_WORKSPACE_STATE = "viteui-workspace-state";
 
@@ -51,13 +51,6 @@ export interface WorkspaceCanvasState {
     footerCollapsed: boolean;
 }
 
-export interface WorkspaceState {
-    generation: WorkspaceGenerationState;
-    mode: WorkspaceModeState;
-    ui: WorkspaceUiState;
-    canvas: WorkspaceCanvasState;
-}
-
 export interface WorkspaceTransientState {
     canvasElement: HTMLCanvasElement | null;
     canvasContext: CanvasRenderingContext2D | null;
@@ -67,7 +60,36 @@ export interface WorkspaceTransientState {
     height: number;
 }
 
-export const createDefaultWorkspaceState = (): WorkspaceState => ({
+export interface WorkspaceState {
+    generation: WorkspaceGenerationState;
+    mode: WorkspaceModeState;
+    ui: WorkspaceUiState;
+    canvas: WorkspaceCanvasState;
+}
+
+interface WorkspaceContextValue {
+    openWorkspaces: string[];
+    currentWorkspace: string | null;
+    openWorkspace: (workspaceName: string) => void;
+    closeWorkspace: (workspaceName: string) => void;
+    switchWorkspace: (workspaceName: string) => void;
+    closeAllWorkspaces: () => void;
+    workspaceStates: Record<string, WorkspaceState>;
+    updateWorkspaceState: (workspaceId: string, updater: (prev: WorkspaceState) => WorkspaceState) => void;
+    removeWorkspaceState: (workspaceId: string) => void;
+    ensureWorkspaceState: (workspaceId: string) => void;
+    models: ModelInfo[];
+    setModels: Dispatch<SetStateAction<ModelInfo[]>>;
+    samplers: SamplerInfo[];
+    setSamplers: Dispatch<SetStateAction<SamplerInfo[]>>;
+    workspaceBrowserOpen: boolean;
+    setWorkspaceBrowserOpen: Dispatch<SetStateAction<boolean>>;
+    ensureWorkspaceTransientState: (workspaceId: string) => WorkspaceTransientState | null;
+    getWorkspaceTransientState: (workspaceId: string) => WorkspaceTransientState | null;
+    removeWorkspaceTransientState: (workspaceId: string) => void;
+}
+
+const createDefaultWorkspaceState = (): WorkspaceState => ({
     generation: {
         selectedModel: "",
         selectedSampler: "Euler a",
@@ -152,163 +174,116 @@ const stripTransientState = (state: WorkspaceState): WorkspaceState => ({
     },
 });
 
-interface WorkspaceStore {
-    openWorkspaces: string[];
-    currentWorkspace: string | null;
-    openWorkspace: (workspaceName: string) => void;
-    closeWorkspace: (workspaceName: string) => void;
-    switchWorkspace: (workspaceName: string) => void;
-    closeAllWorkspaces: () => void;
-    workspaceStates: Record<string, WorkspaceState>;
-    updateWorkspaceState: (workspaceId: string, updater: (prev: WorkspaceState) => WorkspaceState) => void;
-    removeWorkspaceState: (workspaceId: string) => void;
-    ensureWorkspaceState: (workspaceId: string) => void;
-    models: ModelInfo[];
-    setModels: (models: ModelInfo[]) => void;
-    samplers: SamplerInfo[];
-    setSamplers: (samplers: SamplerInfo[]) => void;
-    workspaceBrowserOpen: boolean;
-    setWorkspaceBrowserOpen: (open: boolean) => void;
-    transientStateRef: React.MutableRefObject<Map<string, WorkspaceTransientState>>;
-    ensureWorkspaceTransientState: (workspaceId: string) => WorkspaceTransientState | null;
-    getWorkspaceTransientState: (workspaceId: string) => WorkspaceTransientState | null;
-    removeWorkspaceTransientState: (workspaceId: string) => void;
-}
+const WorkspaceContext = createContext<WorkspaceContextValue | null>(null);
 
-export const useWorkspaceStore = create<WorkspaceStore>()(
-    subscribeWithSelector((set, get) => ({
-        openWorkspaces: initialTabs.openWorkspaces,
-        currentWorkspace: initialTabs.currentWorkspace,
-        openWorkspace: (workspaceName: string) => {
-            set((state) => {
-                if (!state.openWorkspaces.includes(workspaceName)) {
-                    return {
-                        openWorkspaces: [...state.openWorkspaces, workspaceName],
-                        currentWorkspace: workspaceName,
-                    };
-                }
-                return { currentWorkspace: workspaceName };
-            });
-        },
-        closeWorkspace: (workspaceName: string) => {
-            set((state) => {
-                const remaining = state.openWorkspaces.filter(name => name !== workspaceName);
-                return {
-                    openWorkspaces: remaining,
-                    currentWorkspace: state.currentWorkspace === workspaceName
-                        ? (remaining.length > 0 ? remaining[remaining.length - 1] : null)
-                        : state.currentWorkspace,
-                };
-            });
-        },
-        switchWorkspace: (workspaceName: string) => {
-            set((state) => {
-                if (state.openWorkspaces.includes(workspaceName)) {
-                    return { currentWorkspace: workspaceName };
-                }
-                return state;
-            });
-        },
-        closeAllWorkspaces: () => {
-            set({ openWorkspaces: [], currentWorkspace: null });
-        },
-        workspaceStates: loadWorkspaceStates(),
-        updateWorkspaceState: (workspaceId, updater) => {
-            set((state) => {
-                const current = state.workspaceStates[workspaceId] ?? createDefaultWorkspaceState();
-                const next = updater(current);
-                return {
-                    workspaceStates: { ...state.workspaceStates, [workspaceId]: next },
-                };
-            });
-        },
-        removeWorkspaceState: (workspaceId) => {
-            set((state) => {
-                if (!state.workspaceStates[workspaceId]) return state;
-                const next = { ...state.workspaceStates };
-                delete next[workspaceId];
-                return { workspaceStates: next };
-            });
-            get().removeWorkspaceTransientState(workspaceId);
-        },
-        ensureWorkspaceState: (workspaceId) => {
-            set((state) => {
-                if (state.workspaceStates[workspaceId]) return state;
-                return {
-                    workspaceStates: {
-                        ...state.workspaceStates,
-                        [workspaceId]: createDefaultWorkspaceState(),
-                    },
-                };
-            });
-            get().ensureWorkspaceTransientState(workspaceId);
-        },
-        models: [],
-        setModels: (models) => set({ models }),
-        samplers: [],
-        setSamplers: (samplers) => set({ samplers }),
-        workspaceBrowserOpen: false,
-        setWorkspaceBrowserOpen: (open) => set({ workspaceBrowserOpen: open }),
-        transientStateRef: { current: new Map<string, WorkspaceTransientState>() },
-        ensureWorkspaceTransientState: (workspaceId: string) => {
-            const currentRef = get().transientStateRef.current;
-            if (currentRef.has(workspaceId)) {
-                return currentRef.get(workspaceId) ?? null;
-            }
+export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
+    const {
+        openWorkspaces,
+        currentWorkspace,
+        openWorkspace,
+        closeWorkspace,
+        switchWorkspace,
+        closeAllWorkspaces,
+    } = useWorkspaceTabs();
+    const [workspaceStates, setWorkspaceStates] = useState<Record<string, WorkspaceState>>(loadWorkspaceStates);
+    const [models, setModels] = useState<ModelInfo[]>([]);
+    const [samplers, setSamplers] = useState<SamplerInfo[]>([]);
+    const [workspaceBrowserOpen, setWorkspaceBrowserOpen] = useState(false);
 
-            let canvasElement: HTMLCanvasElement | null = null;
-            let canvasContext: CanvasRenderingContext2D | null = null;
-            if (typeof document !== "undefined") {
-                canvasElement = document.createElement("canvas");
-                canvasContext = canvasElement.getContext("2d");
-                canvasElement.width = 1;
-                canvasElement.height = 1;
-            }
+    const transientStateRef = useRef(new Map<string, WorkspaceTransientState>());
 
-            const next: WorkspaceTransientState = {
-                canvasElement,
-                canvasContext,
-                maskHistory: [],
-                historyIndex: -1,
-                width: canvasElement?.width ?? 0,
-                height: canvasElement?.height ?? 0,
+    const ensureWorkspaceTransientState = useCallback((workspaceId: string) => {
+        if (transientStateRef.current.has(workspaceId)) {
+            return transientStateRef.current.get(workspaceId) ?? null;
+        }
+
+        let canvasElement: HTMLCanvasElement | null = null;
+        let canvasContext: CanvasRenderingContext2D | null = null;
+        if (typeof document !== "undefined") {
+            canvasElement = document.createElement("canvas");
+            canvasContext = canvasElement.getContext("2d");
+            canvasElement.width = 1;
+            canvasElement.height = 1;
+        }
+
+        const next: WorkspaceTransientState = {
+            canvasElement,
+            canvasContext,
+            maskHistory: [],
+            historyIndex: -1,
+            width: canvasElement?.width ?? 0,
+            height: canvasElement?.height ?? 0,
+        };
+
+        transientStateRef.current.set(workspaceId, next);
+        return next;
+    }, []);
+
+    const getWorkspaceTransientState = useCallback((workspaceId: string) => {
+        return transientStateRef.current.get(workspaceId) ?? null;
+    }, []);
+
+    const removeWorkspaceTransientState = useCallback((workspaceId: string) => {
+        transientStateRef.current.delete(workspaceId);
+    }, []);
+
+    const ensureWorkspaceState = useCallback((workspaceId: string) => {
+        setWorkspaceStates((prev) => {
+            if (prev[workspaceId]) return prev;
+            return {
+                ...prev,
+                [workspaceId]: createDefaultWorkspaceState(),
             };
+        });
+        ensureWorkspaceTransientState(workspaceId);
+    }, [ensureWorkspaceTransientState]);
 
-            currentRef.set(workspaceId, next);
+    const updateWorkspaceState = useCallback((workspaceId: string, updater: (prev: WorkspaceState) => WorkspaceState) => {
+        setWorkspaceStates((prev) => {
+            const current = prev[workspaceId] ?? createDefaultWorkspaceState();
+            const next = updater(current);
+            return { ...prev, [workspaceId]: next };
+        });
+    }, []);
+
+    const removeWorkspaceState = useCallback((workspaceId: string) => {
+        setWorkspaceStates((prev) => {
+            if (!prev[workspaceId]) return prev;
+            const next = { ...prev };
+            delete next[workspaceId];
             return next;
-        },
-        getWorkspaceTransientState: (workspaceId: string) => {
-            return get().transientStateRef.current.get(workspaceId) ?? null;
-        },
-        removeWorkspaceTransientState: (workspaceId: string) => {
-            get().transientStateRef.current.delete(workspaceId);
-        },
-    }))
-);
+        });
+        removeWorkspaceTransientState(workspaceId);
+    }, [removeWorkspaceTransientState]);
 
-// Persistence effects
-if (typeof window !== "undefined") {
-    useWorkspaceStore.subscribe((state) => state.openWorkspaces, (openWorkspaces) => {
-        try {
-            localStorage.setItem(STORAGE_KEY_OPEN_WORKSPACES, JSON.stringify(openWorkspaces));
-        } catch (error) {
-            console.warn('Failed to save open workspaces to localStorage:', error);
-        }
-    });
-
-    useWorkspaceStore.subscribe((state) => state.currentWorkspace, (currentWorkspace) => {
-        try {
-            if (currentWorkspace) {
-                localStorage.setItem(STORAGE_KEY_CURRENT_WORKSPACE, currentWorkspace);
-            } else {
-                localStorage.removeItem(STORAGE_KEY_CURRENT_WORKSPACE);
+    useEffect(() => {
+        if (openWorkspaces.length === 0) return;
+        setWorkspaceStates((prev) => {
+            const next = { ...prev };
+            for (const workspaceId of openWorkspaces) {
+                if (!next[workspaceId]) {
+                    next[workspaceId] = createDefaultWorkspaceState();
+                }
             }
-        } catch (error) {
-            console.warn('Failed to save current workspace to localStorage:', error);
-        }
-    });
+            return next;
+        });
+    }, [openWorkspaces]);
 
-    useWorkspaceStore.subscribe((state) => state.workspaceStates, (workspaceStates) => {
+    useEffect(() => {
+        if (openWorkspaces.length === 0) {
+            transientStateRef.current.clear();
+            return;
+        }
+
+        for (const workspaceId of transientStateRef.current.keys()) {
+            if (!openWorkspaces.includes(workspaceId)) {
+                transientStateRef.current.delete(workspaceId);
+            }
+        }
+    }, [openWorkspaces]);
+
+    useEffect(() => {
+        if (typeof window === "undefined") return;
         try {
             const persistable = Object.entries(workspaceStates).reduce<Record<string, WorkspaceState>>((acc, [id, state]) => {
                 acc[id] = stripTransientState(state);
@@ -318,20 +293,78 @@ if (typeof window !== "undefined") {
         } catch (error) {
             console.warn("Failed to persist workspace state bundle:", error);
         }
-    });
+    }, [workspaceStates]);
 
-    // Clear transient state when workspaces change
-    useWorkspaceStore.subscribe((state) => state.openWorkspaces, (openWorkspaces) => {
-        const transientRef = useWorkspaceStore.getState().transientStateRef;
-        if (openWorkspaces.length === 0) {
-            transientRef.current.clear();
-            return;
-        }
+    const value = useMemo<WorkspaceContextValue>(() => ({
+        openWorkspaces,
+        currentWorkspace,
+        openWorkspace,
+        closeWorkspace,
+        switchWorkspace,
+        closeAllWorkspaces,
+        workspaceStates,
+        updateWorkspaceState,
+        removeWorkspaceState,
+        ensureWorkspaceState,
+        models,
+        setModels,
+        samplers,
+        setSamplers,
+        workspaceBrowserOpen,
+        setWorkspaceBrowserOpen,
+        ensureWorkspaceTransientState,
+        getWorkspaceTransientState,
+        removeWorkspaceTransientState,
+    }), [
+        openWorkspaces,
+        currentWorkspace,
+        openWorkspace,
+        closeWorkspace,
+        switchWorkspace,
+        closeAllWorkspaces,
+        workspaceStates,
+        updateWorkspaceState,
+        removeWorkspaceState,
+        ensureWorkspaceState,
+        models,
+        samplers,
+        workspaceBrowserOpen,
+        ensureWorkspaceTransientState,
+        getWorkspaceTransientState,
+        removeWorkspaceTransientState,
+    ]);
 
-        for (const workspaceId of transientRef.current.keys()) {
-            if (!openWorkspaces.includes(workspaceId)) {
-                transientRef.current.delete(workspaceId);
-            }
+    return (
+        <WorkspaceContext.Provider value={value}>
+            {children}
+        </WorkspaceContext.Provider>
+    );
+};
+
+export const useWorkspaceContext = (): WorkspaceContextValue => {
+    const context = useContext(WorkspaceContext);
+    if (!context) {
+        throw new Error("useWorkspaceContext must be used within WorkspaceProvider");
+    }
+    return context;
+};
+
+export const useWorkspaceState = (workspaceId: string | null) => {
+    const { workspaceStates, updateWorkspaceState } = useWorkspaceContext();
+    const workspaceState = useMemo(() => {
+        if (!workspaceId) {
+            return createDefaultWorkspaceState();
         }
-    });
-}
+        return workspaceStates[workspaceId] ?? createDefaultWorkspaceState();
+    }, [workspaceId, workspaceStates]);
+
+    const update = useCallback((updater: (prev: WorkspaceState) => WorkspaceState) => {
+        if (!workspaceId) return;
+        updateWorkspaceState(workspaceId, updater);
+    }, [updateWorkspaceState, workspaceId]);
+
+    return {
+        workspaceState,
+        updateWorkspaceState: update,
+    };
+};

@@ -9,7 +9,7 @@ import UpscaleDialog from "./UpscaleDialog";
 import { parseWorkspaceImage, resolveImageSrc, API_BASE_URL } from "../lib/utils";
 import { composePromptsFromNodes } from "./PromptComposer/utils/promptUtils";
 import { encodeLegacy } from "./PromptComposer/utils/legacyEncoding";
-import { useWorkspaceStore, createDefaultWorkspaceState } from "../contexts/WorkspaceContext";
+import { useWorkspaceContext, useWorkspaceState } from "../contexts/WorkspaceContext";
 import type { Generation, ExtrasSingleImageParams } from "../Api";
 import type { PromptMode, PromptNode } from "./PromptComposer/types";
 import type { GenerationMode, Progress, Timeline } from "../types/components";
@@ -20,18 +20,16 @@ interface WorkspaceProps {
 }
 
 const Workspace = ({ workspaceId, isActive }: WorkspaceProps) => {
-    const workspaceState = useWorkspaceStore(useCallback((state: any) => {
-        if (!workspaceId) {
-            return createDefaultWorkspaceState();
-        }
-        return state.workspaceStates[workspaceId] ?? createDefaultWorkspaceState();
-    }, [workspaceId]));
-    const updateWorkspaceState = useWorkspaceStore(useCallback((state: any) => state.updateWorkspaceState, []));
-
-    const models = useWorkspaceStore((state: any) => state.models);
-    const setModels = useWorkspaceStore((state: any) => state.setModels);
-    const samplers = useWorkspaceStore((state: any) => state.samplers);
-    const setSamplers = useWorkspaceStore((state: any) => state.setSamplers);
+    const {
+        workspaceState,
+        updateWorkspaceState,
+    } = useWorkspaceState(workspaceId);
+    const {
+        models,
+        setModels,
+        samplers,
+        setSamplers
+    } = useWorkspaceContext();
 
     const { generation, mode, ui, canvas } = workspaceState;
 
@@ -76,21 +74,21 @@ const Workspace = ({ workspaceId, isActive }: WorkspaceProps) => {
     ), [progressData]);
 
     const setGenerationState = useCallback((updates: Partial<typeof generation>) => {
-        updateWorkspaceState((prev: any) => ({
+        updateWorkspaceState((prev) => ({
             ...prev,
             generation: { ...prev.generation, ...updates },
         }));
     }, [updateWorkspaceState]);
 
     const setModeState = useCallback((updates: Partial<typeof mode>) => {
-        updateWorkspaceState((prev: any) => ({
+        updateWorkspaceState((prev) => ({
             ...prev,
             mode: { ...prev.mode, ...updates },
         }));
     }, [updateWorkspaceState]);
 
     const setUiState = useCallback((updates: Partial<typeof ui>) => {
-        updateWorkspaceState((prev: any) => ({
+        updateWorkspaceState((prev) => ({
             ...prev,
             ui: { ...prev.ui, ...updates },
         }));
@@ -101,7 +99,7 @@ const Workspace = ({ workspaceId, isActive }: WorkspaceProps) => {
     }, [setUiState]);
 
     const setCanvasState = useCallback((updates: Partial<typeof canvas>) => {
-        updateWorkspaceState((prev: any) => ({
+        updateWorkspaceState((prev) => ({
             ...prev,
             canvas: { ...prev.canvas, ...updates },
         }));
@@ -189,10 +187,18 @@ const Workspace = ({ workspaceId, isActive }: WorkspaceProps) => {
     }, []);
 
     const handleBeforeGenerate = useCallback(() => {
-        if (mode.generationMode !== "inpaint") return;
+        console.log("handleBeforeGenerate", mode);
+        if (mode.generationMode !== "inpaint") {
+            console.error("Generation mode is not inpaint");
+            return;
+        }
         const provider = maskSnapshotProviderRef.current;
-        const snapshot = provider ? provider() : null;
-        setModeState({ inpaintMaskSnapshot: snapshot });
+        if (!provider) {
+            console.error("No mask snapshot provider found");
+            return;
+        }
+        const snapshot = provider();
+        setModeState({ inpaintMaskSnapshot: snapshot ?? null });
     }, [mode.generationMode, setModeState]);
 
     const handleGenerationModeChange = (nextMode: GenerationMode): void => {
@@ -209,7 +215,7 @@ const Workspace = ({ workspaceId, isActive }: WorkspaceProps) => {
     };
 
     const handleRefreshCanvas = (): void => {
-        updateWorkspaceState((prev: any) => ({
+        updateWorkspaceState((prev) => ({
             ...prev,
             canvas: {
                 ...prev.canvas,
@@ -221,6 +227,9 @@ const Workspace = ({ workspaceId, isActive }: WorkspaceProps) => {
     const generateImage = useCallback(async (): Promise<void> => {
         setGenerationState({ pendingRestart: false });
         if (!composerPrompt.trim()) return;
+        if (mode.generationMode === "inpaint") {
+            handleBeforeGenerate();
+        }
         if ((mode.generationMode === "img2img" || mode.generationMode === "inpaint") && timeline.committedHistory.length === 0) {
             alert("No committed images available for img2img/inpainting. Please generate and commit an image first.");
             return;
@@ -350,6 +359,7 @@ const Workspace = ({ workspaceId, isActive }: WorkspaceProps) => {
         setGenerationState,
         composerNodes,
         workspaceId,
+        handleBeforeGenerate,
     ]);
 
     const loadInitialData = useCallback(async (): Promise<void> => {
@@ -406,7 +416,7 @@ const Workspace = ({ workspaceId, isActive }: WorkspaceProps) => {
     };
 
     const handleInpaintMaskChange = useCallback((value: SetStateAction<string | null>) => {
-        updateWorkspaceState((prev: any) => {
+        updateWorkspaceState((prev) => {
             const nextValue = typeof value === "function"
                 ? value(prev.mode.inpaintMask)
                 : value;
@@ -899,7 +909,6 @@ const Workspace = ({ workspaceId, isActive }: WorkspaceProps) => {
         loading: generation.loading,
         progress,
         onGenerate: generateImage,
-        onBeforeGenerate: handleBeforeGenerate,
         canGenerate: !!composerPrompt.trim(),
         onSkip: handleSkip,
         onRestart: handleRestart,
@@ -956,84 +965,84 @@ const Workspace = ({ workspaceId, isActive }: WorkspaceProps) => {
             />
 
             {mode.generationMode === "inpaint" ? (
-                    <InpaintCanvas
-                        currentImage={canvas.currentImage}
-                        previewImage={getGenerationImageUrl(timeline.currentPreview)}
-                        onClearPreview={() => handlePreviewSelect(null)}
-                        onRegisterMaskSnapshotProvider={handleRegisterMaskSnapshotProvider}
-                        previewMaskSnapshot={mode.inpaintMaskSnapshot}
-                        inputImage={generation.inputImage}
-                        workspaceId={workspaceId}
-                        livePreview={livePreview}
-                        loading={generation.loading}
-                        progress={progress}
-                        generationWidth={generation.width}
-                        generationHeight={generation.height}
-                        composerNodes={composerNodes}
-                        onComposerNodesChange={handleComposerNodesChange}
-                        promptMode={ui.promptMode}
-                        onPromptModeChange={handlePromptModeChange}
-                        setInpaintMask={handleInpaintMaskChange}
-                        onImageUpload={handleCanvasImageUpload}
-                        inpaintFullRes={mode.inpaintFullRes}
-                        inpaintFullResPadding={mode.inpaintFullResPadding}
-                        setInpaintFullResPadding={(value) => setModeState({ inpaintFullResPadding: value })}
-                        setInpaintFullRes={(value) => setModeState({ inpaintFullRes: value })}
-                        forceEditMode={mode.forceInpaintEditMode}
-                        maskBlur={mode.maskBlur}
-                        setMaskBlur={(value) => setModeState({ maskBlur: value })}
-                        inpaintingFill={mode.inpaintingFill}
-                        setInpaintingFill={(value) => setModeState({ inpaintingFill: value })}
-                        denoisingStrength={generation.denoisingStrength}
-                        setDenoisingStrength={(value) => setGenerationState({ denoisingStrength: value })}
-                        inpaintingMaskInvert={mode.inpaintingMaskInvert}
-                        setInpaintingMaskInvert={(value) => setModeState({ inpaintingMaskInvert: value })}
-                        generationMode={mode.generationMode}
-                        canvasRefreshKey={canvas.canvasRefreshKey}
-                        canvasControls={canvasControls}
-                        footerCollapsed={canvas.footerCollapsed}
-                        onToggleFooter={() => setCanvasState({ footerCollapsed: !canvas.footerCollapsed })}
-                    />
-                ) : (
-                    <InpaintCanvas
-                        currentImage={canvas.currentImage}
-                        previewImage={getGenerationImageUrl(timeline.currentPreview)}
-                        onClearPreview={() => handlePreviewSelect(null)}
-                        onRegisterMaskSnapshotProvider={handleRegisterMaskSnapshotProvider}
-                        previewMaskSnapshot={mode.inpaintMaskSnapshot}
-                        workspaceId={workspaceId}
-                        livePreview={livePreview}
-                        loading={generation.loading}
-                        progress={progress}
-                        generationWidth={generation.width}
-                        generationHeight={generation.height}
-                        composerNodes={composerNodes}
-                        onComposerNodesChange={handleComposerNodesChange}
-                        promptMode={ui.promptMode}
-                        onPromptModeChange={handlePromptModeChange}
-                        setInpaintMask={noopSetInpaintMask}
-                        forceEditMode={false}
-                        maskBlur={mode.maskBlur}
-                        setMaskBlur={(value) => setModeState({ maskBlur: value })}
-                        inpaintingFill={mode.inpaintingFill}
-                        setInpaintingFill={(value) => setModeState({ inpaintingFill: value })}
-                        denoisingStrength={generation.denoisingStrength}
-                        setDenoisingStrength={(value) => setGenerationState({ denoisingStrength: value })}
-                        setInpaintFullRes={() => { }}
-                        inpaintingMaskInvert={mode.inpaintingMaskInvert}
-                        setInpaintingMaskInvert={(value) => setModeState({ inpaintingMaskInvert: value })}
-                        inputImage={mode.generationMode === "img2img" ? generation.inputImage : null}
-                        onImageUpload={mode.generationMode === "img2img" ? handleCanvasImageUpload : undefined}
-                        inpaintFullRes={false}
-                        inpaintFullResPadding={0}
-                        setInpaintFullResPadding={() => { }}
-                        generationMode={mode.generationMode}
-                        canvasRefreshKey={canvas.canvasRefreshKey}
-                        canvasControls={canvasControls}
-                        footerCollapsed={canvas.footerCollapsed}
-                        onToggleFooter={() => setCanvasState({ footerCollapsed: !canvas.footerCollapsed })}
-                    />
-                )}
+                <InpaintCanvas
+                    currentImage={canvas.currentImage}
+                    previewImage={getGenerationImageUrl(timeline.currentPreview)}
+                    onClearPreview={() => handlePreviewSelect(null)}
+                    onRegisterMaskSnapshotProvider={handleRegisterMaskSnapshotProvider}
+                    previewMaskSnapshot={mode.inpaintMaskSnapshot}
+                    inputImage={generation.inputImage}
+                    workspaceId={workspaceId}
+                    livePreview={livePreview}
+                    loading={generation.loading}
+                    progress={progress}
+                    generationWidth={generation.width}
+                    generationHeight={generation.height}
+                    composerNodes={composerNodes}
+                    onComposerNodesChange={handleComposerNodesChange}
+                    promptMode={ui.promptMode}
+                    onPromptModeChange={handlePromptModeChange}
+                    setInpaintMask={handleInpaintMaskChange}
+                    onImageUpload={handleCanvasImageUpload}
+                    inpaintFullRes={mode.inpaintFullRes}
+                    inpaintFullResPadding={mode.inpaintFullResPadding}
+                    setInpaintFullResPadding={(value) => setModeState({ inpaintFullResPadding: value })}
+                    setInpaintFullRes={(value) => setModeState({ inpaintFullRes: value })}
+                    forceEditMode={mode.forceInpaintEditMode}
+                    maskBlur={mode.maskBlur}
+                    setMaskBlur={(value) => setModeState({ maskBlur: value })}
+                    inpaintingFill={mode.inpaintingFill}
+                    setInpaintingFill={(value) => setModeState({ inpaintingFill: value })}
+                    denoisingStrength={generation.denoisingStrength}
+                    setDenoisingStrength={(value) => setGenerationState({ denoisingStrength: value })}
+                    inpaintingMaskInvert={mode.inpaintingMaskInvert}
+                    setInpaintingMaskInvert={(value) => setModeState({ inpaintingMaskInvert: value })}
+                    generationMode={mode.generationMode}
+                    canvasRefreshKey={canvas.canvasRefreshKey}
+                    canvasControls={canvasControls}
+                    footerCollapsed={canvas.footerCollapsed}
+                    onToggleFooter={() => setCanvasState({ footerCollapsed: !canvas.footerCollapsed })}
+                />
+            ) : (
+                <InpaintCanvas
+                    currentImage={canvas.currentImage}
+                    previewImage={getGenerationImageUrl(timeline.currentPreview)}
+                    onClearPreview={() => handlePreviewSelect(null)}
+                    onRegisterMaskSnapshotProvider={handleRegisterMaskSnapshotProvider}
+                    previewMaskSnapshot={mode.inpaintMaskSnapshot}
+                    workspaceId={workspaceId}
+                    livePreview={livePreview}
+                    loading={generation.loading}
+                    progress={progress}
+                    generationWidth={generation.width}
+                    generationHeight={generation.height}
+                    composerNodes={composerNodes}
+                    onComposerNodesChange={handleComposerNodesChange}
+                    promptMode={ui.promptMode}
+                    onPromptModeChange={handlePromptModeChange}
+                    setInpaintMask={noopSetInpaintMask}
+                    forceEditMode={false}
+                    maskBlur={mode.maskBlur}
+                    setMaskBlur={(value) => setModeState({ maskBlur: value })}
+                    inpaintingFill={mode.inpaintingFill}
+                    setInpaintingFill={(value) => setModeState({ inpaintingFill: value })}
+                    denoisingStrength={generation.denoisingStrength}
+                    setDenoisingStrength={(value) => setGenerationState({ denoisingStrength: value })}
+                    setInpaintFullRes={() => { }}
+                    inpaintingMaskInvert={mode.inpaintingMaskInvert}
+                    setInpaintingMaskInvert={(value) => setModeState({ inpaintingMaskInvert: value })}
+                    inputImage={mode.generationMode === "img2img" ? generation.inputImage : null}
+                    onImageUpload={mode.generationMode === "img2img" ? handleCanvasImageUpload : undefined}
+                    inpaintFullRes={false}
+                    inpaintFullResPadding={0}
+                    setInpaintFullResPadding={() => { }}
+                    generationMode={mode.generationMode}
+                    canvasRefreshKey={canvas.canvasRefreshKey}
+                    canvasControls={canvasControls}
+                    footerCollapsed={canvas.footerCollapsed}
+                    onToggleFooter={() => setCanvasState({ footerCollapsed: !canvas.footerCollapsed })}
+                />
+            )}
 
             <UpscaleDialog
                 isOpen={upscaleDialog.isOpen}
