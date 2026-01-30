@@ -2,7 +2,7 @@
 import styled, { keyframes } from 'styled-components';
 import type { Bounds } from '../../../types/components';
 
-interface LivePreviewProps {
+interface LivePreviewProps {    
     focusBounds: Bounds | null;
     maskBounds: Bounds | null;
     maskBorderMode: boolean;
@@ -95,11 +95,9 @@ const LivePreview = ({
 const maskedPreviewSwipeAnimation = keyframes`
     from {
         background-position: -200% 0;
-        /* opacity: 1; */
     }
     to {
         background-position: 200% 0;
-        /* opacity: 0; */
     }
 `;
 
@@ -128,9 +126,7 @@ const MaskedLivePreviewGradient = styled.div`
     inset: 0;
     background-image: linear-gradient(125deg, transparent 15%, #ffffff 17%, transparent 45%);
     background-size: 200% 100%;
-    background-repeat: no-repeat;
-    animation: ${maskedPreviewSwipeAnimation} 3s linear forwards;
-    animation-iteration-count: 3;
+    animation: ${maskedPreviewSwipeAnimation} 3s linear infinite;
     mix-blend-mode: overlay;
     opacity: 1;
     z-index: 2;
