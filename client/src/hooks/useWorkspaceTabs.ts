@@ -1,6 +1,15 @@
 import { useState, useEffect, useCallback } from 'react';
-import type { UseWorkspaceTabsReturn } from '../types/hooks';
 
+// useWorkspaceTabs hook return type
+export interface UseWorkspaceTabsReturn {
+    openWorkspaces: string[]
+    currentWorkspace: string | null
+    openWorkspace: (workspaceName: string) => void
+    closeWorkspace: (workspaceName: string) => void
+    switchWorkspace: (workspaceName: string) => void
+    closeAllWorkspaces: () => void
+  }
+  
 const STORAGE_KEY_OPEN_WORKSPACES = 'viteui-open-workspaces';
 const STORAGE_KEY_CURRENT_WORKSPACE = 'viteui-current-workspace';
 

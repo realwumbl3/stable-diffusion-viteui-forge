@@ -1,29 +1,40 @@
 import { useState, useEffect } from 'react'
 import MemoryPanel from '../../MemoryPanel'
 import { useCanvasSyncSelector } from '../../../contexts/CanvasSyncContext'
-import type { StatusBarProps } from '../../../types/components'
+import type { ProgressData } from '../../../hooks/useWebSocketProgress'
+
+// Extend Performance interface for Chrome's memory API
+declare global {
+    interface Performance {
+        memory?: {
+            usedJSHeapSize: number;
+            totalJSHeapSize: number;
+            jsHeapSizeLimit: number;
+        };
+    }
+}
 
 // Hook to track memory usage
 const useMemoryUsage = (): number | null => {
-  const [memoryUsage, setMemoryUsage] = useState<number | null>(null)
+    const [memoryUsage, setMemoryUsage] = useState<number | null>(null)
 
-  useEffect(() => {
-    const updateMemoryUsage = (): void => {
-      if (performance.memory) {
-        const used = performance.memory.usedJSHeapSize
-        const usedMB = Math.round(used / 1024 / 1024)
-        setMemoryUsage(usedMB)
-      }
-    }
+    useEffect(() => {
+        const updateMemoryUsage = (): void => {
+            if (performance.memory) {
+                const used = performance.memory.usedJSHeapSize
+                const usedMB = Math.round(used / 1024 / 1024)
+                setMemoryUsage(usedMB)
+            }
+        }
 
-    // Update immediately and then every 5 seconds
-    updateMemoryUsage()
-    const interval = setInterval(updateMemoryUsage, 5000)
+        // Update immediately and then every 5 seconds
+        updateMemoryUsage()
+        const interval = setInterval(updateMemoryUsage, 5000)
 
-    return () => clearInterval(interval)
-  }, [])
+        return () => clearInterval(interval)
+    }, [])
 
-  return memoryUsage
+    return memoryUsage
 }
 
 const StatusBar = ({
@@ -31,7 +42,12 @@ const StatusBar = ({
     inputImage,
     progress,
     loading,
-}: StatusBarProps) => {
+}: {
+    displayImage?: string | null
+    inputImage?: string | null
+    progress?: ProgressData | null
+    loading?: boolean
+}) => {
     const zoom = useCanvasSyncSelector((state) => state.zoom);
     const brushSize = useCanvasSyncSelector((state) => state.brushSize);
     const drawingMode = useCanvasSyncSelector((state) => state.drawingMode);
@@ -57,13 +73,13 @@ const StatusBar = ({
                     <>
                         <span>•</span>
                         <span>
-                            Step {progress.sampling_step || 0}/{progress.sampling_steps || 0}
+                            Step {Number(progress.sampling_step) || 0}/{Number(progress.sampling_steps) || 0}
                         </span>
                         {progress.total_batches && progress.total_batches > 1 && (
                             <>
                                 <span>•</span>
                                 <span>
-                                    Batch {progress.current_batch}/{progress.total_batches}
+                                    Batch {Number(progress.current_batch) || 0}/{Number(progress.total_batches) || 0}
                                 </span>
                             </>
                         )}
@@ -72,7 +88,7 @@ const StatusBar = ({
                         {progress.eta && (
                             <>
                                 <span>•</span>
-                                <span>ETA~{Math.round(progress.eta)}s</span>
+                                <span>ETA~{Math.round(progress.eta as number)}s</span>
                             </>
                         )}
                     </>
@@ -91,7 +107,7 @@ const StatusBar = ({
                 )}
                 <MemoryPanel open={memoryPanelOpen} onClose={() => setMemoryPanelOpen(false)} />
                 <span>StableDiffusion viteUI</span>
-                {progress && loading && <span className="text-studio-accent">{progress.textinfo}</span>}
+                {progress && loading && <span className="text-studio-accent">{String(progress.textinfo || '')}</span>}
             </div>
         </div>
     );

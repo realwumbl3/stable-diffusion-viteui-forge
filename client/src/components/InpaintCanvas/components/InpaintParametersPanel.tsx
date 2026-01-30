@@ -2,7 +2,6 @@ import { Eye, EyeOff, Square } from "lucide-react";
 import OptionPicker from "../../OptionPicker";
 import NumberSelector from "../../NumberSelector";
 import KeyIndicator from "../../KeyIndicator";
-import type { InpaintParametersPanelProps } from "../../../types/components";
 
 const InpaintParametersPanel = ({
     // Mask blur parameters
@@ -31,7 +30,26 @@ const InpaintParametersPanel = ({
     setShowMask,
     showBorder,
     setShowBorder,
-}: InpaintParametersPanelProps) => {
+}: {
+    maskBlur: number
+    setMaskBlur: (value: number) => void
+    inpaintingFill: number
+    setInpaintingFill: (value: number) => void
+    denoisingStrength: number
+    setDenoisingStrength: (value: number) => void
+    inpaintFullRes: boolean
+    setInpaintFullRes: (value: boolean) => void
+    inpaintingMaskInvert: boolean
+    setInpaintingMaskInvert: (value: boolean) => void
+    inpaintFullResPadding: number
+    setInpaintFullResPadding: (value: number) => void
+    maskBorderMode: boolean
+    setMaskBorderMode: (value: boolean) => void
+    showMask: boolean
+    setShowMask: (value: boolean) => void
+    showBorder: boolean
+    setShowBorder: (value: boolean) => void
+}) => {
     const fillOptions = [
         { value: "0", label: "Fill" },
         { value: "1", label: "Source" },

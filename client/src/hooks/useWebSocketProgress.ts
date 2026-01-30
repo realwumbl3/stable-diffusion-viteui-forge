@@ -13,6 +13,7 @@ export interface ProgressData {
   [key: string]: unknown
 }
 
+
 export interface WebSocketMessage extends ProgressData {
   type?: 'connected' | 'disconnected' | 'ping' | 'pong'
 }

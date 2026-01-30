@@ -1,14 +1,8 @@
 // Live preview overlay for the inpaint canvas
 import styled, { keyframes } from 'styled-components';
+import type { Bounds } from '../../../types/components';
 
-type Bounds = {
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-};
-
-interface LivePreviewProps {
+interface LivePreviewProps {    
     focusBounds: Bounds | null;
     maskBounds: Bounds | null;
     maskBorderMode: boolean;

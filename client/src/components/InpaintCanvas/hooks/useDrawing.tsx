@@ -1,14 +1,7 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { useWorkspaceContext } from "../../../contexts/WorkspaceContext";
 import type { WorkspaceTransientState } from "../../../contexts/WorkspaceContext";
-
-interface Bounds {
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-}
-
+import type { Bounds } from "../../../types/components";
 
 interface UseDrawingParams {
     inputImage: string | null;

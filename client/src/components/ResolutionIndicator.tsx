@@ -2,7 +2,15 @@ import { useState, useRef, useEffect } from 'react'
 import { ChevronDown, Image as ImageIcon } from 'lucide-react'
 import { cn } from '../lib/utils'
 import ResolutionPicker from './ResolutionPicker'
-import type { ResolutionIndicatorProps } from '../types/components'
+
+// ResolutionIndicator component props
+export interface ResolutionIndicatorProps {
+  width: number
+  setWidth: (value: number) => void
+  height: number
+  setHeight: (value: number) => void
+  inputImage: string | null
+}
 
 const ResolutionIndicator = ({
   width,

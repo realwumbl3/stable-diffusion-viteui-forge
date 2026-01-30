@@ -2,7 +2,8 @@ import { cn } from "../../../lib/utils";
 import InpaintParametersPanel from "./InpaintParametersPanel";
 import ZoomToolbar from "./ZoomToolbar";
 import LivePreview from "./LivePreview";
-import type { CanvasAreaProps } from "../../../types/components";
+import type { Bounds, GenerationMode } from "../../../types/components";
+import type { ProgressData } from "../../../hooks/useWebSocketProgress";
 import { useCanvasSync } from "../../../contexts/CanvasSyncContext";
 import EmptyState from "./EmptyState";
 import CanvasBrushIndicator from "./CanvasBrushIndicator";
@@ -62,7 +63,65 @@ const CanvasArea = ({
     handleZoomIn,
     handleResetZoom,
     handleFitToScreen,
-}: CanvasAreaProps) => {
+}: {
+    canvasRef: React.RefObject<HTMLDivElement>
+    panTargetRef: React.RefObject<HTMLDivElement>
+    maskCanvasRef: React.RefObject<HTMLCanvasElement>
+    overlayCanvasRef?: React.RefObject<HTMLCanvasElement>
+    imageRef: React.RefObject<HTMLImageElement>
+    displayImage?: string | null
+    inputImage?: string | null
+    previewImage?: string | null
+    previewMaskSnapshot?: string | null
+    onClearPreview?: () => void
+    currentImage?: string | null
+    livePreview?: string | null
+    generationWidth?: number
+    generationHeight?: number
+    loading?: boolean
+    progress?: ProgressData | null
+    isPanning: boolean
+    isRightClickPanning: boolean
+    inpaintFullRes: boolean
+    inpaintFullResPadding: number
+    setInpaintFullResPadding: (value: number) => void
+    viewMode: 'edit' | 'result'
+    isDrawing: boolean
+    setLastDrawPos: (pos: { x: number; y: number } | null) => void
+    isDragOver: boolean
+    handleDragOver: (e: React.DragEvent) => void
+    handleDragLeave: (e: React.DragEvent) => void
+    handleDrop: (e: React.DragEvent) => void
+    handleMouseDown: (e: React.MouseEvent) => void
+    handleMouseMove: (e: React.MouseEvent) => void
+    handleMouseUp: (e: React.MouseEvent) => void
+    handleMouseEnter: (e: React.MouseEvent) => void
+    handlePointerDown?: (e: React.PointerEvent) => void
+    handlePointerMove?: (e: React.PointerEvent) => void
+    handlePointerUp?: (e: React.PointerEvent) => void
+    handlePointerCancel?: (e: React.PointerEvent) => void
+    openFileDialog: () => void
+    maskBlur: number
+    setMaskBlur: (value: number) => void
+    inpaintingFill: number
+    setInpaintingFill: (value: number) => void
+    denoisingStrength: number
+    setDenoisingStrength: (value: number) => void
+    setInpaintFullRes: (value: boolean) => void
+    inpaintingMaskInvert: boolean
+    setInpaintingMaskInvert: (value: boolean) => void
+    uiVisible?: boolean
+    setUiVisible?: (visible: boolean) => void
+    scrollWheelZoomIncrement?: number
+    generationMode?: GenerationMode
+    focusBounds?: Bounds | null
+    maskBounds?: Bounds | null
+    canvasRefreshKey?: number
+    handleZoomOut: () => void
+    handleZoomIn: () => void
+    handleResetZoom: () => void
+    handleFitToScreen: () => void
+}) => {
     const {
         zoom,
         panOffset,

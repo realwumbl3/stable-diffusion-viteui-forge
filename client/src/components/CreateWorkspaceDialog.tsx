@@ -1,12 +1,15 @@
 import { useState, useEffect, useRef } from 'react'
 import { X, Plus } from 'lucide-react'
-import type { CreateWorkspaceDialogProps } from '../types/components'
 
 const CreateWorkspaceDialog = ({
   isOpen,
   onClose,
   onCreateWorkspace
-}: CreateWorkspaceDialogProps) => {
+}: {
+  isOpen: boolean
+  onClose: () => void
+  onCreateWorkspace: (name: string) => void
+}) => {
   const [workspaceName, setWorkspaceName] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
 

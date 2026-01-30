@@ -2,12 +2,17 @@ import { Brush, Eraser, PaintBucket, RotateCcw, Undo, Redo } from "lucide-react"
 import { cn } from "../../../lib/utils";
 import KeyIndicator from "../../KeyIndicator";
 import { useCanvasSyncSelector } from "../../../contexts/CanvasSyncContext";
-import type { InpaintToolbarProps } from "../../../types/components";
 import type { WheelEvent } from "react";
 
 const clampRange = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
-const InpaintToolbar = ({ onUndo, onRedo, onClear, canUndo = false, canRedo = false }: InpaintToolbarProps) => {
+const InpaintToolbar = ({ onUndo, onRedo, onClear, canUndo = false, canRedo = false }: {
+    onUndo: () => void
+    onRedo: () => void
+    onClear: () => void
+    canUndo?: boolean
+    canRedo?: boolean
+  }) => {
     const drawingMode = useCanvasSyncSelector((state) => state.drawingMode);
     const setDrawingMode = useCanvasSyncSelector((state) => state.setDrawingMode);
     const fillTarget = useCanvasSyncSelector((state) => state.fillTarget);

@@ -1,7 +1,19 @@
 import { useState } from 'react'
 import { ChevronDown, ChevronUp, Lock, Unlock } from 'lucide-react'
 import { cn } from '../lib/utils'
-import type { ResolutionPickerProps } from '../types/components'
+
+// ResolutionPicker component props
+export interface ResolutionPickerProps {
+  width: number
+  setWidth: (value: number) => void
+  height: number
+  setHeight: (value: number) => void
+  collapsed?: boolean
+  onToggleCollapsed?: () => void
+  className?: string
+  inputImage?: string | null
+}
+
 
 interface AspectRatio {
   ratio: string

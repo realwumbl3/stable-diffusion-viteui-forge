@@ -1,7 +1,18 @@
 import { useState, useEffect, useRef } from 'react'
 import { X, Loader2, Maximize2 } from 'lucide-react'
 import { cn } from '../lib/utils'
-import type { UpscaleDialogProps } from '../types/components'
+
+// UpscaleDialog component props
+export interface UpscaleDialogProps {
+  isOpen: boolean
+  onClose: () => void
+  onUpscale: (upscaler: string, scaleFactor: number) => void
+  sourceImage: { id: string; image: string; type: 'timeline' | 'canvas' } | null
+  selectedUpscaler: string
+  availableUpscalers: Array<{ name: string; model_name?: string; scale?: number }>
+  loading?: boolean
+  error?: string | null
+}
 
 const resolveInitialUpscaler = (
   selectedUpscaler: string,
@@ -127,8 +138,8 @@ const UpscaleDialog = ({
                       currentUpscaler === upscaler.name
                         ? "bg-studio-accent text-white border-studio-accent"
                         : loading
-                        ? "bg-studio-surface border-studio-border text-studio-textMuted cursor-not-allowed"
-                        : "bg-studio-surface border-studio-border text-studio-text hover:bg-studio-panelHover hover:border-studio-accent"
+                          ? "bg-studio-surface border-studio-border text-studio-textMuted cursor-not-allowed"
+                          : "bg-studio-surface border-studio-border text-studio-text hover:bg-studio-panelHover hover:border-studio-accent"
                     )}
                     type="button"
                   >

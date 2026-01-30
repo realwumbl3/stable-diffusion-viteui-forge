@@ -13,7 +13,10 @@ import CanvasArea from "./CanvasArea";
 import StatusBar from "./StatusBar";
 import { useCanvasPointerEvents } from "../hooks/useCanvasPointerEvents.tsx";
 import { useCanvasSync } from "../../../contexts/CanvasSyncContext";
-import type { InpaintCanvasProps } from "../../../types/components";
+import type { GenerationMode } from "../../../types/components";
+import type { PromptMode, PromptNode } from "../../PromptComposer/types.ts";
+import type { ProgressData } from "../../../hooks/useWebSocketProgress";
+import type { CanvasTopControlsProps } from "./GenerationControlls";
 
 const InpaintCanvas = ({
     currentImage,
@@ -59,7 +62,44 @@ const InpaintCanvas = ({
     canvasControls,
     footerCollapsed,
     onToggleFooter,
-}: InpaintCanvasProps) => {
+}: {
+    workspaceId: string;
+    currentImage?: string | null
+    previewImage?: string | null
+    onClearPreview?: () => void
+    previewMaskSnapshot?: string | null
+    livePreview?: string | null
+    loading?: boolean
+    progress?: ProgressData | null
+    generationWidth?: number
+    generationHeight?: number
+    composerNodes: PromptNode[]
+    onComposerNodesChange: (nodes: PromptNode[]) => void
+    setInpaintMask: React.Dispatch<React.SetStateAction<string | null>>
+    inputImage?: string | null
+    onImageUpload?: (image: string) => void
+    inpaintFullRes: boolean
+    inpaintFullResPadding: number
+    setInpaintFullResPadding: (value: number) => void
+    forceEditMode?: boolean
+    maskBlur: number
+    setMaskBlur: (value: number) => void
+    inpaintingFill: number
+    setInpaintingFill: (value: number) => void
+    denoisingStrength: number
+    setDenoisingStrength: (value: number) => void
+    setInpaintFullRes: (value: boolean) => void
+    inpaintingMaskInvert: boolean
+    setInpaintingMaskInvert: (value: boolean) => void
+    generationMode?: GenerationMode
+    canvasRefreshKey?: number
+    canvasControls: CanvasTopControlsProps
+    promptMode: PromptMode
+    onPromptModeChange: (mode: PromptMode) => void
+    footerCollapsed?: boolean
+    onToggleFooter?: () => void
+    onRegisterMaskSnapshotProvider?: (provider: (() => string | null) | null) => void
+}) => {
     const displayImage = previewImage || currentImage;
     const resolvedDisplayImage = resolveImageSrc(displayImage, "full");
     const resolvedInputImage = resolveImageSrc(inputImage || null, "full");

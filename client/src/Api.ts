@@ -1,5 +1,5 @@
 // API Types
-import type { WorkspaceStructureNode } from './types/components';
+import type { WorkspaceStructureNode } from './components/WorkspaceBrowser';
 import type { PromptNode } from './components/PromptComposer/types';
 
 export interface Txt2ImgParams {
@@ -272,11 +272,6 @@ class StableDiffusionAPI {
         image: imageBase64,
       }),
     });
-  }
-
-  // Progress
-  async getProgress(): Promise<ProgressInfo> {
-    return this.request<ProgressInfo>('/sdapi/v1/progress');
   }
 
   // Skip current generation

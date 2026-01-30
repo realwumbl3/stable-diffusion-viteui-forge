@@ -2,13 +2,15 @@ import { useState, useRef, useEffect, useLayoutEffect, useMemo, useId } from 're
 import { createPortal } from 'react-dom';
 import type { CSSProperties, RefObject } from 'react';
 import { ChevronDown } from 'lucide-react';
-import type { OptionPickerProps, OpeningDirection } from '../types/components';
+
 
 const DROPDOWN_ESTIMATED_HEIGHT = 240;
 const DROPDOWN_MARGIN = 8;
 const DROPDOWN_MAX_WIDTH_OFFSET = DROPDOWN_MARGIN * 2;
 
 const clamp = (value: number, min: number, max: number): number => Math.max(min, Math.min(max, value));
+
+type OpeningDirection = 'up' | 'down' | 'auto'
 
 const useDropdownPosition = (
   isOpen: boolean,
@@ -107,7 +109,16 @@ const OptionPicker = ({
   className = "",
   disabled = false,
   openingDirection = 'auto'
-}: OptionPickerProps) => {
+}: {
+  options: Array<{ value: string; label: string }>
+  value: string
+  onChange: (value: string) => void
+  title?: string
+  placeholder?: string
+  className?: string
+  disabled?: boolean
+  openingDirection?: OpeningDirection
+}) => {
   const [isOpen, setIsOpen] = useState(false);
   const [focusedIndex, setFocusedIndex] = useState(-1);
   const containerRef = useRef<HTMLDivElement>(null);

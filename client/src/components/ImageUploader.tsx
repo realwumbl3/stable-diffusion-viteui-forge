@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { Upload } from 'lucide-react'
 import { cn } from '../lib/utils'
-import type { ImageUploaderProps } from '../types/components'
+import type { ProgressData } from '../hooks/useWebSocketProgress'
 
 const ImageUploader = ({
   inputImage,
@@ -9,7 +9,14 @@ const ImageUploader = ({
   loading,
   progress,
   className = ""
-}: ImageUploaderProps) => {
+}: {
+  inputImage?: string | null
+  onImageUpload: (image: string) => void
+  loading?: boolean
+  progress?: ProgressData | null
+  className?: string
+}
+) => {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [isDragOver, setIsDragOver] = useState(false)
 

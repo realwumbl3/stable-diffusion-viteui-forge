@@ -12,7 +12,8 @@ import { cn, resolveImageSrc } from '../lib/utils'
 import TimelineItem from './TimelineItem'
 import KeyIndicator from './KeyIndicator'
 import type { Generation } from '../Api'
-import type { SidebarProps } from '../types/components'
+import type { GenerationMode } from '../types/components'
+import type { Timeline } from './TimelineItem'
 
 const Sidebar = ({
   collapsed,
@@ -32,7 +33,25 @@ const Sidebar = ({
   onRefreshTimeline,
   onRefreshCanvas,
   canvasRefreshKey
-}: SidebarProps) => {
+}: {
+  collapsed: boolean
+  onToggle: () => void
+  timeline: Timeline
+  currentImage: string | null
+  onPreviewSelect: (generation: Generation | null) => void
+  onCommitPreview: () => void
+  onRejectPreview: () => void
+  onDiscardGeneration: (generation: Generation) => void
+  onRestoreGeneration: (generation: Generation) => void
+  onUncommitGeneration: (generation: Generation) => void
+  onGenerationModeChange: (mode: GenerationMode) => void
+  generationMode: GenerationMode
+  onUpscale: (item: { id: string; image: string; type: 'timeline' | 'canvas' }) => void
+  getGenerationImageUrl?: (generation: Generation | null) => string | null
+  onRefreshTimeline?: () => void
+  onRefreshCanvas?: () => void
+  canvasRefreshKey: number
+}) => {
   const [committedPage, setCommittedPage] = useState<number>(0)
   const [discardedPage, setDiscardedPage] = useState<number>(0)
   const [imageLoadTick, setImageLoadTick] = useState(0)

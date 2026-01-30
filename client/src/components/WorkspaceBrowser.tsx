@@ -1,8 +1,22 @@
 import { useEffect, useState, useCallback } from "react";
 import { Folder, FolderPlus, ChevronRight, ChevronDown, Briefcase } from "lucide-react";
 import api from "../Api";
-import type { WorkspaceBrowserProps, WorkspaceStructureNode } from "../types/components";
 
+// Workspace structure node type
+export interface WorkspaceStructureNode {
+    name: string
+    path: string
+    type: 'workspace' | 'folder'
+    children: WorkspaceStructureNode[]
+  }
+  
+// WorkspaceBrowser component props
+export interface WorkspaceBrowserProps {
+    currentWorkspace: string | null
+    onSelectWorkspace: (workspace: string) => void
+    onClose: () => void
+  }
+  
 /**
  * WorkspaceBrowser component for managing workspace structure
  * Features: drag & drop, renaming, folder creation, workspace selection

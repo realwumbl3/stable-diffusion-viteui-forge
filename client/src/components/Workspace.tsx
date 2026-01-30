@@ -2,7 +2,6 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { SetStateAction } from "react";
 import api from "../Api";
 import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
-import { useWebSocketProgress } from "../hooks/useWebSocketProgress";
 import Sidebar from "./Sidebar";
 import InpaintCanvas from "./InpaintCanvas/components/InpaintCanvas";
 import UpscaleDialog from "./UpscaleDialog";
@@ -10,9 +9,12 @@ import { parseWorkspaceImage, resolveImageSrc, API_BASE_URL } from "../lib/utils
 import { composePromptsFromNodes } from "./PromptComposer/utils/promptUtils";
 import { encodeLegacy } from "./PromptComposer/utils/legacyEncoding";
 import { useWorkspaceContext, useWorkspaceState } from "../contexts/WorkspaceContext";
+import { useWebSocketProgress } from "../hooks/useWebSocketProgress";
 import type { Generation, ExtrasSingleImageParams } from "../Api";
 import type { PromptMode, PromptNode } from "./PromptComposer/types";
-import type { GenerationMode, Progress, Timeline } from "../types/components";
+import type { GenerationMode } from "../types/components";
+import type { ProgressData } from "../hooks/useWebSocketProgress";
+import type { Timeline } from "./TimelineItem";
 
 interface WorkspaceProps {
     workspaceId: string;
@@ -66,12 +68,7 @@ const Workspace = ({ workspaceId, isActive }: WorkspaceProps) => {
     const workspaceChangingRef = useRef(false);
 
     const { progress: progressData, livePreview } = useWebSocketProgress(generation.currentTaskId);
-    const progress: Progress | null = useMemo(() => (
-        progressData ? {
-            progress: progressData.progress ?? 0,
-            ...progressData,
-        } : null
-    ), [progressData]);
+    const progress: ProgressData | null = progressData;
 
     const setGenerationState = useCallback((updates: Partial<typeof generation>) => {
         updateWorkspaceState((prev) => ({

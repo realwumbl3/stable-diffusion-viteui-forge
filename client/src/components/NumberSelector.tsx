@@ -2,19 +2,6 @@ import { useState, useEffect, useRef } from 'react';
 import { ChevronUp, ChevronDown } from 'lucide-react';
 import { cn } from '../lib/utils';
 
-interface NumberSelectorProps {
-  value: number;
-  onChange: (value: number) => void;
-  min?: number;
-  max?: number;
-  step?: number;
-  className?: string;
-  inputClassName?: string;
-  disabled?: boolean;
-  label?: string;
-  suffix?: string;
-}
-
 const NumberSelector = ({
   value,
   onChange,
@@ -26,7 +13,18 @@ const NumberSelector = ({
   disabled = false,
   label,
   suffix
-}: NumberSelectorProps) => {
+}: {
+  value: number;
+  onChange: (value: number) => void;
+  min?: number;
+  max?: number;
+  step?: number;
+  className?: string;
+  inputClassName?: string;
+  disabled?: boolean;
+  label?: string;
+  suffix?: string;
+}) => {
   const [isFocused, setIsFocused] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);

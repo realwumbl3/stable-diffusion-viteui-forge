@@ -2,7 +2,31 @@ import { X, Maximize2, FolderOpen, Paintbrush } from "lucide-react";
 import { cn, resolveImageSrc } from "../lib/utils";
 import { useState, useRef, useEffect, type MouseEvent } from "react";
 import api from "../Api";
-import type { TimelineItemProps } from "../types/components";
+import type { Generation } from "../Api";
+
+// TimelineItem component props
+export interface TimelineItemProps {
+    item: Generation
+    isActive: boolean
+    onSelect: () => void
+    onDiscard?: () => void
+    onCommit?: () => void
+    onReject?: () => void
+    onUpscale?: (item: Generation) => void
+    showDiscard?: boolean
+    showCommitReject?: boolean
+    showUpscale?: boolean
+    commitLabel?: string
+    badge?: React.ReactNode | null
+    getGenerationImageUrl?: (item: Generation, kind?: 'preview' | 'full') => string | null
+}
+
+export interface Timeline {
+    generationQueue: Generation[]
+    currentPreview: Generation | null
+    committedHistory: Generation[]
+    discarded: Generation[]
+}
 
 const TimelineItem = ({
     item,

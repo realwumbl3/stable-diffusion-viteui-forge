@@ -3,7 +3,7 @@ import { Sliders } from "lucide-react";
 import { cn } from "../lib/utils";
 import ResolutionPicker from "./ResolutionPicker";
 import NumberSelector from "./NumberSelector";
-import type { PropertiesPanelProps } from "../types/components";
+import type { GenerationMode } from "../types/components";
 
 const PropertiesPanel = ({
     collapsed,
@@ -22,7 +22,27 @@ const PropertiesPanel = ({
     onImageUpload,
     saveImages,
     setSaveImages,
-}: PropertiesPanelProps) => {
+}: {
+    collapsed: boolean
+    onToggle: () => void
+    generationMode: GenerationMode
+    setGenerationMode: (mode: GenerationMode) => void
+    width: number
+    setWidth: (value: number) => void
+    height: number
+    setHeight: (value: number) => void
+    batchSize: number
+    setBatchSize: (value: number) => void
+    denoisingStrength: number
+    setDenoisingStrength: (value: number) => void
+    inputImage: string | null
+    onImageUpload: (image: string | null) => void
+    clipSkip?: number
+    onClipSkipChange?: (value: number) => void
+    saveImages: boolean
+    setSaveImages: (value: boolean) => void
+}
+) => {
     const [activeSection, setActiveSection] = useState<string>("generation");
 
     const sections = [
@@ -187,7 +207,7 @@ const PropertiesPanel = ({
                                             onChange={setBatchSize}
                                             min={1}
                                             max={8}
-                                            step={1} 
+                                            step={1}
                                         />
                                     </div>
 

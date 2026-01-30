@@ -1,8 +1,17 @@
 import { useState, useEffect, useRef } from "react";
 import { X, Plus, FolderOpen } from "lucide-react";
 import CreateWorkspaceDialog from "./CreateWorkspaceDialog";
-import type { WorkspaceTabsProps } from "../types/components";
 
+// WorkspaceTabs component props
+export interface WorkspaceTabsProps {
+    openWorkspaces: string[]
+    currentWorkspace: string | null
+    onWorkspaceChange: (workspace: string) => void
+    onWorkspaceClose: (workspace: string) => void
+    onCreateWorkspace: (name: string) => void
+    onOpenWorkspaceBrowser: () => void
+  }
+  
 /**
  * WorkspaceTabs component for managing multiple open workspaces with tabs
  */

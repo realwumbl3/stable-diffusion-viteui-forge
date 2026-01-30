@@ -2,7 +2,17 @@ import { Check, ChevronLeft, ChevronRight, Eye, X } from "lucide-react";
 import { useRef, useCallback } from "react";
 import { cn } from "../lib/utils";
 import KeyIndicator from "./KeyIndicator";
-import type { GenerationsNavigatorProps } from "../types/components";
+import type { Generation } from "../Api";
+
+
+interface GenerationsNavigatorProps {
+  generationQueue: Generation[]
+  currentPreview: Generation | null
+  latestCommit: Generation | null
+  onPreviewSelect: (generation: Generation | null) => void
+  onCommit: () => void
+  onReject: () => void
+}
 
 const GenerationsNavigator = ({
   generationQueue,
@@ -64,7 +74,7 @@ const GenerationsNavigator = ({
 
   return (
     <div
-      className="flex flex-col gap-2 rounded-lg border border-studio-border bg-studio-panel p-2"
+      className="flex flex-col gap-2 rounded-lg border border-studio-border bg-studio-panel p-2 max-w-min"
       onWheel={handleScroll}
     >
       <div className="flex items-center justify-between text-[11px] uppercase tracking-wider text-studio-textSecondary">
