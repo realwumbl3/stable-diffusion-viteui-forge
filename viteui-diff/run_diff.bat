@@ -3,7 +3,7 @@ REM Batch script to run the diff builder with the specified directories
 
 set CURRENT_DIR=%~dp0..
 set ORIGINAL_DIR=%~dp0..\original-forge
-set OUTPUT_DIR=%~dp0\diff-output
+set OUTPUT_DIR=%~dp0diff-output
 
 echo Running diff builder...
 echo Original: %ORIGINAL_DIR%

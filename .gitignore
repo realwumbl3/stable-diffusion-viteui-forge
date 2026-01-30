@@ -66,3 +66,4 @@ workspaces/
 workspaces-prewebp/
 .env
 .cursor/plans/*
+nginx-on-vps.conf

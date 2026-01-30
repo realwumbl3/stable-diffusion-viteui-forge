@@ -61,7 +61,7 @@ const CanvasTopControls = ({ controls, visible }: Props) => {
     const isGenerating = loading && progress;
 
     return (
-        <GenerationControlsContainer className={`flex flex-wrap items-center gap-1 rounded-lg border border-studio-border p-1 pointer-events-auto 
+        <GenerationControlsContainer className={`grid grid-cols-2 items-center gap-1 rounded-lg border border-studio-border p-1 pointer-events-auto 
         bg-studio-bg/30 shadow-2xl backdrop-blur 
         transition-opacity duration-200 ${visible ? "opacity-100" : "opacity-0"} 
         ${isGenerating ? "generating" : ""}`}>

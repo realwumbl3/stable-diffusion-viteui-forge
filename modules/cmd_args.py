@@ -120,6 +120,8 @@ parser.add_argument(
     help="Path to directory with annotator model directories",
     default=None,
 )
+
+# Arguments added/overridden by viteui.
 parser.add_argument(
     "--ui-settings-file",
     type=normalized_filepath,
