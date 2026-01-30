@@ -90,6 +90,7 @@ const CanvasArea = ({
             <div className="flex-1 overflow-hidden min-h-0" style={{ minHeight: "400px" }}>
                 <div className="relative w-full h-full flex items-center justify-center p-8">
                     <LivePreview
+                        showBorder={showBorder}
                         focusBounds={focusBounds}
                         maskBounds={maskBounds}
                         maskBorderMode={maskBorderMode}
@@ -232,6 +233,7 @@ const CanvasArea = ({
                             }}
                         />
                         <LivePreview
+                            showBorder={showBorder}
                             focusBounds={focusBounds}
                             maskBounds={maskBounds}
                             maskBorderMode={maskBorderMode}

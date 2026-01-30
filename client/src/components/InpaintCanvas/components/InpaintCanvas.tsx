@@ -269,15 +269,15 @@ const InpaintCanvas = ({
         generationHeight: generationHeight ?? null,
     });
 
-    const { getCroppedMaskSnapshot } = drawing;
+    const { getMaskSnapshot } = drawing;
     useEffect(() => {
         if (!onRegisterMaskSnapshotProvider) {
             console.error("No mask snapshot provider found");
             return;
         }
-        onRegisterMaskSnapshotProvider(getCroppedMaskSnapshot);
+        onRegisterMaskSnapshotProvider(getMaskSnapshot);
         return () => onRegisterMaskSnapshotProvider(null);
-    }, [getCroppedMaskSnapshot, onRegisterMaskSnapshotProvider]);
+    }, [getMaskSnapshot, onRegisterMaskSnapshotProvider]);
 
     const fileHandling = useFileHandling({ onImageUpload });
     // Destructure to avoid ref access warnings

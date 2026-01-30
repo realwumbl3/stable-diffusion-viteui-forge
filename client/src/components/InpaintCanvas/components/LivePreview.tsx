@@ -8,53 +8,11 @@ type Bounds = {
     height: number;
 };
 
-const maskedPreviewSwipeAnimation = keyframes`
-    from {
-        background-position: -200% 0;
-    }
-    to {
-        background-position: 200% 0;
-    }
-`;
-
-const MaskedLivePreviewContainer = styled.div<{ $maskSrc: string }>`
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    pointer-events: none;
-    display: flex;
-    place-items: center;
-    justify-content: center;
-    overflow: hidden;
-    mask-image: url(${(props) => props.$maskSrc});
-    mask-position: center;
-    mask-repeat: no-repeat;
-    mask-size: cover;
-    -webkit-mask-image: url(${(props) => props.$maskSrc});
-    -webkit-mask-position: center;
-    -webkit-mask-repeat: no-repeat;
-    -webkit-mask-size: cover;
-`;
-
-const MaskedLivePreviewGradient = styled.div`
-    position: absolute;
-    inset: 0;
-    background-image: linear-gradient(125deg, transparent 15%, #ffffff 17%, transparent 45%);
-    background-size: 200% 100%;
-    animation: ${maskedPreviewSwipeAnimation} 3s linear infinite;
-    mix-blend-mode: overlay;
-    opacity: 1;
-    z-index: 2;
-    pointer-events: none;
-    mask: inherit;
-    -webkit-mask: inherit;
-`;
-
 interface LivePreviewProps {
     focusBounds: Bounds | null;
     maskBounds: Bounds | null;
     maskBorderMode: boolean;
+    showBorder: boolean;
     livePreview: string | null;
     previewMaskSnapshot: string | null;
 }
@@ -63,6 +21,7 @@ const LivePreview = ({
     focusBounds,
     maskBounds,
     maskBorderMode,
+    showBorder,
     livePreview,
     previewMaskSnapshot,
 }: LivePreviewProps) => {
@@ -110,21 +69,17 @@ const LivePreview = ({
 
     return (
         <div className="absolute inset-0 pointer-events-none">
-            {maskBorderMode && <div style={{ opacity: 0.9 }}>
-                <FocusBoundsOverlay
-                    focusBounds={focusBounds}
-                />
-            </div>}
+            {maskBorderMode && <FocusBoundsOverlay focusBounds={focusBounds} />}
 
-            <div className="absolute inset-0 pointer-events-none rounded-md outline outline-[2px] outline-offset-[2px] outline-white mix-blend-difference"
+            {showBorder && <div className="absolute inset-0 pointer-events-none rounded-md outline outline-[2px] outline-offset-[2px] outline-white mix-blend-difference"
                 style={outerBorderStyle}
-            ></div>
+            ></div>}
             <div className="absolute inset-0 pointer-events-none rounded-md"
                 style={outerBorderStyle}
             >{previewOverlay}</div>
 
             {
-                maskBounds && (
+                showBorder && maskBounds && (
                     <div
                         className="absolute outline-dashed outline-white mix-blend-difference rounded-sm"
                         style={{
@@ -132,9 +87,9 @@ const LivePreview = ({
                             left: `${maskBounds.x}px`,
                             width: `${maskBounds.width}px`,
                             height: `${maskBounds.height}px`,
-                            outlineWidth: '1px',
-                            outlineOffset: '1px',
-                            opacity: 0.2,
+                            outlineWidth: '2px',
+                            outlineOffset: '2px',
+                            opacity: 0.4,
                         }}
                     />
                 )
@@ -143,7 +98,50 @@ const LivePreview = ({
     );
 };
 
-const commonBlindStyle = {
+const maskedPreviewSwipeAnimation = keyframes`
+    from {
+        background-position: -200% 0;
+    }
+    to {
+        background-position: 200% 0;
+    }
+`;
+
+const MaskedLivePreviewContainer = styled.div<{ $maskSrc: string }>`
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    display: flex;
+    place-items: center;
+    justify-content: center;
+    overflow: hidden;
+    mask-image: url(${(props) => props.$maskSrc});
+    mask-position: center;
+    mask-repeat: no-repeat;
+    mask-size: cover;
+    -webkit-mask-image: url(${(props) => props.$maskSrc});
+    -webkit-mask-position: center;
+    -webkit-mask-repeat: no-repeat;
+    -webkit-mask-size: cover;
+`;
+
+const MaskedLivePreviewGradient = styled.div`
+    position: absolute;
+    inset: 0;
+    background-image: linear-gradient(125deg, transparent 15%, #ffffff 17%, transparent 45%);
+    background-size: 200% 100%;
+    animation: ${maskedPreviewSwipeAnimation} 3s linear infinite;
+    mix-blend-mode: overlay;
+    opacity: 1;
+    z-index: 2;
+    pointer-events: none;
+    mask: inherit;
+    -webkit-mask: inherit;
+`;
+
+const commonBlinderStyles = {
     position: 'absolute' as const,
     backgroundColor: 'var(--studio-bg)' as const,
 }
@@ -153,7 +151,7 @@ const FocusBoundsOverlay = ({
 }: {
     focusBounds: Bounds;
 }) => (
-    <>
+    <div style={{ opacity: 0.9 }}>
         {focusBounds.y > 0 && (
             <div
                 style={{
@@ -161,7 +159,7 @@ const FocusBoundsOverlay = ({
                     left: 0,
                     width: '100%',
                     height: `${Math.max(0, focusBounds.y)}px`,
-                    ...commonBlindStyle,
+                    ...commonBlinderStyles,
                 }}
             />
         )}
@@ -171,7 +169,7 @@ const FocusBoundsOverlay = ({
                 left: 0,
                 width: '100%',
                 height: '10000px',
-                ...commonBlindStyle,
+                ...commonBlinderStyles,
             }}
         />
         {focusBounds.x > 0 && (
@@ -181,7 +179,7 @@ const FocusBoundsOverlay = ({
                     left: 0,
                     width: `${Math.max(0, focusBounds.x)}px`,
                     height: '100%',
-                    ...commonBlindStyle,
+                    ...commonBlinderStyles,
                 }}
             />
         )}
@@ -191,10 +189,10 @@ const FocusBoundsOverlay = ({
                 left: `${focusBounds.x + focusBounds.width}px`,
                 width: '10000px',
                 height: '100%',
-                ...commonBlindStyle,
+                ...commonBlinderStyles,
             }}
         />
-    </>
+    </div>
 );
 
 export default LivePreview;

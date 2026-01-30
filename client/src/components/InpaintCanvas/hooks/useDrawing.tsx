@@ -564,61 +564,75 @@ export function useDrawing({
     }, []);
 
 
-    const getCroppedMaskSnapshot = useCallback(() => {
+    const getMaskSnapshot = useCallback(() => {
+
         if (!maskCanvasRef.current) {
             console.error("No mask canvas found");
             return null;
         }
 
-        // For masked previews, prioritize maskBounds over focusBounds
-        // maskBounds represents the actual mask area, focusBounds is the padded area
+        const maskCanvas = maskCanvasRef.current;
+
+        const drawSnapshot = (region: Bounds) => {
+            if (region.width === 0 || region.height === 0) {
+                console.error("No bounds found");
+                return null;
+            }
+
+            const exportCanvas = document.createElement("canvas");
+            exportCanvas.width = region.width;
+            exportCanvas.height = region.height;
+
+            const ctx = exportCanvas.getContext("2d");
+            if (!ctx) {
+                console.error("No context found");
+                return null;
+            }
+
+            ctx.clearRect(0, 0, region.width, region.height);
+            ctx.filter = "none";
+            ctx.drawImage(
+                maskCanvas,
+                region.x,
+                region.y,
+                region.width,
+                region.height,
+                0,
+                0,
+                region.width,
+                region.height
+            );
+
+            const imageData = ctx.getImageData(0, 0, region.width, region.height);
+            const data = imageData.data;
+            for (let i = 0; i < data.length; i += 4) {
+                const alpha = data[i + 3];
+                if (alpha > 0) {
+                    data[i] = 255;
+                    data[i + 1] = 255;
+                    data[i + 2] = 255;
+                    data[i + 3] = 255;
+                } else {
+                    data[i + 3] = 0;
+                }
+            }
+            ctx.putImageData(imageData, 0, 0);
+
+            return exportCanvas.toDataURL("image/png");
+        };
+
+        if (!inpaintFullRes) {
+            return drawSnapshot({ x: 0, y: 0, width: maskCanvas.width, height: maskCanvas.height });
+        }
+
         const bounds = focusBounds ?? maskBounds ?? getMaskBounds();
-        if (!bounds || bounds.width === 0 || bounds.height === 0) {
+        if (!bounds) {
             console.error("No bounds found");
             return null;
         }
 
-        const exportCanvas = document.createElement("canvas");
-        exportCanvas.width = bounds.width;
-        exportCanvas.height = bounds.height;
-
-        const ctx = exportCanvas.getContext("2d");
-        if (!ctx) {
-            console.error("No context found");
-            return null;
-        }
-
-        ctx.clearRect(0, 0, bounds.width, bounds.height);
-
-        ctx.filter = "none";
-        ctx.drawImage(
-            maskCanvasRef.current,
-            bounds.x,
-            bounds.y,
-            bounds.width,
-            bounds.height,
-            0,
-            0,
-            bounds.width,
-            bounds.height
-        );
-        const imageData = ctx.getImageData(0, 0, bounds.width, bounds.height);
-        const data = imageData.data;
-        for (let i = 0; i < data.length; i += 4) {
-            const alpha = data[i + 3];
-            if (alpha > 0) {
-                data[i] = 255;
-                data[i + 1] = 255;
-                data[i + 2] = 255;
-                data[i + 3] = 255;
-            } else {
-                data[i + 3] = 0;
-            }
-        }
-        ctx.putImageData(imageData, 0, 0);
-
-        return exportCanvas.toDataURL("image/png");
-    }, [focusBounds, maskBounds, getMaskBounds, maskCanvasRef]);
+        return drawSnapshot(bounds);
+    }, [focusBounds, maskBounds, getMaskBounds, maskCanvasRef, inpaintFullRes]);
 
     // Calculate focus bounds (independent of canvas) - pure function that returns both bounds
     const calculateBounds = useCallback((): { maskBounds: Bounds | null; focusBounds: Bounds | null } => {
@@ -777,7 +791,7 @@ export function useDrawing({
         getCanvasCoordinates,
         drawBrush,
         getMaskDataUrl,
-        getCroppedMaskSnapshot,
+        getMaskSnapshot,
         clearMask,
         fillAtPoint,
         saveMaskState,
@@ -792,7 +806,7 @@ export function useDrawing({
         getCanvasCoordinates,
         drawBrush,
         getMaskDataUrl,
-        getCroppedMaskSnapshot,
+        getMaskSnapshot,
         clearMask,
         fillAtPoint,
         saveMaskState,
