@@ -16,12 +16,10 @@ import type { GenerationMode } from "../types/components";
 import type { ProgressData } from "../hooks/useWebSocketProgress";
 import type { Timeline } from "./TimelineItem";
 
-interface WorkspaceProps {
+const Workspace = ({ workspaceId, isActive }: {
     workspaceId: string;
     isActive: boolean;
-}
-
-const Workspace = ({ workspaceId, isActive }: WorkspaceProps) => {
+}) => {
     const {
         workspaceState,
         updateWorkspaceState,
@@ -528,7 +526,6 @@ const Workspace = ({ workspaceId, isActive }: WorkspaceProps) => {
         const handleBeforeUnload = (e: BeforeUnloadEvent): string | undefined => {
             if (ui.pageLocked) {
                 e.preventDefault();
-                e.returnValue = "";
                 return "";
             }
             return undefined;

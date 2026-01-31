@@ -126,7 +126,9 @@ const MaskedLivePreviewGradient = styled.div`
     inset: 0;
     background-image: linear-gradient(125deg, transparent 15%, #ffffff 17%, transparent 45%);
     background-size: 200% 100%;
-    animation: ${maskedPreviewSwipeAnimation} 3s linear infinite;
+    background-repeat: no-repeat;
+    animation: ${maskedPreviewSwipeAnimation} 3s linear forwards;
+    animation-iteration-count: 3;
     mix-blend-mode: overlay;
     opacity: 1;
     z-index: 2;
