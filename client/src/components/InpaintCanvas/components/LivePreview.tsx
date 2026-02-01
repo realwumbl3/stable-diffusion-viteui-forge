@@ -2,7 +2,7 @@
 import styled, { keyframes } from 'styled-components';
 import type { Bounds } from '../../../types/components';
 
-interface LivePreviewProps {    
+interface LivePreviewProps {
     focusBounds: Bounds | null;
     maskBounds: Bounds | null;
     maskBorderMode: boolean;
@@ -137,10 +137,10 @@ const MaskedLivePreviewGradient = styled.div`
     -webkit-mask: inherit;
 `;
 
-const commonBlinderStyles = {
-    position: 'absolute' as const,
-    backgroundColor: 'var(--studio-bg)' as const,
-}
+const Blinder = styled.div`
+    position: absolute;
+    background-color: var(--studio-bg);
+`;
 
 const FocusBoundsOverlay = ({
     focusBounds,
@@ -149,43 +149,39 @@ const FocusBoundsOverlay = ({
 }) => (
     <div style={{ opacity: 0.9 }}>
         {focusBounds.y > 0 && (
-            <div
+            <Blinder
                 style={{
                     top: 0,
                     left: 0,
                     width: '100%',
                     height: `${Math.max(0, focusBounds.y)}px`,
-                    ...commonBlinderStyles,
                 }}
             />
         )}
-        <div
+        <Blinder
             style={{
                 top: `${focusBounds.y + focusBounds.height}px`,
                 left: 0,
                 width: '100%',
                 height: '10000px',
-                ...commonBlinderStyles,
             }}
         />
         {focusBounds.x > 0 && (
-            <div
+            <Blinder
                 style={{
                     top: 0,
                     left: 0,
                     width: `${Math.max(0, focusBounds.x)}px`,
                     height: '100%',
-                    ...commonBlinderStyles,
                 }}
             />
         )}
-        <div
+        <Blinder
             style={{
                 top: 0,
                 left: `${focusBounds.x + focusBounds.width}px`,
                 width: '10000px',
                 height: '100%',
-                ...commonBlinderStyles,
             }}
         />
     </div>
