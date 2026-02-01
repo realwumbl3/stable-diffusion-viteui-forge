@@ -19,6 +19,7 @@ interface UseDrawingParams {
     generationWidth: number | null;
     generationHeight: number | null;
     workspaceId: string | null;
+    maskBlur: number;
 }
 
 export function useDrawing({
@@ -37,6 +38,7 @@ export function useDrawing({
     generationWidth,
     generationHeight,
     workspaceId,
+    maskBlur,
 }: UseDrawingParams) {
     const { ensureWorkspaceTransientState } = useWorkspaceContext();
     const transientEntryRef = useRef<WorkspaceTransientState | null>(null);
@@ -645,11 +647,29 @@ export function useDrawing({
             return { maskBounds: bounds, focusBounds: null };
         }
 
-        // Calculate padded bounds
-        const paddedX = Math.max(0, bounds.x - inpaintFullResPadding);
-        const paddedY = Math.max(0, bounds.y - inpaintFullResPadding);
-        const paddedWidth = Math.min(canvas.width - paddedX, bounds.width + inpaintFullResPadding * 2);
-        const paddedHeight = Math.min(canvas.height - paddedY, bounds.height + inpaintFullResPadding * 2);
+        // Calculate padded bounds matching modules/masking.py get_crop_region_v2
+        // First account for mask blur expansion (approx 2 sigma)
+        const blurPadding = maskBlur * 2;
+        const expandedX = Math.max(0, bounds.x - blurPadding);
+        const expandedY = Math.max(0, bounds.y - blurPadding);
+        const expandedRight = Math.min(canvas.width, bounds.x + bounds.width + blurPadding);
+        const expandedBottom = Math.min(canvas.height, bounds.y + bounds.height + blurPadding);
+
+        const expandedBounds = {
+            x: expandedX,
+            y: expandedY,
+            width: expandedRight - expandedX,
+            height: expandedBottom - expandedY
+        };
+
+        const paddedX = Math.max(0, expandedBounds.x - inpaintFullResPadding);
+        const paddedY = Math.max(0, expandedBounds.y - inpaintFullResPadding);
+
+        const paddedRight = Math.min(canvas.width, expandedBounds.x + expandedBounds.width + inpaintFullResPadding);
+        const paddedBottom = Math.min(canvas.height, expandedBounds.y + expandedBounds.height + inpaintFullResPadding);
+
+        const paddedWidth = paddedRight - paddedX;
+        const paddedHeight = paddedBottom - paddedY;
 
         // Calculate focused area based on generation dimensions
         const targetRatio =
@@ -693,7 +713,7 @@ export function useDrawing({
                 height: focusedHeight,
             },
         };
-    }, [inpaintFullRes, inpaintFullResPadding, getMaskBounds, generationWidth, generationHeight, maskCanvasRef]);
+    }, [inpaintFullRes, inpaintFullResPadding, getMaskBounds, generationWidth, generationHeight, maskCanvasRef, maskBlur]);
 
     // Update border visualization - use requestAnimationFrame to defer setState
     useEffect(() => {

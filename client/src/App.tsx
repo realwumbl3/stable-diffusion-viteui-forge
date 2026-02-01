@@ -11,32 +11,14 @@ function App() {
         openWorkspaces,
         currentWorkspace,
         openWorkspace,
-        closeWorkspace,
         switchWorkspace,
-        removeWorkspaceState,
-        models,
-        samplers,
         workspaceBrowserOpen,
         setWorkspaceBrowserOpen,
     } = useWorkspaceContext();
-    const { workspaceState: activeWorkspaceState, updateWorkspaceState } = useWorkspaceState(currentWorkspace);
+    const { workspaceState: activeWorkspaceState } = useWorkspaceState(currentWorkspace);
     const [recentWorkspaceIds, setRecentWorkspaceIds] = useState<string[]>([]);
     const [revealHotkeys, setRevealHotkeys] = useState(true);
     const initialLoadRef = useRef(false);
-
-    const setActiveGenerationState = useCallback((updates: Partial<typeof activeWorkspaceState.generation>) => {
-        updateWorkspaceState((prev) => ({
-            ...prev,
-            generation: { ...prev.generation, ...updates },
-        }));
-    }, [updateWorkspaceState]);
-
-    const setActiveUiState = useCallback((updates: Partial<typeof activeWorkspaceState.ui>) => {
-        updateWorkspaceState((prev) => ({
-            ...prev,
-            ui: { ...prev.ui, ...updates },
-        }));
-    }, [updateWorkspaceState]);
 
     useTitleIconAnimation(activeWorkspaceState.generation.loading);
 
@@ -84,65 +66,22 @@ function App() {
         }
     }, [currentWorkspace, initializeWorkspace, openWorkspaces.length]);
 
-    const handleWorkspaceChange = (workspaceName: string): void => {
+    const cachedWorkspaceIds = useMemo(() => {
+        return recentWorkspaceIds.filter((id) => openWorkspaces.includes(id));
+    }, [openWorkspaces, recentWorkspaceIds]);
+
+    const handleWorkspaceChange = useCallback((workspaceName: string) => {
         if (!workspaceName) return;
         if (!openWorkspaces.includes(workspaceName)) {
             openWorkspace(workspaceName);
         } else {
             switchWorkspace(workspaceName);
         }
-    };
-
-    const handleCreateWorkspace = async (name: string): Promise<void> => {
-        try {
-            const result = await api.createWorkspace(name);
-            if (result?.name) {
-                openWorkspace(result.name);
-            }
-        } catch (error) {
-            console.error("Failed to create workspace:", error);
-        }
-    };
-
-    const handleWorkspaceClose = (workspaceName: string): void => {
-        closeWorkspace(workspaceName);
-        removeWorkspaceState(workspaceName);
-        setRecentWorkspaceIds((prev) => prev.filter((id) => id !== workspaceName));
-    };
-
-    const handleModelChange = async (modelTitle: string): Promise<void> => {
-        setActiveGenerationState({ selectedModel: modelTitle });
-        try {
-            await api.setModel(modelTitle);
-        } catch (error) {
-            console.error("Error setting model:", error);
-        }
-    };
-
-    const cachedWorkspaceIds = useMemo(() => {
-        return recentWorkspaceIds.filter((id) => openWorkspaces.includes(id));
-    }, [openWorkspaces, recentWorkspaceIds]);
+    }, []);
 
     return (
         <div className={`h-screen flex flex-col bg-studio-bg ${revealHotkeys ? 'reveal-hotkeys' : ''}`}>
-            <Header
-                openWorkspaces={openWorkspaces}
-                currentWorkspace={currentWorkspace}
-                onWorkspaceChange={handleWorkspaceChange}
-                onWorkspaceClose={handleWorkspaceClose}
-                onCreateWorkspace={handleCreateWorkspace}
-                onOpenWorkspaceBrowser={() => setWorkspaceBrowserOpen(true)}
-                pageLocked={activeWorkspaceState.ui.pageLocked}
-                onToggleLock={() => setActiveUiState({ pageLocked: !activeWorkspaceState.ui.pageLocked })}
-                models={models}
-                selectedModel={activeWorkspaceState.generation.selectedModel}
-                onModelChange={handleModelChange}
-                samplers={samplers}
-                selectedSampler={activeWorkspaceState.generation.selectedSampler}
-                setSelectedSampler={(value) => setActiveGenerationState({ selectedSampler: value })}
-                cfgScale={activeWorkspaceState.generation.cfgScale}
-                setCfgScale={(value) => setActiveGenerationState({ cfgScale: value })}
-            />
+            <Header />
 
             <div className="flex-1 flex overflow-hidden">
                 {cachedWorkspaceIds.map((workspaceId) => (
@@ -160,10 +99,7 @@ function App() {
                 {workspaceBrowserOpen && (
                     <WorkspaceBrowser
                         currentWorkspace={currentWorkspace}
-                        onSelectWorkspace={(name) => {
-                            void handleWorkspaceChange(name);
-                            setWorkspaceBrowserOpen(false);
-                        }}
+                        onSelectWorkspace={handleWorkspaceChange}
                         onClose={() => setWorkspaceBrowserOpen(false)}
                     />
                 )}

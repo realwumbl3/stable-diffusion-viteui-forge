@@ -1,0 +1,16 @@
+{
+    "name": "SD Vite UI",
+    "short_name": "SD Vite",
+    "description": "Professional AI image generation studio powered by Stable Diffusion",
+    "theme_color": "#ffffff",
+    "background_color": "#ffffff",
+    "display": "standalone",
+    "start_url": ".",
+    "icons": [
+        {
+            "src": "vite.svg",
+            "sizes": "any",
+            "type": "image/svg+xml"
+        }
+    ]
+}

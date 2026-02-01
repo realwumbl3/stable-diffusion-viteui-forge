@@ -307,6 +307,7 @@ const InpaintCanvas = ({
         fillOverfill,
         generationWidth: generationWidth ?? null,
         generationHeight: generationHeight ?? null,
+        maskBlur,
     });
 
     const { getMaskSnapshot } = drawing;

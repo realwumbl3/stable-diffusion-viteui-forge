@@ -3,55 +3,96 @@ import { cn } from '../lib/utils'
 import { Lock, Unlock } from 'lucide-react'
 import OptionPicker from './OptionPicker'
 import NumberSelector from './NumberSelector'
-import type { ModelInfo, SamplerInfo } from '../Api'
+import { useWorkspaceContext, useWorkspaceState } from '../contexts/WorkspaceContext'
+import api from '../Api'
+import { useCallback } from 'react'
 
-interface HeaderProps {
-  models: ModelInfo[]
-  selectedModel: string
-  onModelChange: (model: string) => void
-  samplers: SamplerInfo[]
-  selectedSampler: string
-  setSelectedSampler: (sampler: string) => void
-  openWorkspaces: string[]
-  currentWorkspace: string | null
-  onWorkspaceChange: (workspace: string) => void
-  onWorkspaceClose: (workspace: string) => void
-  onCreateWorkspace: (name: string) => void
-  onOpenWorkspaceBrowser: () => void
-  onToggleLock: () => void
-  pageLocked: boolean
-  cfgScale: number
-  setCfgScale: (cfgScale: number) => void
-}
+const Header = () => {
+  const {
+    openWorkspaces,
+    currentWorkspace,
+    openWorkspace,
+    closeWorkspace,
+    switchWorkspace,
+    removeWorkspaceState,
+    setWorkspaceBrowserOpen,
+    models,
+    samplers,
+  } = useWorkspaceContext()
 
-const Header = ({
-  openWorkspaces,
-  currentWorkspace,
-  onWorkspaceChange,
-  onWorkspaceClose,
-  onCreateWorkspace,
-  onOpenWorkspaceBrowser,
-  onToggleLock,
-  pageLocked,
-  models,
-  selectedModel,
-  onModelChange,
-  samplers,
-  selectedSampler,
-  setSelectedSampler,
-  cfgScale,
-  setCfgScale,
-}: HeaderProps) => {
+  const { workspaceState, updateWorkspaceState } = useWorkspaceState(currentWorkspace)
+  const { generation, ui } = workspaceState
+  const { selectedModel, selectedSampler, cfgScale } = generation
+  const { pageLocked } = ui
+
+  const handleWorkspaceChange = useCallback((workspaceName: string) => {
+    if (!workspaceName) return
+    if (!openWorkspaces.includes(workspaceName)) {
+      openWorkspace(workspaceName)
+    } else {
+      switchWorkspace(workspaceName)
+    }
+  }, [openWorkspaces, openWorkspace, switchWorkspace])
+
+  const handleWorkspaceClose = useCallback((workspaceName: string) => {
+    closeWorkspace(workspaceName)
+    removeWorkspaceState(workspaceName)
+  }, [closeWorkspace, removeWorkspaceState])
+
+  const handleCreateWorkspace = useCallback(async (name: string) => {
+    try {
+      const result = await api.createWorkspace(name)
+      if (result?.name) {
+        openWorkspace(result.name)
+      }
+    } catch (error) {
+      console.error("Failed to create workspace:", error)
+    }
+  }, [openWorkspace])
+
+  const handleModelChange = useCallback(async (modelTitle: string) => {
+    updateWorkspaceState((prev) => ({
+      ...prev,
+      generation: { ...prev.generation, selectedModel: modelTitle }
+    }))
+    try {
+      await api.setModel(modelTitle)
+    } catch (error) {
+      console.error("Error setting model:", error)
+    }
+  }, [updateWorkspaceState])
+
+  const setSelectedSampler = useCallback((sampler: string) => {
+    updateWorkspaceState((prev) => ({
+      ...prev,
+      generation: { ...prev.generation, selectedSampler: sampler }
+    }))
+  }, [updateWorkspaceState])
+
+  const setCfgScale = useCallback((scale: number) => {
+    updateWorkspaceState((prev) => ({
+      ...prev,
+      generation: { ...prev.generation, cfgScale: scale }
+    }))
+  }, [updateWorkspaceState])
+
+  const toggleLock = useCallback(() => {
+    updateWorkspaceState((prev) => ({
+      ...prev,
+      ui: { ...prev.ui, pageLocked: !prev.ui.pageLocked }
+    }))
+  }, [updateWorkspaceState])
+
   return (
     <header className="studio-toolbar border-b-studio-border h-[38px] flex items-center gap-2">
       <div className="w-full self-end">
         <WorkspaceTabs
           openWorkspaces={openWorkspaces}
           currentWorkspace={currentWorkspace}
-          onWorkspaceChange={onWorkspaceChange}
-          onWorkspaceClose={onWorkspaceClose}
-          onCreateWorkspace={onCreateWorkspace}
-          onOpenWorkspaceBrowser={onOpenWorkspaceBrowser}
+          onWorkspaceChange={handleWorkspaceChange}
+          onWorkspaceClose={handleWorkspaceClose}
+          onCreateWorkspace={handleCreateWorkspace}
+          onOpenWorkspaceBrowser={() => setWorkspaceBrowserOpen(true)}
         />
       </div>
       <div className="flex flex-row gap-1">
@@ -61,7 +102,7 @@ const Header = ({
             label: model.model_name
           }))}
           value={selectedModel}
-          onChange={onModelChange}
+          onChange={handleModelChange}
           title="Model"
         />
         <OptionPicker
@@ -83,7 +124,7 @@ const Header = ({
         />
       </div>
       <button
-        onClick={onToggleLock}
+        onClick={toggleLock}
         className={cn(
           "studio-btn-ghost p-2 rounded-md",
           pageLocked && "text-studio-accent"
