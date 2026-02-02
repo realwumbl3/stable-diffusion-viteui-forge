@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import Optional
 import time
 from pathlib import Path
-from PIL import Image
+from PIL import Image, ImageFilter, ImageDraw, ImageChops
 from fastapi import HTTPException
 from modules.shared import opts
 from modules_viteapi.workspace_image_server import WorkspaceImageServer
@@ -278,9 +278,72 @@ class WorkspaceManager:
 
         if paste_to:
             x, y, w, h = map(int, paste_to)
-            overlay = Image.new("RGBA", base_image.size)
+            overlay = Image.new("RGBA", base_image.size, (0, 0, 0, 0))
             stamp = candidate_image.resize((max(1, w), max(1, h)), resample=Image.Resampling.LANCZOS)
-            overlay.paste(stamp, (x, y), stamp)
+            
+            # Try to load mask if available
+            candidate_mask = None
+
+            # Check metadata for mask
+            if info.get("mask"):
+                try:
+                    from modules.api.api import decode_base64_to_image
+                    candidate_mask = decode_base64_to_image(info["mask"]).convert("L")
+                    print(f"Candidate mask from metadata: {candidate_mask.size}")
+                except Exception as e:
+                    print(f"Failed to decode mask from metadata: {e}")
+
+            # Fallback to mask.webp
+            if candidate_mask is None:
+                mask_path = candidate_folder / "mask.webp"
+                if mask_path.exists():
+                    try:
+                        with Image.open(mask_path) as m:
+                            candidate_mask = m.convert("L")
+                            print(f"Candidate mask from mask.webp: {candidate_mask.size}")
+                    except Exception as e:
+                        print(f"Failed to load/process mask: {e}")
+
+            if candidate_mask:
+                try:
+                    # Handle mask sizing
+                    if candidate_mask.size == base_image.size:
+                        # Full size mask - crop to paste area
+                        candidate_mask = candidate_mask.crop((x, y, x+w, y+h))
+                    
+                    if candidate_mask.size != stamp.size:
+                        # Resize to match stamp
+                        candidate_mask = candidate_mask.resize(stamp.size, resample=Image.Resampling.LANCZOS)
+                        
+                    # Blur the mask for better blending
+                    candidate_mask = candidate_mask.filter(ImageFilter.GaussianBlur(radius=4))
+                    
+                    mask = candidate_mask
+                except Exception as e:
+                    print(f"Error processing mask: {e}")
+                    mask = None
+            else:
+                mask = None
+
+            if mask is None:
+                # Fallback: Create a feathered mask to reduce seam visibility
+                mask = Image.new('L', stamp.size, 0)
+                draw = ImageDraw.Draw(mask)
+                # Draw white rectangle slightly smaller than image to allow for feathering at edges
+                draw.rectangle((1, 1, stamp.size[0]-2, stamp.size[1]-2), fill=255)
+                mask = mask.filter(ImageFilter.GaussianBlur(radius=1))
+            
+            # Apply mask to stamp's alpha channel directly
+            # This avoids "dark edge" artifacts caused by blending with black background in paste()
+            stamp = stamp.convert("RGBA")
+            r, g, b, a = stamp.split()
+            # Combine existing alpha with mask
+            final_alpha = ImageChops.multiply(a, mask)
+            stamp.putalpha(final_alpha)
+            
+            # Paste stamped image (with correct alpha) onto overlay
+            overlay.paste(stamp, (x, y))
+            
             composite_image = base_image.copy()
             composite_image.alpha_composite(overlay)
         else:
@@ -288,7 +351,9 @@ class WorkspaceManager:
                 candidate_image = candidate_image.resize(base_image.size, resample=Image.Resampling.LANCZOS)
             composite_image = candidate_image
 
-        composite_image.save(candidate_full_path, format="WEBP", lossless=True)
+        # Convert back to RGB to avoid alpha channel artifacts in WEBP
+        composite_image = composite_image.convert("RGB")
+        composite_image.save(candidate_full_path, format="WEBP", lossless=True, quality=100)
 
         # Update metadata with source canvas dimensions
         metadata["full_width"] = base_image.width
