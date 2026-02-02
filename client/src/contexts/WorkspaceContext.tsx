@@ -36,6 +36,7 @@ export interface WorkspaceModeState {
     inpaintFullResPadding: number;
     inpaintingMaskInvert: boolean;
     forceInpaintEditMode: boolean;
+    returnPartialCandidates: boolean;
 }
 
 export interface WorkspaceUiState {
@@ -117,6 +118,7 @@ const createDefaultWorkspaceState = (): WorkspaceState => ({
         inpaintFullResPadding: 64,
         inpaintingMaskInvert: false,
         forceInpaintEditMode: false,
+        returnPartialCandidates: false,
     },
     ui: {
         promptMode: "simple",

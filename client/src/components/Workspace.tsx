@@ -283,6 +283,7 @@ const Workspace = ({ workspaceId, isActive }: {
                 const img2imgParams = {
                     ...baseParams,
                     genid: timeline.committedHistory[0].genid,
+                    source_genid: timeline.committedHistory[0].genid,
                     denoising_strength: generation.denoisingStrength,
                 };
                 data = await api.img2img(img2imgParams);
@@ -291,6 +292,7 @@ const Workspace = ({ workspaceId, isActive }: {
                 const inpaintParams = {
                     ...baseParams,
                     genid: timeline.committedHistory[0].genid,
+                    source_genid: timeline.committedHistory[0].genid,
                     mask: maskBase64Data,
                     mask_blur: mode.maskBlur,
                     inpainting_fill: mode.inpaintingFill,
@@ -298,6 +300,7 @@ const Workspace = ({ workspaceId, isActive }: {
                     inpaint_full_res_padding: mode.inpaintFullResPadding,
                     inpainting_mask_invert: mode.inpaintingMaskInvert ? 1 : 0,
                     denoising_strength: generation.denoisingStrength,
+                    return_partial_candidates: mode.returnPartialCandidates,
                 };
                 data = await api.img2img(inpaintParams);
             } else {
@@ -639,6 +642,7 @@ const Workspace = ({ workspaceId, isActive }: {
     };
 
     const handlePreviewSelect = useCallback((generationItem: Generation | null): void => {
+        console.log("handlePreviewSelect", generationItem);
         setTimelineState((prev) => ({
             ...prev,
             currentPreview: generationItem,
@@ -960,6 +964,7 @@ const Workspace = ({ workspaceId, isActive }: {
 
             {mode.generationMode === "inpaint" ? (
                 <InpaintCanvas
+                    currentGeneration={timeline.currentPreview}
                     currentImage={canvas.currentImage}
                     previewImage={getGenerationImageUrl(timeline.currentPreview)}
                     onClearPreview={() => handlePreviewSelect(null)}
@@ -999,6 +1004,7 @@ const Workspace = ({ workspaceId, isActive }: {
                 />
             ) : (
                 <InpaintCanvas
+                    currentGeneration={timeline.currentPreview}
                     currentImage={canvas.currentImage}
                     previewImage={getGenerationImageUrl(timeline.currentPreview)}
                     onClearPreview={() => handlePreviewSelect(null)}

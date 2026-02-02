@@ -149,6 +149,7 @@ class StableDiffusionProcessing:
     do_not_save_grid: bool = False
     extra_generation_params: dict[str, Any] = None
     overlay_images: list = None
+    partial_candidates_info: list = None
     eta: float = None
     do_not_reload_embeddings: bool = False
     denoising_strength: float = None
@@ -251,6 +252,7 @@ class StableDiffusionProcessing:
         self.extra_result_images = []
         self.latents_after_sampling = []
         self.pixels_after_sampling = []
+        self.partial_candidates_info = []
         self.modified_noise = None
 
     def fill_fields_from_opts(self):
@@ -571,6 +573,7 @@ class Processed:
         self.all_subseeds = all_subseeds or p.all_subseeds or [self.subseed]
         self.infotexts = infotexts or [info] * len(images_list)
         self.version = program_version()
+        self.partial_candidates_info = []
 
     def js(self):
         obj = {
@@ -606,6 +609,7 @@ class Processed:
             "clip_skip": self.clip_skip,
             "is_using_inpainting_conditioning": self.is_using_inpainting_conditioning,
             "version": self.version,
+            "partial_candidates_info": self.partial_candidates_info,
         }
 
         return json.dumps(obj, default=lambda o: None)
@@ -1070,7 +1074,7 @@ def process_images_inner(p: StableDiffusionProcessing) -> Processed:
                     p.scripts.postprocess_maskoverlay(p, ppmo)
                     mask_for_overlay, overlay_image = ppmo.mask_for_overlay, ppmo.overlay_image
 
-                if p.color_corrections is not None and i < len(p.color_corrections):
+                if getattr(p, 'color_corrections', None) is not None and i < len(p.color_corrections):
                     if save_samples and opts.save_images_before_color_correction:
                         image_without_cc, _ = apply_overlay(image, p.paste_to, overlay_image)
                         images.save_image(image_without_cc, p.outpath_samples, "", p.seeds[i], p.prompts[i], opts.samples_format, info=infotext(i), p=p, suffix="-before-color-correction")
@@ -1080,7 +1084,25 @@ def process_images_inner(p: StableDiffusionProcessing) -> Processed:
                 # that is being composited over the original image,
                 # we need to keep the original image around
                 # and use it in the composite step.
-                image, original_denoised_image = apply_overlay(image, p.paste_to, overlay_image)
+                if getattr(p, 'return_partial_candidates', False):
+                    # For partial candidates, we skip the overlay application
+                    # and instead capture the metadata
+                    original_denoised_image = image.copy()
+                    
+                    # Ensure we have mask info for the Partial candidate
+                    curr_mask = mask_for_overlay
+                    if curr_mask is None:
+                        # Fallback if no mask (shouldn't happen in standard inpainting but possible)
+                         curr_mask = Image.new("L", image.size, 255)
+                    
+                    p.partial_candidates_info.append({
+                         "paste_to": p.paste_to if hasattr(p, 'paste_to') else None,
+                         "mask_blur": getattr(p, 'mask_blur', None),
+                         "mask": curr_mask.copy()
+                    })
+
+                else:
+                    image, original_denoised_image = apply_overlay(image, p.paste_to, overlay_image)
 
                 p.pixels_after_sampling.append(image)
 
@@ -1152,6 +1174,9 @@ def process_images_inner(p: StableDiffusionProcessing) -> Processed:
         infotexts=infotexts,
         extra_images_list=p.extra_result_images,
     )
+
+    if getattr(p, 'return_partial_candidates', False):
+        res.partial_candidates_info = p.partial_candidates_info
 
     if p.scripts is not None:
         p.scripts.postprocess(p, res)
@@ -1652,6 +1677,7 @@ class StableDiffusionProcessingImg2Img(StableDiffusionProcessing):
     initial_noise_multiplier: float = None
     latent_mask: Image = None
     force_task_id: str = None
+    return_partial_candidates: bool = False
 
     hr_distilled_cfg: float = 3.5       #   needed here for cached_params
 

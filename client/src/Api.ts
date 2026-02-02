@@ -21,6 +21,7 @@ export interface Txt2ImgParams {
 
 export interface Img2ImgParams extends Txt2ImgParams {
   genid: string;
+  source_genid?: string;
   mask?: string;
   mask_blur?: number;
   inpainting_fill?: number;
@@ -28,6 +29,7 @@ export interface Img2ImgParams extends Txt2ImgParams {
   inpaint_full_res_padding?: number;
   inpainting_mask_invert?: number;
   denoising_strength: number;
+  return_partial_candidates?: boolean;
 }
 
 export interface ModelInfo {
@@ -128,12 +130,17 @@ export interface Generation {
   parameters?: Record<string, unknown>;
   workspace: string;
   image?: string;
+  partial_candidates_info?: Array<{
+    paste_to: [number, number, number, number];
+    mask_blur: number;
+    mask?: string;
+  }>;
 }
 
 import { API_BASE_URL as BASE_URL } from './lib/utils';
 
 class StableDiffusionAPI {
-  constructor(private baseUrl: string = `${BASE_URL}/api`) {}
+  constructor(private baseUrl: string = `${BASE_URL}/api`) { }
 
   async request<T = unknown>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
@@ -237,8 +244,8 @@ class StableDiffusionAPI {
     const paramsWithTaskId = { ...params, force_task_id: taskId }
 
     // Use viteapi endpoint if workspace_image_path is provided, otherwise use standard endpoint
-    const endpoint = params.workspace_image_path && params.workspace_name 
-      ? '/viteapi/extras' 
+    const endpoint = params.workspace_image_path && params.workspace_name
+      ? '/viteapi/extras'
       : '/sdapi/v1/extra-single-image'
 
     const result = await this.request<ExtrasResponse>(endpoint, {

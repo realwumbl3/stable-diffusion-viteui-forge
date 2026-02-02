@@ -13,6 +13,7 @@ import CanvasArea from "./CanvasArea";
 import StatusBar from "./StatusBar";
 import { useCanvasPointerEvents } from "../hooks/useCanvasPointerEvents.tsx";
 import { useCanvasSync } from "../../../contexts/CanvasSyncContext";
+import { useWorkspaceState } from "../../../contexts/WorkspaceContext";
 import type { GenerationMode } from "../../../types/components";
 import type { PromptMode, PromptNode } from "../../PromptComposer/types.ts";
 import type { ProgressData } from "../../../hooks/useWebSocketProgress";
@@ -55,6 +56,7 @@ const InpaintCanvas = ({
     setInpaintFullRes,
     inpaintingMaskInvert,
     setInpaintingMaskInvert,
+    uiVisible = true,
     // Generation mode
     generationMode = "txt2img",
     // Canvas refresh key
@@ -62,6 +64,7 @@ const InpaintCanvas = ({
     canvasControls,
     footerCollapsed,
     onToggleFooter,
+    currentGeneration,
 }: {
     workspaceId: string;
     currentImage?: string | null
@@ -91,6 +94,7 @@ const InpaintCanvas = ({
     setInpaintFullRes: (value: boolean) => void
     inpaintingMaskInvert: boolean
     setInpaintingMaskInvert: (value: boolean) => void
+    uiVisible?: boolean
     generationMode?: GenerationMode
     canvasRefreshKey?: number
     canvasControls: CanvasTopControlsProps
@@ -99,6 +103,7 @@ const InpaintCanvas = ({
     footerCollapsed?: boolean
     onToggleFooter?: () => void
     onRegisterMaskSnapshotProvider?: (provider: (() => string | null) | null) => void
+    currentGeneration?: any // Typing as any for now to avoid circular deps or complex imports, but should be Generation
 }) => {
     const displayImage = previewImage || currentImage;
     const resolvedDisplayImage = resolveImageSrc(displayImage, "full");
@@ -114,7 +119,7 @@ const InpaintCanvas = ({
     const panTargetRef = useRef<HTMLDivElement>(null);
 
     // UI visibility state
-    const [uiVisible, setUiVisible] = useState<boolean>(true);
+    // const [uiVisible, setUiVisible] = useState<boolean>(true); // Now passed as prop
 
     // Drawing state (previously in useCanvasState)
     const [isDrawing, setIsDrawing] = useState(false);
@@ -151,6 +156,28 @@ const InpaintCanvas = ({
         showMask,
         setShowMask,
     } = useCanvasSync();
+
+    // InpaintCanvas doesn't usually use useCanvasSync for these but destructures from props or context?
+    // Actually the WorkspaceContext should provide these.
+    // Let's use the hook for updateWorkspaceState or similar if we need to write back?
+    // Wait, InpaintCanvas receives most things as props.
+    // EXCEPT `returnPartialCandidates` is in WorkspaceModeState which is not passed as a direct prop to InpaintCanvas in the signature above.
+    // It should be passed in from Workspace.tsx.
+    // However, I can also access it via useWorkspaceContext if I have the workspaceId.
+
+    const { updateWorkspaceState: updateWorkspaceStateContext, workspaceState } = useWorkspaceState(workspaceId);
+
+    const handleSetReturnPartialCandidates = useCallback((value: boolean) => {
+        updateWorkspaceStateContext((prev: any) => ({
+            ...prev,
+            mode: {
+                ...prev.mode,
+                returnPartialCandidates: value
+            }
+        }));
+    }, [updateWorkspaceStateContext]);
+
+    const actualReturnPartialCandidates = workspaceState?.mode?.returnPartialCandidates ?? false;
 
     const effectiveFooterCollapsed = footerCollapsed;
     const handleToggleFooter = useCallback(() => {
@@ -501,11 +528,12 @@ const InpaintCanvas = ({
                 handleZoomIn={handleZoomIn}
                 handleResetZoom={handleResetZoom}
                 handleFitToScreen={handleFitToScreen}
-                setUiVisible={setUiVisible}
+                // setUiVisible={setUiVisible} // uiVisible is now a prop, not a setter from here
                 inpaintFullRes={inpaintFullRes}
                 inpaintFullResPadding={inpaintFullResPadding}
                 setInpaintFullResPadding={setInpaintFullResPadding}
                 canvasRefreshKey={canvasRefreshKey}
+                currentGeneration={currentGeneration}
                 viewMode={viewMode}
                 isDrawing={isDrawing}
                 setLastDrawPos={setLastDrawPos}
@@ -535,6 +563,8 @@ const InpaintCanvas = ({
                 generationMode={generationMode}
                 focusBounds={drawing.focusBounds}
                 maskBounds={drawing.maskBounds}
+                returnPartialCandidates={actualReturnPartialCandidates}
+                setReturnPartialCandidates={handleSetReturnPartialCandidates}
             />
             {/* Left Toolbar - Mode-specific Controls */}
             {((generationMode === "inpaint" && (displayImage || inputImage)) || generationMode === "img2img") && !isDrawing && (

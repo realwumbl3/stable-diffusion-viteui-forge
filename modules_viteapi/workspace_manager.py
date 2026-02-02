@@ -129,6 +129,8 @@ class WorkspaceManager:
                         generation["negative_prompt"] = metadata["negative_prompt"]
                     if "parameters" in metadata:
                         generation["parameters"] = metadata["parameters"]
+                    if "partial_candidates_info" in metadata:
+                        generation["partial_candidates_info"] = metadata["partial_candidates_info"]
 
                     generations.append(generation)
 
@@ -242,7 +244,72 @@ class WorkspaceManager:
 
         return saved_paths
 
+    def _compose_partial_candidate(self, workspace_name: str, candidate_folder: Path) -> None:
+        meta_path = candidate_folder / "meta.json"
+        if not meta_path.exists():
+            return
+
+        metadata = json.loads(meta_path.read_text(encoding="utf-8"))
+        partial_candidates = metadata.get("partial_candidates_info")
+        if not partial_candidates:
+            return
+
+        source_genid = metadata.get("source_genid")
+        if not source_genid:
+            raise HTTPException(status_code=422, detail="source_genid is required to commit partial candidates")
+
+        workspace_path = self._resolve_workspace_path(workspace_name)
+        source_full_path = workspace_path / "commits" / source_genid / "full.webp"
+        if not source_full_path.exists():
+            raise HTTPException(status_code=404, detail=f"Source commit not found: {source_genid}")
+
+        candidate_full_path = candidate_folder / "full.webp"
+        if not candidate_full_path.exists():
+            raise HTTPException(status_code=404, detail="Candidate image not found")
+
+        info = partial_candidates[0]
+        paste_to = tuple(info["paste_to"]) if info.get("paste_to") else None
+
+        with Image.open(source_full_path) as source_image:
+            base_image = source_image.convert("RGBA")
+
+        with Image.open(candidate_full_path) as candidate_image_file:
+            candidate_image = candidate_image_file.convert("RGBA")
+
+        if paste_to:
+            x, y, w, h = map(int, paste_to)
+            overlay = Image.new("RGBA", base_image.size)
+            stamp = candidate_image.resize((max(1, w), max(1, h)), resample=Image.Resampling.LANCZOS)
+            overlay.paste(stamp, (x, y), stamp)
+            composite_image = base_image.copy()
+            composite_image.alpha_composite(overlay)
+        else:
+            if candidate_image.size != base_image.size:
+                candidate_image = candidate_image.resize(base_image.size, resample=Image.Resampling.LANCZOS)
+            composite_image = candidate_image
+
+        composite_image.save(candidate_full_path, format="WEBP", lossless=True)
+
+        # Update metadata with source canvas dimensions
+        metadata["full_width"] = base_image.width
+        metadata["full_height"] = base_image.height
+
+        preview_max = metadata.get("preview_max_size")
+        preview_image = self.workspace_images.resize_for_preview(candidate_full_path, max_size=preview_max)
+        preview_path = candidate_folder / "512.webp"
+        preview_image.save(preview_path, format="WEBP")
+
+        metadata["preview_width"] = preview_image.width
+        metadata["preview_height"] = preview_image.height
+        metadata["preview_max_size"] = preview_max or self.workspace_images.preview_max_size
+        metadata.pop("partial_candidates_info", None)
+        meta_path.write_text(json.dumps(metadata, indent=2), encoding="utf-8")
+
     def commit_candidate(self, workspace_name: str, image_relative_path: str) -> dict:
+        workspace_path = self._resolve_workspace_path(workspace_name)
+        image_path = self._resolve_relative_path(image_relative_path, base=workspace_path)
+        candidate_folder = image_path.parent
+        self._compose_partial_candidate(workspace_name, candidate_folder)
         return self._move_candidate(workspace_name, image_relative_path, destination="commits")
 
     def reject_candidate(self, workspace_name: str, image_relative_path: str) -> dict:

@@ -119,6 +119,7 @@ StableDiffusionImg2ImgProcessingAPI = PydanticModelGenerator(
         {"key": "sampler_index", "type": str, "default": "Euler"},
         {"key": "init_images", "type": list | None, "default": None},
         {"key": "genid", "type": str | None, "default": None},
+        {"key": "source_genid", "type": str | None, "default": None},
         {"key": "denoising_strength", "type": float, "default": 0.75},
         {"key": "mask", "type": str | None, "default": None},
         {"key": "include_init_images", "type": bool, "default": False, "exclude" : True},
@@ -129,6 +130,7 @@ StableDiffusionImg2ImgProcessingAPI = PydanticModelGenerator(
         {"key": "alwayson_scripts", "type": dict, "default": {}},
         {"key": "force_task_id", "type": str | None, "default": None},
         {"key": "infotext", "type": str | None, "default": None},
+        {"key": "return_partial_candidates", "type": bool, "default": False},
     ]
 ).generate_model()
 
@@ -143,6 +145,7 @@ class ImageToImageResponse(BaseModel):
     # images: list[str] | None = Field(default=None, title="Image", description="The generated image in base64 format.")
     filesystem_paths: list[str] | None = Field(default=None, title="Filesystem paths", description="Relative filesystem paths for generated images.")
     workspace_info: dict | None = Field(default=None, title="Workspace info", description="Workspace metadata for generated images.")
+    partial_candidates_info: list[dict] | None = Field(default=None, title="Partial Candidates Info", description="Metadata for partial candidates (paste_to, mask_blur, etc).")
     parameters: dict
     info: str
 

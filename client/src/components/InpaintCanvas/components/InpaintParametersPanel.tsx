@@ -30,6 +30,8 @@ const InpaintParametersPanel = ({
     setShowMask,
     showBorder,
     setShowBorder,
+    returnPartialCandidates,
+    setReturnPartialCandidates,
 }: {
     maskBlur: number
     setMaskBlur: (value: number) => void
@@ -49,6 +51,8 @@ const InpaintParametersPanel = ({
     setShowMask: (value: boolean) => void
     showBorder: boolean
     setShowBorder: (value: boolean) => void
+    returnPartialCandidates: boolean
+    setReturnPartialCandidates: (value: boolean) => void
 }) => {
     const fillOptions = [
         { value: "0", label: "Fill" },
@@ -94,6 +98,7 @@ const InpaintParametersPanel = ({
                     <KeyIndicator keys="N" />
                 </button>
                 }
+
             </div>
             <div className="grid grid-cols-2 gap-1 items-center">
 
@@ -167,20 +172,35 @@ const InpaintParametersPanel = ({
                         />
                     </div>
                 }
-                {inpaintFullRes && <button
-                    onClick={() => setMaskBorderMode(!maskBorderMode)}
-                    className={`flex items-center justify-center px-2 py-1 rounded-md text-xs font-medium transition-all duration-200 ${maskBorderMode
-                        ? "bg-studio-accent text-studio-bg shadow-sm"
-                        : "text-studio-textSecondary hover:text-studio-text hover:bg-studio-surface"
-                        }`}
-                    title="Mask Border Mode"
-                    type="button"
-                >
-                    blinds
-                </button>
-                }
+                {inpaintFullRes && (
+                    <>
+                        <button
+                            onClick={() => setMaskBorderMode(!maskBorderMode)}
+                            className={`flex items-center justify-center px-2 py-1 rounded-md text-xs font-medium transition-all duration-200 ${maskBorderMode
+                                ? "bg-studio-accent text-studio-bg shadow-sm"
+                                : "text-studio-textSecondary hover:text-studio-text hover:bg-studio-surface"
+                                }`}
+                            title="Mask Border Mode"
+                            type="button"
+                        >
+                            blinds
+                        </button>
+
+                        <button
+                            onClick={() => setReturnPartialCandidates(!returnPartialCandidates)}
+                            className={`flex flex-col items-center gap-1 p-2 rounded-md text-xs font-medium transition-all duration-200 flex-1 relative ${returnPartialCandidates
+                                ? "bg-studio-accent/20 text-studio-accent border border-studio-accent/30"
+                                : "text-studio-textSecondary hover:text-studio-text hover:bg-studio-surface"
+                                }`}
+                            title="Toggle Partial Candidates"
+                            type="button"
+                        >
+                            <span className="text-center leading-tight">Partial</span>
+                        </button>
+                    </>
+                )}
             </div>
-        </div>
+        </div >
     );
 };
 

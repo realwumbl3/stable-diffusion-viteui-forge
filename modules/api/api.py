@@ -583,6 +583,7 @@ class Api:
         args.pop('alwayson_scripts', None)
         args.pop('infotext', None)
         args.pop('genid', None)  # genid is used by viteapi but not by StableDiffusionProcessingImg2Img
+        args.pop('source_genid', None)
 
         workspace_name = args.pop('workspace_name', None)
         if not workspace_name:
@@ -633,8 +634,10 @@ class Api:
         # b64images = list(map(encode_pil_to_base64, generated_images)) if send_images else []
 
         # Prepare generation metadata
+        source_genid = getattr(img2imgreq, "source_genid", None) or getattr(img2imgreq, "genid", None)
+
         generation_metadata = {
-            "source": "img2img" if not hasattr(img2imgreq, 'mask') or not img2imgreq.mask else "inpaint",
+            "source": "img2img" if not getattr(img2imgreq, 'mask', None) or not img2imgreq.mask else "inpaint",
             "prompt": img2imgreq.prompt,
             "negative_prompt": img2imgreq.negative_prompt,
             "parameters": {
@@ -647,8 +650,24 @@ class Api:
                 "n_iter": img2imgreq.n_iter,
                 "clip_skip": getattr(img2imgreq, 'clip_skip', 1),
                 "denoising_strength": img2imgreq.denoising_strength,
+                "return_partial_candidates": img2imgreq.return_partial_candidates,
             }
         }
+
+        if source_genid:
+            generation_metadata["source_genid"] = source_genid
+
+        serializable_info = None
+        if getattr(processed, 'partial_candidates_info', None):
+            serializable_info = []
+            for item in processed.partial_candidates_info:
+                info_copy = item.copy()
+                if 'mask' in info_copy and info_copy['mask'] is not None:
+                    # Check if it's already a string or bytes, if not assuming PIL
+                    if not isinstance(info_copy['mask'], (str, bytes)):
+                        info_copy['mask'] = encode_pil_to_base64(info_copy['mask']).decode('utf-8')
+                serializable_info.append(info_copy)
+            generation_metadata["partial_candidates_info"] = serializable_info
 
         # Save aborted generations directly to rejects folder
         destination = "rejects" if was_interrupted else "candidates"
@@ -662,6 +681,7 @@ class Api:
             # images=b64images,
             filesystem_paths=filesystem_paths,
             workspace_info={"workspace": workspace_name},
+            partial_candidates_info=serializable_info,
             parameters=vars(img2imgreq),
             info=processed.js(),
         )

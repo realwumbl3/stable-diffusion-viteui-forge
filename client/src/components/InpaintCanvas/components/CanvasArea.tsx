@@ -1,4 +1,4 @@
-import { cn } from "../../../lib/utils";
+import { cn, resolveImageSrc } from "../../../lib/utils";
 import InpaintParametersPanel from "./InpaintParametersPanel";
 import ZoomToolbar from "./ZoomToolbar";
 import LivePreview from "./LivePreview";
@@ -7,6 +7,7 @@ import type { ProgressData } from "../../../hooks/useWebSocketProgress";
 import { useCanvasSync } from "../../../contexts/CanvasSyncContext";
 import EmptyState from "./EmptyState";
 import CanvasBrushIndicator from "./CanvasBrushIndicator";
+import type { Generation } from "../../../Api";
 
 const CanvasArea = ({
     canvasRef,
@@ -42,6 +43,7 @@ const CanvasArea = ({
     handlePointerCancel,
     openFileDialog,
     onClearPreview,
+    currentGeneration,
     // Inpaint parameters
     maskBlur,
     setMaskBlur,
@@ -52,6 +54,8 @@ const CanvasArea = ({
     setInpaintFullRes,
     inpaintingMaskInvert,
     setInpaintingMaskInvert,
+    returnPartialCandidates,
+    setReturnPartialCandidates,
     uiVisible = true,
     setUiVisible,
     scrollWheelZoomIncrement = 4,
@@ -121,6 +125,9 @@ const CanvasArea = ({
     handleZoomIn: () => void
     handleResetZoom: () => void
     handleFitToScreen: () => void
+    currentGeneration?: Generation
+    returnPartialCandidates?: boolean
+    setReturnPartialCandidates?: (value: boolean) => void
 }) => {
     const {
         zoom,
@@ -137,9 +144,21 @@ const CanvasArea = ({
     } = useCanvasSync();
     // Always use input image for canvas layout in edit mode - livePreview is purely cosmetic
     const baseImageSrc = viewMode === "edit" ? inputImage || displayImage : displayImage || inputImage;
-    const mainImageSrc = baseImageSrc && canvasRefreshKey > 0
-        ? `${baseImageSrc}?refresh = ${canvasRefreshKey} `
-        : baseImageSrc;
+
+    // Logic for Partial Candidates Composition
+    // If we have partial candidate info, we want to force the 'base' image to be the INPUT image (background)
+    // even in 'result' view mode, because the result (displayImage) is only a partial fragment.
+    const isPartialCandidate = currentGeneration?.partial_candidates_info && currentGeneration?.partial_candidates_info.length > 0;
+
+    const effectiveBaseImageSrc = isPartialCandidate ? (inputImage || baseImageSrc) : baseImageSrc;
+
+    // If it is a partial candidate, `displayImage` is the partial fragment.
+    // `baseImageSrc` logic above defaults to `displayImage` in `result` mode.
+    // We override it to `inputImage` if available.
+
+    const mainImageSrc = effectiveBaseImageSrc && canvasRefreshKey > 0
+        ? `${effectiveBaseImageSrc}?refresh = ${canvasRefreshKey} `
+        : effectiveBaseImageSrc;
     const isInpaintGenerating = generationMode === "inpaint" && Boolean(loading);
 
     // Loading State - Show when generating
@@ -299,6 +318,31 @@ const CanvasArea = ({
                             livePreview={livePreview ?? null}
                             previewMaskSnapshot={previewMaskSnapshot ?? null}
                         />
+
+                        {/* Partial Candidate Overlay (Real Implementation) */}
+                        {isPartialCandidate && displayImage && (
+                            currentGeneration?.partial_candidates_info?.map((info: any, idx: number) => {
+                                const [x, y, width, height] = info.paste_to;
+                                return (
+                                    <div
+                                        key={idx}
+                                        className="absolute pointer-events-none"
+                                        style={{
+                                            left: `${x}px`,
+                                            top: `${y}px`,
+                                            width: `${width}px`,
+                                            height: `${height}px`,
+                                        }}
+                                    >
+                                        <img
+                                            src={resolveImageSrc(displayImage, "full") || undefined}
+                                            className="w-full h-full object-fill rounded-sm"
+                                            alt="Partial result"
+                                        />
+                                    </div>
+                                );
+                            })
+                        )}
                     </div>
 
                     {/* Cursor Point (0x0 element for precise positioning) */}
@@ -347,6 +391,8 @@ const CanvasArea = ({
                                 setShowMask={setShowMask}
                                 showBorder={showBorder}
                                 setShowBorder={setShowBorder}
+                                returnPartialCandidates={returnPartialCandidates ?? false}
+                                setReturnPartialCandidates={setReturnPartialCandidates ?? (() => { })}
                             />
                         </div>
                     )}
