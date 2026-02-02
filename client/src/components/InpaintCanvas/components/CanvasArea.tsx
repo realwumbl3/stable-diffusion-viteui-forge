@@ -310,14 +310,6 @@ const CanvasArea = ({
                                 opacity: showMask && !previewImage && !isInpaintGenerating ? 0.8 : 0,
                             }}
                         />
-                        <LivePreview
-                            showBorder={showBorder}
-                            focusBounds={focusBounds}
-                            maskBounds={maskBounds}
-                            maskBorderMode={maskBorderMode}
-                            livePreview={livePreview ?? null}
-                            previewMaskSnapshot={previewMaskSnapshot ?? null}
-                        />
 
                         {/* Partial Candidate Overlay (Real Implementation) */}
                         {isPartialCandidate && displayImage && (
@@ -343,6 +335,16 @@ const CanvasArea = ({
                                 );
                             })
                         )}
+
+                        <LivePreview
+                            showBorder={showBorder}
+                            focusBounds={focusBounds}
+                            maskBounds={maskBounds}
+                            maskBorderMode={maskBorderMode}
+                            livePreview={livePreview ?? null}
+                            previewMaskSnapshot={previewMaskSnapshot ?? null}
+                        />
+
                     </div>
 
                     {/* Cursor Point (0x0 element for precise positioning) */}
