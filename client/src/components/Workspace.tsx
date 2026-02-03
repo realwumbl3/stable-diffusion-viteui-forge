@@ -27,6 +27,7 @@ const Workspace = ({ workspaceId, isActive }: {
     const {
         models,
         setModels,
+        setModules,
         samplers,
         setSamplers
     } = useWorkspaceContext();
@@ -362,13 +363,15 @@ const Workspace = ({ workspaceId, isActive }: {
 
     const loadInitialData = useCallback(async (): Promise<void> => {
         try {
-            const [modelsData, samplersData, optionsData] = await Promise.all([
+            const [modelsData, modulesData, samplersData, optionsData] = await Promise.all([
                 api.getModels(),
+                api.getModules(),
                 api.getSamplers(),
                 api.getOptions(),
             ]);
 
             setModels(modelsData);
+            setModules(modulesData);
             setSamplers(samplersData);
 
             const currentModelTitle = optionsData.sd_model_checkpoint;
@@ -400,10 +403,30 @@ const Workspace = ({ workspaceId, isActive }: {
             if (currentClipSkip !== undefined && currentClipSkip !== null) {
                 setGenerationState({ clipSkip: parseInt(currentClipSkip as string) });
             }
+
+            const currentModules = optionsData.forge_additional_modules as string[];
+            if (currentModules && Array.isArray(currentModules) && currentModules.length > 0) {
+                // Find the module object that matches the filename (or just use the filename if that's what the option stores)
+                // The option stores full paths or filenames.
+                // Let's try to match with modulesData
+                // For now, just take the first one and try to match it to a module name or filename
+                const firstModule = currentModules[0];
+                const matchedModule = modulesData.find(m => m.filename === firstModule || m.model_name === firstModule);
+                if (matchedModule) {
+                    setGenerationState({ selectedVAE: matchedModule.model_name });
+                } else {
+                     // Fallback: just use the name from the path if possible
+                     const name = firstModule.split(/[/\\]/).pop();
+                     setGenerationState({ selectedVAE: name || "Automatic" });
+                }
+            } else {
+                setGenerationState({ selectedVAE: "Automatic" });
+            }
+
         } catch (error) {
             console.error("Error loading initial data:", error);
         }
-    }, [setGenerationState, setModels, setSamplers]);
+    }, [setGenerationState, setModels, setModules, setSamplers]);
 
     const composerNodesSignature = useMemo(() => JSON.stringify(composerNodes), [composerNodes]);
 
@@ -688,8 +711,19 @@ const Workspace = ({ workspaceId, isActive }: {
     const handleCommitPreview = async (): Promise<void> => {
         const preview = timeline.currentPreview;
         if (!preview) return;
+        const otherCandidates = timeline.generationQueue.filter((gen) => gen.genid !== preview.genid);
+        const isPartial = Boolean(preview.partial_candidates_info?.length);
+
+        if (isPartial) {
+            setGenerationState({ composingPartial: true });
+            setTimelineState((prev) => ({
+                ...prev,
+                generationQueue: [],
+                currentPreview: preview,
+            }));
+        }
+
         try {
-            const otherCandidates = timeline.generationQueue.filter((gen) => gen.genid !== preview.genid);
             for (const candidate of otherCandidates) {
                 try {
                     await api.rejectWorkspaceImage(candidate.workspace, `candidates/${candidate.genid}/full.webp`);
@@ -709,6 +743,10 @@ const Workspace = ({ workspaceId, isActive }: {
             }
         } catch (error) {
             console.error("Failed to commit generation:", error);
+        } finally {
+            if (isPartial) {
+                setGenerationState({ composingPartial: false });
+            }
         }
     };
 
@@ -901,7 +939,7 @@ const Workspace = ({ workspaceId, isActive }: {
         "enter": () => {
             void handleCommitPreview();
         },
-    }, isActive);
+    }, isActive && !generation.composingPartial);
 
     const canvasControls = {
         loading: generation.loading,
@@ -923,6 +961,7 @@ const Workspace = ({ workspaceId, isActive }: {
         inputImage: generation.inputImage,
         pageLocked: ui.pageLocked,
         onToggleLock: () => setUiState({ pageLocked: !ui.pageLocked }),
+        isComposingPartial: generation.composingPartial,
         models,
         selectedModel: generation.selectedModel,
         onModelChange: handleModelChange,
@@ -960,6 +999,7 @@ const Workspace = ({ workspaceId, isActive }: {
                 onRefreshTimeline={loadWorkspaceGenerations}
                 onRefreshCanvas={handleRefreshCanvas}
                 canvasRefreshKey={canvas.canvasRefreshKey}
+                isComposingPartial={generation.composingPartial}
             />
 
             {mode.generationMode === "inpaint" ? (

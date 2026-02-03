@@ -43,7 +43,7 @@ export function useDrawing({
     const { ensureWorkspaceTransientState } = useWorkspaceContext();
     const transientEntryRef = useRef<WorkspaceTransientState | null>(null);
     // Undo/Redo system
-    const [maskHistory, setMaskHistory] = useState<ImageData[]>([]);
+    const [maskHistory, setMaskHistory] = useState<(ImageData | ImageBitmap)[]>([]);
     const [historyIndex, setHistoryIndex] = useState(-1);
 
     // Track previous image dimensions to properly scale mask on image changes
@@ -64,10 +64,13 @@ export function useDrawing({
         }
     }, [workspaceId, ensureWorkspaceTransientState]);
 
-    const updateTransientHistory = useCallback((historyData: ImageData[], index: number) => {
+    const updateTransientHistory = useCallback((historyData: (ImageData | ImageBitmap)[], index: number) => {
         const entry = transientEntryRef.current;
         if (entry) {
-            entry.maskHistory = historyData;
+            // WorkspaceTransientState still expects ImageData[] from its definition, 
+            // but we'll store ImageBitmap there too if needed. 
+            // Note: We might need to update the interface in WorkspaceContext.tsx if TypeScript complains.
+            entry.maskHistory = historyData as ImageData[];
             entry.historyIndex = index;
         }
     }, []);
@@ -212,6 +215,7 @@ export function useDrawing({
 
         const ctx = maskCanvasRef.current.getContext("2d");
         if (!ctx) return;
+
         ctx.globalCompositeOperation = drawingMode === "erase" ? "destination-out" : "source-over";
 
         if (lastDrawPos) {
@@ -233,6 +237,9 @@ export function useDrawing({
             ctx.arc(x, y, brushSize / 2, 0, 2 * Math.PI);
             ctx.fill();
         }
+
+        // Reset to default to avoid leaking state to other draw operations
+        ctx.globalCompositeOperation = "source-over";
     }, [drawingMode, brushHardness, brushSize, maskCanvasRef]);
 
 
@@ -307,27 +314,33 @@ export function useDrawing({
     }, [maskCanvasRef]);
 
     // Undo/Redo functions
-    const saveMaskState = useCallback(() => {
+    const saveMaskState = useCallback(async () => {
         if (!maskCanvasRef.current) return;
 
         const canvas = maskCanvasRef.current;
         if (canvas.width === 0 || canvas.height === 0) return;
 
-        const ctx = canvas.getContext("2d");
-        if (!ctx) return;
-
-        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        // Use ImageBitmap for history as it's much more memory efficient (often stored on GPU)
+        const snapshot = await createImageBitmap(canvas);
 
         setMaskHistory((prev) => {
             // Remove any history after current index (for when user drew after undoing)
             const newHistory = prev.slice(0, historyIndex + 1);
 
             // Add current state
-            newHistory.push(imageData);
+            newHistory.push(snapshot);
 
-            // Limit history to 10 states to prevent memory issues (especially with large images)
-            if (newHistory.length > 10) {
-                newHistory.shift();
+            // Memory-aware history limit: For large images, keep fewer states
+            // 4MP (e.g. 2048x2048) is a good threshold for "large"
+            const isLargeImage = canvas.width * canvas.height > 4000000;
+            const maxHistory = isLargeImage ? 5 : 10;
+
+            if (newHistory.length > maxHistory) {
+                const removed = newHistory.shift();
+                // Explicitly close ImageBitmap to free memory if it was an ImageBitmap
+                if (removed instanceof ImageBitmap) {
+                    removed.close();
+                }
                 const nextIndex = newHistory.length - 1;
                 setHistoryIndex(nextIndex);
                 updateTransientHistory(newHistory, nextIndex);
@@ -746,10 +759,20 @@ export function useDrawing({
             updateTransientHistory(maskHistory, newIndex);
 
             const canvas = maskCanvasRef.current;
-            if (canvas && maskHistory[newIndex]) {
+            const state = maskHistory[newIndex];
+            if (canvas && state) {
                 const ctx = canvas.getContext("2d");
                 if (!ctx) return;
-                ctx.putImageData(maskHistory[newIndex], 0, 0);
+
+                // CRITICAL: Must ensure we are in source-over mode before restoring state
+                ctx.globalCompositeOperation = "source-over";
+
+                if (state instanceof ImageBitmap) {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    ctx.drawImage(state, 0, 0);
+                } else {
+                    ctx.putImageData(state, 0, 0);
+                }
 
                 // Update inpaint mask
                 const maskDataURL = getMaskDataUrl();
@@ -768,10 +791,20 @@ export function useDrawing({
             updateTransientHistory(maskHistory, newIndex);
 
             const canvas = maskCanvasRef.current;
-            if (canvas && maskHistory[newIndex]) {
+            const state = maskHistory[newIndex];
+            if (canvas && state) {
                 const ctx = canvas.getContext("2d");
                 if (!ctx) return;
-                ctx.putImageData(maskHistory[newIndex], 0, 0);
+
+                // CRITICAL: Must ensure we are in source-over mode before restoring state
+                ctx.globalCompositeOperation = "source-over";
+
+                if (state instanceof ImageBitmap) {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    ctx.drawImage(state, 0, 0);
+                } else {
+                    ctx.putImageData(state, 0, 0);
+                }
 
                 // Update inpaint mask
                 const maskDataURL = getMaskDataUrl();
@@ -792,8 +825,18 @@ export function useDrawing({
         if (!canvas || !entry) return;
         const ctx = canvas.getContext("2d");
         if (!ctx) return;
-        if (entry.historyIndex >= 0 && entry.maskHistory[entry.historyIndex]) {
-            ctx.putImageData(entry.maskHistory[entry.historyIndex], 0, 0);
+
+        const state = entry.maskHistory[entry.historyIndex] as ImageData | ImageBitmap | undefined;
+        if (entry.historyIndex >= 0 && state) {
+            // CRITICAL: Must ensure we are in source-over mode before restoring state
+            ctx.globalCompositeOperation = "source-over";
+
+            if (state instanceof ImageBitmap) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(state, 0, 0);
+            } else {
+                ctx.putImageData(state, 0, 0);
+            }
             return;
         }
         ctx.clearRect(0, 0, canvas.width, canvas.height);

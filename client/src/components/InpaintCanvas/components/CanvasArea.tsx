@@ -56,7 +56,7 @@ const CanvasArea = ({
     setInpaintingMaskInvert,
     returnPartialCandidates,
     setReturnPartialCandidates,
-    uiVisible = true,
+    uiVisible,
     setUiVisible,
     scrollWheelZoomIncrement = 4,
     generationMode = "txt2img",
@@ -114,8 +114,8 @@ const CanvasArea = ({
     setInpaintFullRes: (value: boolean) => void
     inpaintingMaskInvert: boolean
     setInpaintingMaskInvert: (value: boolean) => void
-    uiVisible?: boolean
-    setUiVisible?: (visible: boolean) => void
+    uiVisible: boolean
+    setUiVisible: (visible: boolean) => void
     scrollWheelZoomIncrement?: number
     generationMode?: GenerationMode
     focusBounds?: Bounds | null
@@ -358,7 +358,7 @@ const CanvasArea = ({
 
 
                     {/* Zoom Toolbar - Bottom Left */}
-                    {(displayImage || inputImage) && !isDrawing && setUiVisible && (
+                    {(displayImage || inputImage) && !isDrawing && (
                         <div className={`absolute bottom-1 left-1 z-20 transition-opacity duration-200 ${uiVisible ? 'opacity-100' : 'opacity-0'}`}>
                             <ZoomToolbar
                                 handleZoomOut={handleZoomOut}

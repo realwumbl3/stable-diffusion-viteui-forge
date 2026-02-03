@@ -37,6 +37,13 @@ const useMemoryUsage = (): number | null => {
     return memoryUsage
 }
 
+const formatDuration = (ms: number): string => {
+    const totalSeconds = Math.floor(ms / 1000)
+    const minutes = Math.floor(totalSeconds / 60)
+    const seconds = totalSeconds % 60
+    return `${minutes}m${seconds}s`
+}
+
 const StatusBar = ({
     displayImage,
     inputImage,
@@ -53,6 +60,47 @@ const StatusBar = ({
     const drawingMode = useCanvasSyncSelector((state) => state.drawingMode);
     const memoryUsage = useMemoryUsage()
     const [memoryPanelOpen, setMemoryPanelOpen] = useState(false)
+    const [generationStartTime, setGenerationStartTime] = useState<number | null>(null)
+    const [elapsedMs, setElapsedMs] = useState(0)
+    const [finalElapsedMs, setFinalElapsedMs] = useState<number | null>(null)
+    const [isTimerRunning, setIsTimerRunning] = useState(false)
+
+    useEffect(() => {
+        if (loading) {
+            if (!isTimerRunning) {
+                setGenerationStartTime(Date.now())
+                setElapsedMs(0)
+                setFinalElapsedMs(null)
+                setIsTimerRunning(true)
+            }
+        } else if (isTimerRunning) {
+            const now = Date.now()
+            const finalDuration = generationStartTime ? now - generationStartTime : elapsedMs
+            setElapsedMs(finalDuration)
+            setFinalElapsedMs(finalDuration)
+            setIsTimerRunning(false)
+            setGenerationStartTime(null)
+        }
+    }, [loading, isTimerRunning, generationStartTime, elapsedMs])
+
+    useEffect(() => {
+        if (!isTimerRunning || generationStartTime === null) {
+            return
+        }
+
+        const interval = setInterval(() => {
+            setElapsedMs(Date.now() - generationStartTime)
+        }, 500)
+
+        return () => clearInterval(interval)
+    }, [generationStartTime, isTimerRunning])
+
+    const elapsedLabel = isTimerRunning
+        ? formatDuration(elapsedMs)
+        : finalElapsedMs !== null
+            ? formatDuration(finalElapsedMs)
+            : null
+
     return (
         <div className="studio-toolbar justify-between text-xs text-studio-textSecondary ps-2 pe-2 flex items-center">
             <div className="flex items-center gap-2">
@@ -75,7 +123,7 @@ const StatusBar = ({
                         <span>
                             Step {Number(progress.sampling_step) || 0}/{Number(progress.sampling_steps) || 0}
                         </span>
-                        {progress.total_batches && progress.total_batches > 1 && (
+                        {typeof progress.total_batches === 'number' && progress.total_batches > 1 && (
                             <>
                                 <span>•</span>
                                 <span>
@@ -91,6 +139,12 @@ const StatusBar = ({
                                 <span>ETA~{Math.round(progress.eta as number)}s</span>
                             </>
                         )}
+                    </>
+                )}
+                {elapsedLabel && (
+                    <>
+                        <span>•</span>
+                        <span>Elapsed {elapsedLabel}</span>
                     </>
                 )}
             </div>

@@ -3,7 +3,7 @@ import time
 import threading
 import asyncio
 from .workspace_manager import WorkspaceManager
-from modules.progress import websocket_manager
+from .progress import websocket_manager
 import modules.shared as shared
 from modules.shared import opts
 from fastapi import Request, HTTPException
@@ -71,12 +71,15 @@ class ViteAPI:
 
     def progress_broadcaster(self, task_id, job_type):
         """Broadcast progress updates periodically during generation"""
+
         try:
             start_time = time.time()
             last_progress = -1
 
             # Give a small delay to ensure current_task is set
             time.sleep(0.1)
+
+            print(f"VITE-UI-API: Progress broadcaster started for task {task_id}")
 
             while self._should_continue_broadcasting(task_id, job_type, start_time):
                 current_progress = self._calculate_progress(job_type)
@@ -85,18 +88,21 @@ class ViteAPI:
                     websocket_manager.broadcast_task_progress_sync(task_id, progress_data)
                     last_progress = current_progress
                 time.sleep(0.5)  # Update every 0.5 seconds)
+            
+            print(f"VITE-UI-API: Progress broadcaster stopping for task {task_id}. Reason: job={shared.state.job}, step={shared.state.sampling_step}, duration={time.time() - start_time}")
         except Exception as e:
             print(f"Progress broadcaster error: {e}")
 
     def _should_continue_broadcasting(self, task_id, job_type, start_time):
         """Check if progress broadcasting should continue"""
-        max_duration = 300  # Max 5 minutes
-        # Allow sampling_step to be 0 or greater (not just != -1)
-        # For multi-iteration jobs, the job name changes to "Batch X out of Y",
-        # so we check that we're still in an active job rather than exact name match
+        from modules import progress
+        max_duration = 600  # Max 10 minutes
+
+        # Continue broadcasting as long as the current_task matches our task_id,
+        # regardless of state variables. This ensures we broadcast until finish_task() is called.
+
         should_continue = (
-            shared.state.job and  # Any non-empty job indicates active processing
-            shared.state.sampling_step >= 0 and
+            progress.current_task == task_id and
             (time.time() - start_time) < max_duration
         )
         return should_continue
@@ -113,6 +119,11 @@ class ViteAPI:
             # Fall back to single-batch progress calculation
             if sampling_steps > 0:
                 progress = min(sampling_step / sampling_steps, 1.0)
+            
+            # If we are in a multi-batch job but job_count isn't set yet, 
+            # don't let it reach 1.0 to avoid jumping back later
+            if job_count == -1:
+                progress = min(progress, 0.9)
         else:
             # Multi-batch progress calculation
             # Add progress for completed batches
@@ -120,7 +131,7 @@ class ViteAPI:
 
             # Add progress within current batch
             if sampling_steps > 0:
-                progress += 1 / job_count * sampling_step / sampling_steps
+                progress += 1 / job_count * (sampling_step / sampling_steps)
 
         return min(progress, 1.0)
 
@@ -189,6 +200,7 @@ class ViteAPI:
 
     def send_completion_message(self, task_id):
         """Send completion message after generation"""
+        print(f"VITE-UI-API: Sending completion message for task {task_id}")
         completion_data = {
             "active": False,
             "queued": False,
@@ -203,15 +215,20 @@ class ViteAPI:
             "timestamp": time.time(),
         }
         websocket_manager.broadcast_task_progress_sync(task_id, completion_data)
+        # Give time for the async message to be sent before cleanup
+        time.sleep(0.2)
+        print(f"VITE-UI-API: Completion message sent for task {task_id}")
 
     def cleanup_after_generation(self, task_id, progress_thread):
         """Clean up after generation completes"""
-        # Signal the progress thread to stop
+        print(f"VITE-UI-API: Starting cleanup for task {task_id}")
+        # Signal the progress thread to stop (though it should stop when current_task is cleared)
         shared.state.job = ""
         shared.state.sampling_step = -1
 
         # Wait for progress thread to finish
         progress_thread.join(timeout=2)
+        print(f"VITE-UI-API: Cleanup completed for task {task_id}")
 
     def register_routes(self, api):
         # ViteUI specific endpoints

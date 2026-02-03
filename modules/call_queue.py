@@ -167,3 +167,9 @@ def wrap_gradio_call_no_job(func, extra_outputs=None, add_stats=False):
 
     return f
 
+# VITE-UI SHIM
+try:
+    from modules_viteapi.progress import patch_call_queue
+    patch_call_queue(globals())
+except ImportError:
+    pass

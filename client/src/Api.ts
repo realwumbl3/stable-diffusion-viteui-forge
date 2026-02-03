@@ -41,6 +41,11 @@ export interface ModelInfo {
   config: string | null;
 }
 
+export interface ModuleInfo {
+  model_name: string;
+  filename: string;
+}
+
 export interface SamplerInfo {
   name: string;
   aliases: string[];
@@ -204,6 +209,11 @@ class StableDiffusionAPI {
     return this.request<ModelInfo[]>('/sdapi/v1/sd-models');
   }
 
+  // Get available modules (VAE/Text Encoder)
+  async getModules(): Promise<ModuleInfo[]> {
+    return this.request<ModuleInfo[]>('/sdapi/v1/sd-modules');
+  }
+
   // Get current options
   async getOptions(): Promise<Record<string, unknown>> {
     return this.request<Record<string, unknown>>('/sdapi/v1/options');
@@ -215,6 +225,16 @@ class StableDiffusionAPI {
       method: 'POST',
       body: JSON.stringify({
         sd_model_checkpoint: modelTitle,
+      }),
+    });
+  }
+
+  // Set modules (VAE/Text Encoder)
+  async setModules(modules: string[]): Promise<void> {
+    return this.request<void>('/sdapi/v1/options', {
+      method: 'POST',
+      body: JSON.stringify({
+        forge_additional_modules: modules,
       }),
     });
   }

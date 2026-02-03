@@ -6,6 +6,7 @@ import NumberSelector from './NumberSelector'
 import { useWorkspaceContext, useWorkspaceState } from '../contexts/WorkspaceContext'
 import api from '../Api'
 import { useCallback } from 'react'
+import { ModuleInfo } from '../Api'
 
 const Header = () => {
   const {
@@ -17,12 +18,13 @@ const Header = () => {
     removeWorkspaceState,
     setWorkspaceBrowserOpen,
     models,
+    modules,
     samplers,
   } = useWorkspaceContext()
 
   const { workspaceState, updateWorkspaceState } = useWorkspaceState(currentWorkspace)
   const { generation, ui } = workspaceState
-  const { selectedModel, selectedSampler, cfgScale } = generation
+  const { selectedModel, selectedVAE, selectedSampler, cfgScale, clipSkip } = generation
   const { pageLocked } = ui
 
   const handleWorkspaceChange = useCallback((workspaceName: string) => {
@@ -62,10 +64,30 @@ const Header = () => {
     }
   }, [updateWorkspaceState])
 
+  const handleVAEChange = useCallback(async (vae: string) => {
+    updateWorkspaceState((prev) => ({
+      ...prev,
+      generation: { ...prev.generation, selectedVAE: vae }
+    }))
+    try {
+      const modules = vae === "Automatic" ? [] : [vae];
+      await api.setModules(modules)
+    } catch (error) {
+      console.error("Error setting VAE:", error)
+    }
+  }, [updateWorkspaceState])
+
   const setSelectedSampler = useCallback((sampler: string) => {
     updateWorkspaceState((prev) => ({
       ...prev,
       generation: { ...prev.generation, selectedSampler: sampler }
+    }))
+  }, [updateWorkspaceState])
+
+  const setClipSkip = useCallback((skip: number) => {
+    updateWorkspaceState((prev) => ({
+      ...prev,
+      generation: { ...prev.generation, clipSkip: skip }
     }))
   }, [updateWorkspaceState])
 
@@ -104,6 +126,26 @@ const Header = () => {
           value={selectedModel}
           onChange={handleModelChange}
           title="Model"
+        />
+        <OptionPicker
+          options={[
+            { value: "Automatic", label: "Automatic" },
+            ...modules.map((module: ModuleInfo) => ({
+              value: module.model_name,
+              label: module.model_name.split(".safetensors")[0] || module.model_name
+            }))
+          ]}
+          value={selectedVAE || "Automatic"}
+          onChange={handleVAEChange}
+          title="VAE"
+        />
+        <NumberSelector
+          value={clipSkip}
+          onChange={setClipSkip}
+          min={1}
+          max={12}
+          step={1}
+          label="Clip Skip"
         />
         <OptionPicker
           options={samplers.map((sampler) => ({

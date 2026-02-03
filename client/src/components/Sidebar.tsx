@@ -32,7 +32,8 @@ const Sidebar = ({
   getGenerationImageUrl,
   onRefreshTimeline,
   onRefreshCanvas,
-  canvasRefreshKey
+  canvasRefreshKey,
+  isComposingPartial
 }: {
   collapsed: boolean
   onToggle: () => void
@@ -51,6 +52,7 @@ const Sidebar = ({
   onRefreshTimeline?: () => void
   onRefreshCanvas?: () => void
   canvasRefreshKey: number
+  isComposingPartial: boolean
 }) => {
   const [committedPage, setCommittedPage] = useState<number>(0)
   const [discardedPage, setDiscardedPage] = useState<number>(0)
@@ -75,7 +77,8 @@ const Sidebar = ({
   }
 
   const previewImage = getGenerationImageUrl?.(timeline.currentPreview) ?? null
-  const hasQueueItems = timeline.generationQueue.length > 0
+  const effectiveGenerationQueue = isComposingPartial ? [] : timeline.generationQueue
+  const hasQueueItems = effectiveGenerationQueue.length > 0
   const hasCommitted = timeline.committedHistory.length > 0
   const hasDiscarded = timeline.discarded.length > 0
 
@@ -204,46 +207,59 @@ const Sidebar = ({
           <div className="studio-sidebar-content flex flex-col min-h-0 flex-1 overflow-hidden">
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
               <div className="space-y-2">
-                <div className="flex items-center justify-between text-xs text-studio-textSecondary uppercase tracking-wider">
-                  <div className="flex items-center gap-2">
-                    <span>Generations</span>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onRefreshTimeline?.();
-                      }}
-                      className="p-1 hover:bg-studio-surface rounded text-studio-textSecondary hover:text-studio-text transition-all duration-200"
-                      title="Refresh Timeline"
-                      type="button"
-                    >
-                      <RefreshCw size={12} />
-                    </button>
-                  </div>
-                  {hasQueueItems && <span>{timeline.generationQueue.length}</span>}
+                <div className="flex flex-col items-start justify-between">
+                  {isComposingPartial ?
+                    (
+                      <div className="text-xs text-studio-textSecondary flex items-center gap-1">
+                        <div className="w-2 h-2 rounded-full border border-studio-accent animate-pulse" />
+                        <span>Composing partial generation…</span>
+                      </div>
+                    )
+                    :
+                    <>
+                      <div className="flex items-center gap-2 text-xs text-studio-textSecondary uppercase tracking-wider">
+                        <span>Generations</span>
+                        {hasQueueItems && <span>({timeline.generationQueue.length})</span>}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onRefreshTimeline?.();
+                          }}
+                          className="p-1 hover:bg-studio-surface rounded text-studio-textSecondary hover:text-studio-text transition-all duration-200"
+                          title="Refresh Timeline"
+                          type="button"
+                        >
+                          <RefreshCw size={12} />
+                        </button>
+                      </div>
+                      {hasQueueItems ? (
+                        <div className="grid grid-cols-1 gap-2">
+                          {effectiveGenerationQueue.map(generation => (
+                            <TimelineItem
+                              key={generation.genid}
+                              item={generation}
+                              isActive={timeline.currentPreview?.genid === generation.genid}
+                              onSelect={() => onPreviewSelect(generation)}
+                              onDiscard={() => onDiscardGeneration(generation)}
+                              showDiscard
+                              onCommit={onCommitPreview}
+                              onReject={onRejectPreview}
+                              showCommitReject
+                              getGenerationImageUrl={getGenerationImageUrl}
+                            />
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-xs text-studio-text-muted">
+                          {isComposingPartial
+                            ? "Composing partial generation… timeline will reappear once composition completes."
+                            : "No generations yet"}
+                        </div>
+                      )}
+                    </>
+                  }
                 </div>
-                {hasQueueItems ? (
-                  <div className="grid grid-cols-1 gap-2">
-                    {timeline.generationQueue.map(generation => (
-                      <TimelineItem
-                        key={generation.genid}
-                        item={generation}
-                        isActive={timeline.currentPreview?.genid === generation.genid}
-                        onSelect={() => onPreviewSelect(generation)}
-                        onDiscard={() => onDiscardGeneration(generation)}
-                        showDiscard
-                        onCommit={onCommitPreview}
-                        onReject={onRejectPreview}
-                        showCommitReject
-                        getGenerationImageUrl={getGenerationImageUrl}
-                      />
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-xs text-studio-text-muted">No generations yet</div>
-                )}
               </div>
-
-
               {/* Canvas */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-xs text-studio-textSecondary uppercase tracking-wider">

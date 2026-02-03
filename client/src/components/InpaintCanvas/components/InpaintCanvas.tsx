@@ -56,7 +56,6 @@ const InpaintCanvas = ({
     setInpaintFullRes,
     inpaintingMaskInvert,
     setInpaintingMaskInvert,
-    uiVisible = true,
     // Generation mode
     generationMode = "txt2img",
     // Canvas refresh key
@@ -94,7 +93,6 @@ const InpaintCanvas = ({
     setInpaintFullRes: (value: boolean) => void
     inpaintingMaskInvert: boolean
     setInpaintingMaskInvert: (value: boolean) => void
-    uiVisible?: boolean
     generationMode?: GenerationMode
     canvasRefreshKey?: number
     canvasControls: CanvasTopControlsProps
@@ -119,7 +117,7 @@ const InpaintCanvas = ({
     const panTargetRef = useRef<HTMLDivElement>(null);
 
     // UI visibility state
-    // const [uiVisible, setUiVisible] = useState<boolean>(true); // Now passed as prop
+    const [uiVisible, setUiVisible] = useState<boolean>(true); // Now passed as prop
 
     // Drawing state (previously in useCanvasState)
     const [isDrawing, setIsDrawing] = useState(false);
@@ -528,7 +526,7 @@ const InpaintCanvas = ({
                 handleZoomIn={handleZoomIn}
                 handleResetZoom={handleResetZoom}
                 handleFitToScreen={handleFitToScreen}
-                // setUiVisible={setUiVisible} // uiVisible is now a prop, not a setter from here
+                setUiVisible={setUiVisible}
                 inpaintFullRes={inpaintFullRes}
                 inpaintFullResPadding={inpaintFullResPadding}
                 setInpaintFullResPadding={setInpaintFullResPadding}
@@ -604,9 +602,9 @@ const InpaintCanvas = ({
 
             {/* Status Bar */}
             <StatusBar
-                displayImage={displayImage || undefined}
-                inputImage={inputImage || undefined}
-                progress={progress || undefined}
+                displayImage={displayImage}
+                inputImage={inputImage}
+                progress={progress}
                 loading={loading}
             />
 

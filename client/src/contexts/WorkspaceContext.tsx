@@ -2,13 +2,14 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import type { Dispatch, ReactNode, SetStateAction } from "react";
 import { useWorkspaceTabs } from "../hooks/useWorkspaceTabs";
 import type { GenerationMode } from "../types/components";
-import type { ModelInfo, SamplerInfo } from "../Api";
+import type { ModelInfo, SamplerInfo, ModuleInfo } from "../Api";
 import type { PromptMode } from "../components/PromptComposer/types";
 
 const STORAGE_KEY_WORKSPACE_STATE = "viteui-workspace-state";
 
 export interface WorkspaceGenerationState {
     selectedModel: string;
+    selectedVAE: string;
     selectedSampler: string;
     clipSkip: number;
     steps: number;
@@ -23,6 +24,7 @@ export interface WorkspaceGenerationState {
     loading: boolean;
     currentTaskId: string | null;
     pendingRestart: boolean;
+    composingPartial: boolean;
     seed?: number;
 }
 
@@ -55,7 +57,7 @@ export interface WorkspaceCanvasState {
 export interface WorkspaceTransientState {
     canvasElement: HTMLCanvasElement | null;
     canvasContext: CanvasRenderingContext2D | null;
-    maskHistory: ImageData[];
+    maskHistory: (ImageData | ImageBitmap)[];
     historyIndex: number;
     width: number;
     height: number;
@@ -81,6 +83,8 @@ interface WorkspaceContextValue {
     ensureWorkspaceState: (workspaceId: string) => void;
     models: ModelInfo[];
     setModels: Dispatch<SetStateAction<ModelInfo[]>>;
+    modules: ModuleInfo[];
+    setModules: Dispatch<SetStateAction<ModuleInfo[]>>;
     samplers: SamplerInfo[];
     setSamplers: Dispatch<SetStateAction<SamplerInfo[]>>;
     workspaceBrowserOpen: boolean;
@@ -93,6 +97,7 @@ interface WorkspaceContextValue {
 const createDefaultWorkspaceState = (): WorkspaceState => ({
     generation: {
         selectedModel: "",
+        selectedVAE: "Automatic",
         selectedSampler: "Euler a",
         clipSkip: 1,
         steps: 20,
@@ -107,6 +112,7 @@ const createDefaultWorkspaceState = (): WorkspaceState => ({
         loading: false,
         currentTaskId: null,
         pendingRestart: false,
+        composingPartial: false,
     },
     mode: {
         generationMode: "txt2img",
@@ -165,6 +171,12 @@ const stripTransientState = (state: WorkspaceState): WorkspaceState => ({
         loading: false,
         pendingRestart: false,
         currentTaskId: null,
+        composingPartial: false,
+    },
+    mode: {
+        ...state.mode,
+        inpaintMask: null,
+        inpaintMaskSnapshot: null,
     },
     ui: {
         ...state.ui,
@@ -189,6 +201,7 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
     } = useWorkspaceTabs();
     const [workspaceStates, setWorkspaceStates] = useState<Record<string, WorkspaceState>>(loadWorkspaceStates);
     const [models, setModels] = useState<ModelInfo[]>([]);
+    const [modules, setModules] = useState<ModuleInfo[]>([]);
     const [samplers, setSamplers] = useState<SamplerInfo[]>([]);
     const [workspaceBrowserOpen, setWorkspaceBrowserOpen] = useState(false);
 
@@ -310,6 +323,8 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
         ensureWorkspaceState,
         models,
         setModels,
+        modules,
+        setModules,
         samplers,
         setSamplers,
         workspaceBrowserOpen,
@@ -330,6 +345,7 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
         ensureWorkspaceState,
         models,
         samplers,
+        modules,
         workspaceBrowserOpen,
         ensureWorkspaceTransientState,
         getWorkspaceTransientState,

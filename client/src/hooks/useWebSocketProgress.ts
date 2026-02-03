@@ -270,17 +270,29 @@ export const useWebSocketProgress = (taskId: string | null = null): UseWebSocket
       // Only process progress updates that have valid progress data
       // Progress updates should have a numeric progress value (0-1)
       if (data.progress !== undefined && typeof data.progress === 'number') {
+        // console.log('WebSocket: Received progress update', data.progress, data.task_id)
+        
         // Check if this task has already been completed - if so, ignore further updates
         if (data.task_id && completedTasksRef.current.has(data.task_id)) {
+          console.log('WebSocket: Ignoring update for completed task', data.task_id)
           return
         }
 
         // Task completed - clear progress and live preview
         if (data.completed && data.task_id) {
-          console.log('WebSocket: Task completed', data.task_id)
+          console.log('WebSocket: Task completed', data.task_id, 'progress:', data.progress)
           completedTasksRef.current.add(data.task_id)
           dispatchProgressState({ type: 'RESET' })
           return
+        }
+
+        if (data.total_batches && (data.total_batches as number) > 1) {
+          console.log('WebSocket: Multi-batch update', {
+            progress: data.progress,
+            batch: `${data.current_batch}/${data.total_batches}`,
+            step: `${data.sampling_step}/${data.sampling_steps}`,
+            task_id: data.task_id
+          })
         }
 
         // Valid progress update

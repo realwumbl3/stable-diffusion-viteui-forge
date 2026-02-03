@@ -27,6 +27,7 @@ EXCLUDE_DIRS = {
     'tmp',
     'viteui-diff',
     "original-forge",
+    "workspaces",
 }
 
 # File extensions to skip (binary files, etc.)

@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 
-const BASE_TITLE = "SD viteUI";
+const BASE_TITLE = "";
 const TITLE_SPINNER_FRAMES = [
     "⠇⠀⠀",
     "⠋⠀⠀",

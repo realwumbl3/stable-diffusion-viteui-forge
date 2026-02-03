@@ -35,6 +35,7 @@ export interface CanvasTopControlsProps {
     onPreviewSelect: (generation: Generation | null) => void
     onCommit: () => void
     onReject: () => void
+    isComposingPartial: boolean
   }
   
 interface Props {
@@ -86,6 +87,7 @@ const CanvasTopControls = ({ controls, visible }: Props) => {
         onPreviewSelect,
         onCommit,
         onReject,
+        isComposingPartial,
     } = controls;
 
     const isGenerating = loading && progress;
@@ -95,7 +97,7 @@ const CanvasTopControls = ({ controls, visible }: Props) => {
         progress && typeof progress.total_batches === "number" ? progress.total_batches : undefined;
 
     return (
-        <GenerationControlsContainer className={`flex flex-row justify-items-end items-center gap-1 rounded-lg border border-studio-border p-1 pointer-events-auto 
+        <GenerationControlsContainer className={`relative flex flex-row justify-items-end items-center gap-1 rounded-lg border border-studio-border p-1 pointer-events-auto 
         bg-studio-bg/30 shadow-2xl backdrop-blur 
         transition-opacity duration-200 ${visible ? "opacity-100" : "opacity-0"} 
         ${isGenerating ? "generating" : ""}`}>
@@ -129,7 +131,7 @@ const CanvasTopControls = ({ controls, visible }: Props) => {
                 </div>
                 <button
                     onClick={onGenerate}
-                    disabled={!canGenerate || loading}
+                    disabled={!canGenerate || loading || isComposingPartial}
                     className={cn(
                         "studio-btn-primary flex flex-col items-center gap-1 px-4 py-2 rounded-md relative self-stretch justify-center line-height-1 simple-block-fill",
                         (!canGenerate || loading) && "opacity-50 cursor-not-allowed"
@@ -179,13 +181,15 @@ const CanvasTopControls = ({ controls, visible }: Props) => {
                             className="studio-btn-secondary flex flex-col items-center gap-1 px-3 py-1 rounded-md text-sm hover:bg-studio-accent/20 relative"
                             title="Restart generation after interrupting current work"
                             type="button"
-                        >
+                            disabled={isComposingPartial}
+                            >
                             <RotateCw size={16} />
                             <KeyIndicator keys="H" />
                             Restart
                         </button>
                         {totalBatches && totalBatches > 1 && currentBatch !== undefined && (
                             <button
+                                disabled={isComposingPartial}
                                 onClick={onSkip}
                                 className="studio-btn-secondary flex flex-col items-center gap-1 px-3 py-1 rounded-md text-sm hover:bg-studio-accent/20 relative"
                                 title="Skip current generation (S)"
@@ -201,6 +205,7 @@ const CanvasTopControls = ({ controls, visible }: Props) => {
                             className="studio-btn-secondary flex flex-col items-center gap-1 px-3 py-1 rounded-md text-sm hover:bg-studio-accent/20 relative"
                             title="Interrupt all generations"
                             type="button"
+                            disabled={isComposingPartial}
                         >
                             <Square size={16} />
                             End
@@ -211,14 +216,22 @@ const CanvasTopControls = ({ controls, visible }: Props) => {
             </div>
 
             {/* Generations Navigator */}
-            <GenerationsNavigator
-                generationQueue={generationQueue}
-                currentPreview={currentPreview}
-                latestCommit={latestCommit}
-                onPreviewSelect={onPreviewSelect}
-                onCommit={onCommit}
-                onReject={onReject}
-            />
+            {!isComposingPartial && (
+                <GenerationsNavigator
+                    generationQueue={generationQueue}
+                    currentPreview={currentPreview}
+                    latestCommit={latestCommit}
+                    onPreviewSelect={onPreviewSelect}
+                    onCommit={onCommit}
+                    onReject={onReject}
+                />
+            )}
+            {isComposingPartial && (
+                <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-1 rounded-lg bg-studio-bg/80 text-xs font-semibold text-studio-text">
+                    <div className="w-4 h-4 border-2 border-studio-text border-t-transparent rounded-full animate-spin" />
+                    <span>Composing... please wait.</span>
+                </div>
+            )}
         </GenerationControlsContainer>
     );
 };

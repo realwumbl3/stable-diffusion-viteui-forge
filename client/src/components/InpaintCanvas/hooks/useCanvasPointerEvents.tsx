@@ -220,11 +220,6 @@ export function useCanvasPointerEvents({
 
         const handlePointerLockChange = () => {
             const locked = document.pointerLockElement === panTargetRef.current;
-            console.debug("[VITEUI PANNING] pointer lock change", {
-                locked,
-                panType,
-                isRightClickPanning,
-            });
             setIsPanning(locked);
             if (!locked) {
                 if (panType === "right-click" || panType === "shift") {
@@ -238,12 +233,7 @@ export function useCanvasPointerEvents({
         const handleMouseMove = (e: MouseEvent) => {
             const isPointerLocked = document.pointerLockElement === panTargetRef.current;
             if (isPointerLocked) {
-                if (e.movementX !== 0 || e.movementY !== 0) {
-                    console.debug("[VITEUI PANNING] pointer-lock move", {
-                        movementX: e.movementX,
-                        movementY: e.movementY,
-                    });
-                }
+
                 setPanOffset((prev) => ({
                     x: prev.x + e.movementX,
                     y: prev.y + e.movementY,
@@ -254,11 +244,6 @@ export function useCanvasPointerEvents({
             if (isRightClickPanning || panType === "shift") {
                 const deltaX = e.clientX - rightClickStartPos.x;
                 const deltaY = e.clientY - rightClickStartPos.y;
-                console.debug("[VITEUI PANNING] pan move", {
-                    panType,
-                    deltaX,
-                    deltaY,
-                });
                 setPanOffset({
                     x: rightClickStartPan.x + deltaX,
                     y: rightClickStartPan.y + deltaY,
