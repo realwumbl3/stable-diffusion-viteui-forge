@@ -263,9 +263,22 @@ class WorkspaceManager:
         if not source_full_path.exists():
             raise HTTPException(status_code=404, detail=f"Source commit not found: {source_genid}")
 
-        candidate_full_path = candidate_folder / "full.webp"
+        # Create subfolder for original partial candidate files
+        nested_partial_folder = candidate_folder / "partial_candidate"
+        nested_partial_folder.mkdir(exist_ok=True)
+
+        # Move existing files into the nested folder
+        files_to_move = [f for f in candidate_folder.iterdir() if f.is_file()]
+        for f in files_to_move:
+            shutil.move(str(f), str(nested_partial_folder / f.name))
+
+        # Update paths to point to the moved files
+        candidate_meta_path = nested_partial_folder / "meta.json"
+        candidate_full_path = nested_partial_folder / "full.webp"
+        candidate_mask_path = nested_partial_folder / "mask.webp"
+
         if not candidate_full_path.exists():
-            raise HTTPException(status_code=404, detail="Candidate image not found")
+            raise HTTPException(status_code=404, detail="Candidate image not found after move")
 
         info = partial_candidates[0]
         paste_to = tuple(info["paste_to"]) if info.get("paste_to") else None
@@ -295,10 +308,9 @@ class WorkspaceManager:
 
             # Fallback to mask.webp
             if candidate_mask is None:
-                mask_path = candidate_folder / "mask.webp"
-                if mask_path.exists():
+                if candidate_mask_path.exists():
                     try:
-                        with Image.open(mask_path) as m:
+                        with Image.open(candidate_mask_path) as m:
                             candidate_mask = m.convert("L")
                             print(f"Candidate mask from mask.webp: {candidate_mask.size}")
                     except Exception as e:
@@ -353,14 +365,16 @@ class WorkspaceManager:
 
         # Convert back to RGB to avoid alpha channel artifacts in WEBP
         composite_image = composite_image.convert("RGB")
-        composite_image.save(candidate_full_path, format="WEBP", lossless=True, quality=100)
+        # Save to the ROOT of the candidate folder
+        new_full_path = candidate_folder / "full.webp"
+        composite_image.save(new_full_path, format="WEBP", lossless=True, quality=100)
 
         # Update metadata with source canvas dimensions
         metadata["full_width"] = base_image.width
         metadata["full_height"] = base_image.height
 
         preview_max = metadata.get("preview_max_size")
-        preview_image = self.workspace_images.resize_for_preview(candidate_full_path, max_size=preview_max)
+        preview_image = self.workspace_images.resize_for_preview(new_full_path, max_size=preview_max)
         preview_path = candidate_folder / "512.webp"
         preview_image.save(preview_path, format="WEBP")
 
@@ -368,7 +382,10 @@ class WorkspaceManager:
         metadata["preview_height"] = preview_image.height
         metadata["preview_max_size"] = preview_max or self.workspace_images.preview_max_size
         metadata.pop("partial_candidates_info", None)
-        meta_path.write_text(json.dumps(metadata, indent=2), encoding="utf-8")
+        # Save updated metadata to the ROOT of the candidate folder
+        new_meta_path = candidate_folder / "meta.json"
+        new_meta_path.write_text(json.dumps(metadata, indent=2), encoding="utf-8")
+
 
     def commit_candidate(self, workspace_name: str, image_relative_path: str) -> dict:
         workspace_path = self._resolve_workspace_path(workspace_name)
