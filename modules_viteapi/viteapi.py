@@ -4,6 +4,7 @@ import threading
 import asyncio
 from .workspace_manager import WorkspaceManager
 from .progress import websocket_manager
+from .timelime_creator.timelapse_creator import TimelapseCreator
 import modules.shared as shared
 from modules.shared import opts
 from fastapi import Request, HTTPException
@@ -16,6 +17,7 @@ class ViteAPI:
     def __init__(self, api):
         self.api = api
         self.workspace_manager = WorkspaceManager(self.api)
+        self.timelapse_creator = TimelapseCreator(self.api)
         self.register_routes(api)
 
     def get_workspace_manager(self):
