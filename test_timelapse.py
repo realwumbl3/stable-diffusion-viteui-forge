@@ -3,7 +3,7 @@ import time
 import sys
 import json
 
-BASE_URL = "http://127.0.0.1:7861" # Default WebUI/Forge port
+BASE_URL = "http://127.0.0.1:7888/api" 
 
 def test_timelapse(workspace_name):
     print(f"Starting timelapse test for workspace: {workspace_name}")
@@ -11,8 +11,12 @@ def test_timelapse(workspace_name):
     # 1. Start the timelapse job
     start_url = f"{BASE_URL}/viteapi/timelapse/start"
     payload = {
-        "workspace": workspace_name
-        # "range": "0..5" # Optional range
+        "workspace": workspace_name,
+        "fps": 5,           
+        "max_side": 0,      # No limit
+        "last_frame_duration": 3, 
+        "show_timestamp": True,   # Render timestamp
+        # "range": "0..5"   
     }
     
     try:
