@@ -68,6 +68,23 @@ export function useCanvasPointerEvents({
     const handlePointerMove = useCallback(
         (e: PointerEvent) => {
             if (!canvasState.isRightClickPanning) return;
+            const isPointerLocked = document.pointerLockElement === panTargetRef.current;
+
+            // If pointer is locked, we MUST use movementX/Y
+            // Even if they are 0, we should not fall back to absolute position logic
+            if (isPointerLocked) {
+                const movementX = e.movementX ?? 0;
+                const movementY = e.movementY ?? 0;
+                if (movementX !== 0 || movementY !== 0) {
+                    canvasState.setPanOffset((prev) => ({
+                        x: prev.x + movementX,
+                        y: prev.y + movementY,
+                    }));
+                }
+                return;
+            }
+
+            // Fallback for non-locked state (unexpected but possible)
             const movementX = e.movementX ?? 0;
             const movementY = e.movementY ?? 0;
             if (movementX !== 0 || movementY !== 0) {
@@ -84,7 +101,7 @@ export function useCanvasPointerEvents({
                 y: canvasState.rightClickStartPan.y + deltaY,
             });
         },
-        [canvasState]
+        [canvasState, panTargetRef]
     );
 
     const handlePointerUp = useCallback(

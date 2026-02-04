@@ -24,7 +24,7 @@ const LivePreview = ({
     let livePreviewElement = <img
         src={livePreview ?? undefined}
         alt="Live preview"
-        className="w-full h-full object-contain shadow-studio-border rounded-lg overflow-hidden"
+        className="w-full h-full object-cover shadow-studio-border rounded-lg overflow-hidden"
         draggable={false}
         style={{
             visibility: livePreview ? 'visible' : 'hidden',
