@@ -226,7 +226,18 @@ const Workspace = ({ workspaceId, isActive }: {
         }
     };
 
-    const handleRefreshCanvas = (): void => {
+    const handleRefreshCanvas = async (): Promise<void> => {
+        if (!workspaceId || !canvas.currentImage) return;
+
+        const workspaceInfo = parseWorkspaceImage(canvas.currentImage);
+        if (workspaceInfo && workspaceInfo.path) {
+            try {
+                await api.refreshGenerationFromSource(workspaceId, workspaceInfo.path);
+            } catch (error) {
+                console.error("Failed to refresh generation from source:", error);
+            }
+        }
+
         updateWorkspaceState((prev) => ({
             ...prev,
             canvas: {
@@ -234,6 +245,18 @@ const Workspace = ({ workspaceId, isActive }: {
                 canvasRefreshKey: prev.canvas.canvasRefreshKey + 1,
             },
         }));
+    };
+
+    const handleEditCanvas = async (): Promise<void> => {
+        if (!workspaceId || !canvas.currentImage) return;
+        const workspaceInfo = parseWorkspaceImage(canvas.currentImage);
+        if (workspaceInfo && workspaceInfo.path) {
+            try {
+                await api.revealWorkspacePath(workspaceId, workspaceInfo.path);
+            } catch (error) {
+                console.error("Failed to reveal workspace path:", error);
+            }
+        }
     };
 
     const generateImage = useCallback(async (): Promise<void> => {
@@ -1020,6 +1043,7 @@ const Workspace = ({ workspaceId, isActive }: {
                 getGenerationImageUrl={getGenerationImageUrl}
                 onRefreshTimeline={loadWorkspaceGenerations}
                 onRefreshCanvas={handleRefreshCanvas}
+                onEditCanvas={handleEditCanvas}
                 canvasRefreshKey={canvas.canvasRefreshKey}
                 isComposingPartial={generation.composingPartial}
             />

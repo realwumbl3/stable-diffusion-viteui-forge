@@ -405,6 +405,13 @@ class StableDiffusionAPI {
     });
   }
 
+  async refreshGenerationFromSource(workspaceName: string, path: string): Promise<{ success: boolean; path: string }> {
+    return this.request(`/workspaces/${encodeURIComponent(workspaceName)}/refresh-from-source`, {
+      method: 'POST',
+      body: JSON.stringify({ path }),
+    });
+  }
+
   // Get generation asset (meta.json, full.webp, 512.webp)
   async getGenerationAsset(workspaceName: string, category: string, genid: string, asset: string): Promise<unknown> {
     const url = `/workspaces/${encodeURIComponent(workspaceName)}/${category}/${genid}/${asset}`;

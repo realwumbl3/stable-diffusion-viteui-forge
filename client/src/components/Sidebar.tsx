@@ -32,6 +32,7 @@ const Sidebar = ({
   getGenerationImageUrl,
   onRefreshTimeline,
   onRefreshCanvas,
+  onEditCanvas,
   canvasRefreshKey,
   isComposingPartial
 }: {
@@ -51,12 +52,14 @@ const Sidebar = ({
   getGenerationImageUrl?: (generation: Generation | null) => string | null
   onRefreshTimeline?: () => void
   onRefreshCanvas?: () => void
+  onEditCanvas?: () => void
   canvasRefreshKey: number
   isComposingPartial: boolean
 }) => {
   const [committedPage, setCommittedPage] = useState<number>(0)
   const [discardedPage, setDiscardedPage] = useState<number>(0)
   const [imageLoadTick, setImageLoadTick] = useState(0)
+  const [editingImages, setEditingImages] = useState<Set<string>>(new Set()) // Track which images are in "Edit Mode" (PNG created)
   const canvasImgRef = useRef<HTMLImageElement>(null)
 
   const [canvasDimensions, setCanvasDimensions] = useState<{ width: number; height: number }>({ width: 0, height: 0 })
@@ -291,20 +294,40 @@ const Sidebar = ({
                       <div className="absolute inset-0 bg-studio-accent/10 border border-studio-accent/40" />
                     )}
 
-                    {/* Refresh Button - Bottom Right */}
+                    {/* Refresh Button / Edit Button - Bottom Right */}
                     {currentImage && (
                       <button
-                        onClick={(event) => {
+                        onClick={async (event) => {
                           event.stopPropagation()
-                          onRefreshCanvas?.()
+
+                          // Extract basic ID from current image URL to use as key
+                          const imageKey = currentImage;
+                          const isEditing = editingImages.has(imageKey);
+
+                          if (isEditing) {
+                            // Already editing, so this is a "Refresh" action
+                            if (onRefreshCanvas) {
+                              onRefreshCanvas();
+                              // We keep it as "Refresh" button
+                            }
+                          } else {
+                            // Not editing yet, so this is an "Edit" action
+                            onEditCanvas?.();
+                            setEditingImages(prev => {
+                              const newSet = new Set(prev);
+                              newSet.add(imageKey);
+                              return newSet;
+                            });
+                          }
                         }}
-                        className="absolute bottom-2 right-2 rounded bg-studio-panel/90 text-studio-textSecondary p-1.5 hover:bg-studio-surface 
-                        hover:text-studio-text transition-all duration-200 shadow-sm opacity-0
-                        group-hover:opacity-100 transition-opacity"
-                        title="Refresh Canvas"
+                        className={cn(
+                          "absolute bottom-2 right-2 rounded bg-studio-panel/90 text-studio-textSecondary p-1.5 hover:bg-studio-surface hover:text-studio-text transition-all duration-200 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity",
+                          editingImages.has(currentImage || "") ? "text-studio-accent" : ""
+                        )}
+                        title={editingImages.has(currentImage || "") ? "Refresh from Source (PNG)" : "Edit Externally (Create PNG)"}
                         type="button"
                       >
-                        <RefreshCw size={14} />
+                        {editingImages.has(currentImage || "") ? <RefreshCw size={14} /> : <Edit size={14} />}
                       </button>
                     )}
 

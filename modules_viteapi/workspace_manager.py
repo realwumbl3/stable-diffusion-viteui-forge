@@ -751,27 +751,61 @@ class WorkspaceManager:
         # Convert webp files to lossless png copies before revealing
         if file_path.suffix.lower() == '.webp':
             png_path = file_path.with_suffix('.png')
-            try:
-                with Image.open(file_path) as img:
-                    # Convert to RGB if necessary (webp might have transparency)
-                    if img.mode in ('RGBA', 'LA', 'P'):
-                        # Create white background for transparent images
-                        background = Image.new('RGB', img.size, (255, 255, 255))
-                        if img.mode == 'P':
-                            img = img.convert('RGBA')
-                        background.paste(img, mask=img.split()[-1] if img.mode == 'RGBA' else None)
-                        img = background
-                    elif img.mode != 'RGB':
-                        img = img.convert('RGB')
-                    # Save as lossless PNG
-                    img.save(png_path, 'PNG', optimize=False)
+            # Check if PNG already exists to avoid overwriting edits
+            if not png_path.exists():
+                try:
+                    with Image.open(file_path) as img:
+                        # Convert to RGB if necessary (webp might have transparency)
+                        if img.mode in ('RGBA', 'LA', 'P'):
+                            # Create white background for transparent images
+                            background = Image.new('RGB', img.size, (255, 255, 255))
+                            if img.mode == 'P':
+                                img = img.convert('RGBA')
+                            background.paste(img, mask=img.split()[-1] if img.mode == 'RGBA' else None)
+                            img = background
+                        elif img.mode != 'RGB':
+                            img = img.convert('RGB')
+                        # Save as lossless PNG
+                        img.save(png_path, 'PNG', optimize=False)
+                except Exception as e:
+                    # If conversion fails, continue with original file
+                    print(f"Warning: Failed to convert webp to png: {e}")
+            
+            # Use the PNG path if it exists (either just created or existed before)
+            if png_path.exists():
                 file_path = png_path
-            except Exception as e:
-                # If conversion fails, continue with original file
-                print(f"Warning: Failed to convert webp to png: {e}")
 
         self._open_in_file_explorer(file_path)
         return {"success": True, "path": self._workspace_relative_path(name, file_path)}
+
+    def refresh_generation_from_source(self, name: str, payload: dict) -> dict:
+        if not isinstance(payload, dict):
+            raise HTTPException(status_code=422, detail="Payload is required")
+        relative_path = payload.get("path")
+        if not relative_path:
+            raise HTTPException(status_code=422, detail="path is required")
+
+        # resolving the webp path given by frontend
+        webp_path = self.resolve_workspace_file(name, relative_path)
+        
+        # Determine the source PNG path
+        png_path = webp_path.with_suffix('.png')
+        
+        if not png_path.exists():
+            return {"success": False, "message": "No source PNG found for this generation"}
+
+        try:
+            # Convert PNG back to WEBP, overwriting the existing one
+            with Image.open(png_path) as img:
+                img.save(webp_path, format="WEBP", lossless=True, quality=100)
+            
+            # Update the preview as well? ideally yes but for now let's just do the main image
+            # The frontend will reload the image which might trigger new preview generation if implemented elsewhere
+            # or simply display the new WEBP
+            
+            return {"success": True, "path": relative_path}
+        except Exception as e:
+             raise HTTPException(status_code=500, detail=f"Failed to refresh from source: {str(e)}")
 
     def open_workspace_image_in_mspaint(self, name: str, payload: dict) -> dict:
         if sys.platform != "win32":

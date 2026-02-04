@@ -16,11 +16,36 @@ function isWorkspaceImage(value?: string | null): boolean {
 }
 
 export function parseWorkspaceImage(value?: string | null): { workspace: string; path: string } | null {
-  if (!isWorkspaceImage(value)) return null
-  const trimmed = value!.slice(WORKSPACE_PREFIX.length)
-  const [encodedWorkspace, ...pathParts] = trimmed.split("/")
-  if (!encodedWorkspace || pathParts.length === 0) return null
-  return { workspace: decodeURIComponent(encodedWorkspace), path: pathParts.join("/") }
+  if (!value) return null
+
+  // Handle workspace:// URI
+  if (isWorkspaceImage(value)) {
+    const trimmed = value.slice(WORKSPACE_PREFIX.length)
+    const [encodedWorkspace, ...pathParts] = trimmed.split("/")
+    if (!encodedWorkspace || pathParts.length === 0) return null
+    return { workspace: decodeURIComponent(encodedWorkspace), path: pathParts.join("/") }
+  }
+
+  // Handle HTTP URL (e.g. http://localhost:7861/api/workspaces/wsname/commits/123/full.webp)
+  if (value.startsWith("http")) {
+    const marker = "/api/workspaces/"
+    const index = value.indexOf(marker)
+    if (index !== -1) {
+      const remaining = value.slice(index + marker.length)
+      const parts = remaining.split("/")
+      if (parts.length >= 2) {
+        // First part is workspace, rest is path
+        const workspaceEncoded = parts[0]
+        const pathParts = parts.slice(1)
+        return {
+          workspace: decodeURIComponent(workspaceEncoded),
+          path: pathParts.join("/")
+        }
+      }
+    }
+  }
+
+  return null
 }
 
 function buildWorkspaceUrl(workspace: string, path: string): string {

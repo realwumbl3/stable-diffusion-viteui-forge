@@ -231,10 +231,18 @@ class ViteAPI:
         print(f"VITE-UI-API: Cleanup completed for task {task_id}")
 
     def register_routes(self, api):
-        # ViteUI specific endpoints
         api.add_api_route("/viteapi/txt2img", self.viteapi_txt2img, methods=["POST"])
         api.add_api_route("/viteapi/img2img", self.viteapi_img2img, methods=["POST"])
         api.add_api_route("/viteapi/extras", self.viteapi_extras, methods=["POST"])
+        api.add_api_route("/workspaces/{name}/refresh-from-source", self.refresh_generation_from_source, methods=["POST"])
+
+    async def refresh_generation_from_source(self, name: str, request: Request):
+        try:
+            payload = await request.json()
+        except Exception:
+             raise HTTPException(status_code=400, detail="Invalid JSON request")
+        
+        return await asyncio.to_thread(self.workspace_manager.refresh_generation_from_source, name, payload)
 
 
     async def viteapi_txt2img(self, request: Request):
