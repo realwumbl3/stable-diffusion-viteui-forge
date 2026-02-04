@@ -21,6 +21,9 @@ import io
 OPTIMIZATION_HIGH_CORES = os.cpu_count() or 4
 OPTIMIZATION_LOW_CORES = max(1, (os.cpu_count() or 4) // 2)
 
+# Adjustable text scale for overlays (1.0 = default)
+TIMELAPSE_TEXT_SCALE = 0.7
+
 class TimelapseCreator:
     def __init__(self, api):
         self.api = api
@@ -222,7 +225,7 @@ class TimelapseCreator:
             font = None
             if show_timestamp:
                 try:
-                    font_path = Path("modules/Roboto-Regular.ttf")
+                    font_path = Path("modules/Oxanium-Bold.ttf")
                     if font_path.exists():
                         font_size = max(16, int(target_height * 0.03))
                         font = ImageFont.truetype(str(font_path), font_size)
@@ -241,15 +244,12 @@ class TimelapseCreator:
             # - pix_fmt yuv420p: Essential for web/mobile playback
             # - tag:v hvc1: Critical for QuickTime/macOS/iOS compatibility
             # - cq: Constant Quality (similar to CRF)
-            
-            # Using hardware encoding (NVENC) if available, falling back to libx265 with faster presets
-            has_nvenc = True # We'll assume True and fallback in logic if needed, or just use fast software presets
-            
+  
             quality_map = {
                 "low": {"crf": "32", "cq": "32", "preset": "fast"},
                 "medium": {"crf": "28", "cq": "28", "preset": "p4"}, # p4 is medium speed for NVENC
                 "high": {"crf": "24", "cq": "24", "preset": "p6"},   # p6 is slower/better for NVENC
-                "ultra": {"crf": "18", "cq": "18", "preset": "p7"}   # p7 is slowest/best for NVENC
+                "ultra": {"crf": "8", "cq": "8", "preset": "p7"}   # p7 is slowest/best for NVENC
             }
             q_settings = quality_map.get(quality.lower(), quality_map["medium"])
 
@@ -582,37 +582,64 @@ class TimelapseCreator:
         
         # Draw timestamp and/or source if requested
         if (show_timestamp or show_source) and font:
-            draw = ImageDraw.Draw(img)
-            padding = 10
-            
-            # Prepare texts
             texts = []
             if show_timestamp:
                 dt = datetime.fromtimestamp(commit_data["timestamp"] / 1000.0)
                 texts.append(dt.strftime("%m/%d %I:%M %p"))
             if show_source and commit_data.get("source"):
                 texts.append(str(commit_data["source"]).upper())
-            
+
             if texts:
-                full_text = " | ".join(texts)
-                
-                # Use textbbox for newer Pillow versions
-                if hasattr(draw, 'textbbox'):
-                    bbox = draw.textbbox((0, 0), full_text, font=font)
+                full_text = " ".join(texts)
+
+                measure = ImageDraw.Draw(img)
+                if hasattr(measure, 'textbbox'):
+                    bbox = measure.textbbox((0, 0), full_text, font=font)
                     tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
                 else:
-                    tw, th = draw.textsize(full_text, font=font)
-                
-                tx = (target_width - tw) // 2
-                ty = target_height - th - padding - 20
-                
-                # Draw background for readability
-                bg_rect = [tx - padding, ty - padding, tx + tw + padding, ty + th + padding]
-                draw.rectangle(bg_rect, fill=(0, 0, 0, 128))
-                draw.text((tx, ty), full_text, font=font, fill=(255, 255, 255, 255))
+                    tw, th = measure.textsize(full_text, font=font)
+
+                padding_x = 2
+                padding_y = 2
+                container_w = tw + padding_x * 2
+                container_h = th + padding_y * 2
+                radius = max(4, container_h // 4)
+                container_x = (target_width - container_w) // 2
+                container_y = target_height - container_h - 18
+
+                if img.mode != "RGBA":
+                    img = img.convert("RGBA")
+
+                overlay = Image.new("RGBA", img.size, (0, 0, 0, 0))
+                overlay_draw = ImageDraw.Draw(overlay)
+
+                bg_rect = [
+                    container_x,
+                    container_y,
+                    container_x + container_w,
+                    container_y + container_h
+                ]
+                overlay_draw.rounded_rectangle(
+                    bg_rect,
+                    radius=radius,
+                    fill=(28, 32, 40, int(255 * 0.3)),
+                    outline=None
+                )
+
+                tx = container_x + padding_x
+                if hasattr(font, "getmetrics"):
+                    ascent, descent = font.getmetrics()
+                    text_height = ascent + descent
+                else:
+                    text_height = th
+                ty = container_y + max(0, (container_h - text_height) // 2) - 2
+
+                overlay_draw.text((tx, ty), full_text, font=font, fill=(220, 228, 240, 255))
+                img = Image.alpha_composite(img, overlay)
 
         # Convert to BGR for OpenCV then to bytes
-        # img is already RGB from the loader
+        if img.mode != "RGB":
+            img = img.convert("RGB")
         frame = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
         return frame.tobytes()
 
