@@ -328,7 +328,10 @@ class WorkspaceManager:
                         candidate_mask = candidate_mask.resize(stamp.size, resample=Image.Resampling.LANCZOS)
                         
                     # Blur the mask for better blending
-                    candidate_mask = candidate_mask.filter(ImageFilter.GaussianBlur(radius=4))
+                    blur_radius = info.get("mask_blur")
+                    if blur_radius is None:
+                        blur_radius = 4
+                    candidate_mask = candidate_mask.filter(ImageFilter.GaussianBlur(radius=blur_radius))
                     
                     mask = candidate_mask
                 except Exception as e:

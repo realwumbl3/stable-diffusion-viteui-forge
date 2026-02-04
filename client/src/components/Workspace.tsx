@@ -11,7 +11,8 @@ import { encodeLegacy } from "./PromptComposer/utils/legacyEncoding";
 import { useWorkspaceContext, useWorkspaceState } from "../contexts/WorkspaceContext";
 import { useWebSocketProgress } from "../hooks/useWebSocketProgress";
 import type { Generation, ExtrasSingleImageParams } from "../Api";
-import type { PromptMode, PromptNode } from "./PromptComposer/types";
+import type { PromptMode, PromptNode, TagsNode } from "./PromptComposer/types";
+import { generateId } from "./PromptComposer/utils/promptUtils";
 import type { GenerationMode } from "../types/components";
 import type { ProgressData } from "../hooks/useWebSocketProgress";
 import type { Timeline } from "./TimelineItem";
@@ -65,6 +66,7 @@ const Workspace = ({ workspaceId, isActive }: {
     const composerNegativePrompt = composerPrompts.negative;
     const programmaticComposerUpdateRef = useRef(false);
     const workspaceChangingRef = useRef(false);
+    const promptLoadedRef = useRef(false);
 
     const { progress: progressData, livePreview } = useWebSocketProgress(generation.currentTaskId);
     const progress: ProgressData | null = progressData;
@@ -168,7 +170,21 @@ const Workspace = ({ workspaceId, isActive }: {
         try {
             const workspacePrompt = await api.getWorkspacePrompt(workspaceId);
             nodes = workspacePrompt.nodes || [];
+
+            if (nodes.length === 0) {
+                const defaultTagNode: TagsNode = {
+                    id: generateId(),
+                    type: 'tags',
+                    name: 'Tags',
+                    hidden: false,
+                    weight: 1,
+                    value: [{ value: '', weight: 1 }]
+                };
+                nodes = [defaultTagNode];
+            }
+
             programmaticComposerUpdateRef.current = true;
+            promptLoadedRef.current = true;
         } catch (error) {
             console.error("Failed to load workspace prompt:", error);
         } finally {
@@ -415,9 +431,9 @@ const Workspace = ({ workspaceId, isActive }: {
                 if (matchedModule) {
                     setGenerationState({ selectedVAE: matchedModule.model_name });
                 } else {
-                     // Fallback: just use the name from the path if possible
-                     const name = firstModule.split(/[/\\]/).pop();
-                     setGenerationState({ selectedVAE: name || "Automatic" });
+                    // Fallback: just use the name from the path if possible
+                    const name = firstModule.split(/[/\\]/).pop();
+                    setGenerationState({ selectedVAE: name || "Automatic" });
                 }
             } else {
                 setGenerationState({ selectedVAE: "Automatic" });
@@ -459,6 +475,7 @@ const Workspace = ({ workspaceId, isActive }: {
     useEffect(() => {
         if (!workspaceId) return;
         workspaceChangingRef.current = true;
+        promptLoadedRef.current = false;
         setCanvasState({ currentImage: null });
         setGenerationState({ inputImage: null });
         setComposerNodes([]);
@@ -499,11 +516,16 @@ const Workspace = ({ workspaceId, isActive }: {
     ]);
 
     useEffect(() => {
-        if (!workspaceId || workspaceChangingRef.current) return;
+        // Always consume the programmatic update flag, even if we return early later.
+        // This prevents the flag from lingering and blocking the first valid user change.
         if (programmaticComposerUpdateRef.current) {
             programmaticComposerUpdateRef.current = false;
             return;
         }
+
+        if (!workspaceId || workspaceChangingRef.current) return;
+        if (!promptLoadedRef.current) return;
+
         const payload = { nodes: composerNodes };
         const timer = setTimeout(() => {
             api.saveWorkspacePrompt(workspaceId, payload).catch((error) => {

@@ -1097,7 +1097,7 @@ def process_images_inner(p: StableDiffusionProcessing) -> Processed:
                     
                     p.partial_candidates_info.append({
                          "paste_to": p.paste_to if hasattr(p, 'paste_to') else None,
-                         "mask_blur": getattr(p, 'mask_blur', None),
+                         "mask_blur": getattr(p, 'mask_blur', None) or getattr(p, 'mask_blur_x', None),
                          "mask": curr_mask.copy()
                     })
 
