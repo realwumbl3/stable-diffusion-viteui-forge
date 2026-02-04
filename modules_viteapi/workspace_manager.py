@@ -143,8 +143,8 @@ class WorkspaceManager:
         process_category("commits", "commit")
         process_category("rejects", "reject")
 
-        # Sort by timestamp descending
-        generations.sort(key=lambda x: x["timestamp"], reverse=True)
+        # Sort by GEN ID (folder name) descending
+        generations.sort(key=lambda x: x["genid"], reverse=True)
 
         return generations
 
