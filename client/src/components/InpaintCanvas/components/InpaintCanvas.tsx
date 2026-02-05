@@ -602,6 +602,7 @@ const InpaintCanvas = ({
                             src={timelapseVideoUrl}
                             controls
                             autoPlay
+                            loop
                             className="max-w-full max-h-full rounded shadow-lg outline-none"
                         />
                         <button

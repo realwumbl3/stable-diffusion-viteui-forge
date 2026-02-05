@@ -25,7 +25,7 @@ export const TimelapseControlBar = ({ workspaceId, onPreview, collapsed }: Timel
         mask_duration: 150,
         use_range: false,
         range_str: "-10..",
-        translate_speed: 4.0,
+        translate_speed: 3.0,
     });
 
     const pollIntervalRef = useRef<number | null>(null);
