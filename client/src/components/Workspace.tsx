@@ -58,6 +58,8 @@ const Workspace = ({ workspaceId, isActive }: {
         error: null as string | null,
     });
 
+    const [timelapseVideoUrl, setTimelapseVideoUrl] = useState<string | null>(null);
+
     const composerPrompts = useMemo(
         () => composePromptsFromNodes(composerNodes),
         [composerNodes]
@@ -828,6 +830,10 @@ const Workspace = ({ workspaceId, isActive }: {
         }
     };
 
+    const handleTimelapsePreview = useCallback((videoUrl: string) => {
+        setTimelapseVideoUrl(videoUrl);
+    }, []);
+
     const handleOpenUpscaleDialog = (sourceImage: { id: string; image: string; type: "timeline" | "canvas" }): void => {
         if (upscaleDialog.availableUpscalers.length === 0) {
             api.getUpscalers()
@@ -1046,6 +1052,8 @@ const Workspace = ({ workspaceId, isActive }: {
                 onEditCanvas={handleEditCanvas}
                 canvasRefreshKey={canvas.canvasRefreshKey}
                 isComposingPartial={generation.composingPartial}
+                workspaceId={workspaceId}
+                onTimelapsePreview={handleTimelapsePreview}
             />
 
             {mode.generationMode === "inpaint" ? (
@@ -1087,6 +1095,8 @@ const Workspace = ({ workspaceId, isActive }: {
                     canvasControls={canvasControls}
                     footerCollapsed={canvas.footerCollapsed}
                     onToggleFooter={() => setCanvasState({ footerCollapsed: !canvas.footerCollapsed })}
+                    timelapseVideoUrl={timelapseVideoUrl}
+                    onCloseTimelapse={() => setTimelapseVideoUrl(null)}
                 />
             ) : (
                 <InpaintCanvas
@@ -1127,6 +1137,8 @@ const Workspace = ({ workspaceId, isActive }: {
                     canvasControls={canvasControls}
                     footerCollapsed={canvas.footerCollapsed}
                     onToggleFooter={() => setCanvasState({ footerCollapsed: !canvas.footerCollapsed })}
+                    timelapseVideoUrl={timelapseVideoUrl}
+                    onCloseTimelapse={() => setTimelapseVideoUrl(null)}
                 />
             )}
 

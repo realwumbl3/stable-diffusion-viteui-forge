@@ -237,6 +237,26 @@ class ViteAPI:
         api.add_api_route("/viteapi/img2img", self.viteapi_img2img, methods=["POST"])
         api.add_api_route("/viteapi/extras", self.viteapi_extras, methods=["POST"])
         api.add_api_route("/workspaces/{name}/refresh-from-source", self.refresh_generation_from_source, methods=["POST"])
+        api.add_api_route("/viteapi/timelapse/start", self.viteapi_timelapse_start, methods=["POST"])
+        api.add_api_route("/viteapi/timelapse/status/{job_id}", self.viteapi_timelapse_status, methods=["GET"])
+        api.add_api_route("/viteapi/timelapse/video/{job_id}", self.viteapi_timelapse_video, methods=["GET"])
+        api.add_api_route("/viteapi/timelapse/list/{workspace_name}", self.viteapi_timelapse_list, methods=["GET"])
+        api.add_api_route("/viteapi/timelapse/file/{workspace_name}/{filename}", self.viteapi_timelapse_file, methods=["GET"])
+
+    async def viteapi_timelapse_start(self, request: Request):
+        return await self.timelapse_creator.start_timelapse(request)
+
+    async def viteapi_timelapse_status(self, job_id: str):
+        return await self.timelapse_creator.get_timelapse_status(job_id)
+
+    async def viteapi_timelapse_video(self, job_id: str):
+        return await self.timelapse_creator.serve_video(job_id)
+
+    async def viteapi_timelapse_list(self, workspace_name: str):
+        return await self.timelapse_creator.get_existing_timelapses(workspace_name)
+
+    async def viteapi_timelapse_file(self, workspace_name: str, filename: str):
+        return await self.timelapse_creator.serve_timelapse_file(workspace_name, filename)
 
     async def refresh_generation_from_source(self, name: str, request: Request):
         try:

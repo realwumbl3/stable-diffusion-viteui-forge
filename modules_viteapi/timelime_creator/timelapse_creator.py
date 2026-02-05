@@ -4,6 +4,7 @@ import uuid
 import subprocess
 import os
 import queue
+import math
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from datetime import datetime
@@ -28,16 +29,73 @@ class TimelapseCreator:
     def __init__(self, api):
         self.api = api
         self.jobs = {} # job_id -> status_dict
-        self.register_routes(api)
+        # self.register_routes(api)
 
     def register_routes(self, api):
         api.add_api_route("/viteapi/timelapse/start", self.start_timelapse, methods=["POST"])
-        api.add_api_route("/viteapi/timelapse/status/{job_id}", self.get_status, methods=["GET"])
+        api.add_api_route("/viteapi/timelapse/status/{job_id}", self.get_timelapse_status, methods=["GET"])
 
-    async def get_status(self, job_id: str):
+    async def get_timelapse_status(self, job_id: str):
         if job_id not in self.jobs:
             raise HTTPException(status_code=404, detail="Job not found")
         return self.jobs[job_id]
+
+    async def get_existing_timelapses(self, workspace_name: str):
+        workspace_manager = getattr(self.api, 'workspace_manager', None)
+        if not workspace_manager and hasattr(self.api, 'viteapi'):
+            workspace_manager = getattr(self.api.viteapi, 'workspace_manager', None)
+        
+        if not workspace_manager:
+            raise HTTPException(status_code=500, detail="Workspace manager not found")
+
+        try:
+            workspace_path = workspace_manager._resolve_workspace_path(workspace_name)
+            timelapse_dir = workspace_path / "timelapse"
+            
+            if not timelapse_dir.exists():
+                return []
+                
+            files = []
+            for file in timelapse_dir.glob("*.mp4"):
+                files.append({
+                    "name": file.name,
+                    "date": file.stat().st_mtime,
+                    "size": file.stat().st_size
+                })
+                
+            return sorted(files, key=lambda x: x["date"], reverse=True)
+        except Exception as e:
+            print(f"Error listing timelapses: {e}")
+            return []
+
+    async def serve_timelapse_file(self, workspace_name: str, filename: str):
+        from fastapi.responses import FileResponse
+        
+        workspace_manager = getattr(self.api, 'workspace_manager', None)
+        if not workspace_manager and hasattr(self.api, 'viteapi'):
+            workspace_manager = getattr(self.api.viteapi, 'workspace_manager', None)
+            
+        if not workspace_manager:
+            raise HTTPException(status_code=500, detail="Workspace manager not found")
+
+        workspace_path = workspace_manager._resolve_workspace_path(workspace_name)
+        file_path = workspace_path / "timelapse" / filename
+        
+        if not file_path.exists():
+            raise HTTPException(status_code=404, detail="Timelapse file not found")
+            
+        # Security check: ensure file is within timelapse directory
+        try:
+            file_path.relative_to(workspace_path / "timelapse")
+        except ValueError:
+            raise HTTPException(status_code=403, detail="Access denied")
+
+        return FileResponse(
+            path=file_path,
+            media_type="video/mp4",
+            filename=file_path.name,
+            headers={"Accept-Ranges": "bytes"}
+        )
 
     async def start_timelapse(self, request: Request = None, **kwargs):
         if request:
@@ -306,6 +364,10 @@ class TimelapseCreator:
                 target_aspect = target_width / target_height
                 current_zoom_rect = (0.0, 0.0, 1.0, 1.0) # (x, y, w, h) normalized
                 frames_per_commit = int(max(1, (frame_duration / 1000.0) * fps)) if frame_duration > 0 else 1
+                first_commit_frame_count = max(
+                    frames_per_commit,
+                    math.ceil(max(fps, 1.0))
+                )
                 crossfade_frames = int(max(1, fps // 2))
                 mask_frames = int(max(1, (mask_duration / 1000.0) * fps)) if mask_duration > 0 else 0
                 
@@ -344,7 +406,7 @@ class TimelapseCreator:
                         # First commit static frames
                         if i == 0 and current_zoom_rect == (0.0, 0.0, 1.0, 1.0):
                             frame_bytes = self._prepare_frame(img, current_image_data, base_size, show_timestamp, font, show_source)
-                            for _ in range(frames_per_commit):
+                            for _ in range(first_commit_frame_count):
                                 frame_queue.put(frame_bytes)
 
                         if not next_commit:
@@ -532,6 +594,7 @@ class TimelapseCreator:
             self.jobs[job_id]["status"] = "completed"
             self.jobs[job_id]["progress"] = 100
             self.jobs[job_id]["output_path"] = str(output_path)
+            self.jobs[job_id]["filename"] = output_filename
             self.jobs[job_id]["message"] = f"Timelapse created: {output_filename}"
 
         except Exception as e:

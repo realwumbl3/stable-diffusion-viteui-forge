@@ -64,6 +64,8 @@ const InpaintCanvas = ({
     footerCollapsed,
     onToggleFooter,
     currentGeneration,
+    timelapseVideoUrl,
+    onCloseTimelapse,
 }: {
     workspaceId: string;
     currentImage?: string | null
@@ -101,7 +103,9 @@ const InpaintCanvas = ({
     footerCollapsed?: boolean
     onToggleFooter?: () => void
     onRegisterMaskSnapshotProvider?: (provider: (() => string | null) | null) => void
-    currentGeneration?: any // Typing as any for now to avoid circular deps or complex imports, but should be Generation
+    currentGeneration?: any
+    timelapseVideoUrl?: string | null
+    onCloseTimelapse?: () => void
 }) => {
     const displayImage = previewImage || currentImage;
     const resolvedDisplayImage = resolveImageSrc(displayImage, "full");
@@ -589,6 +593,28 @@ const InpaintCanvas = ({
                     <GenerationControlls controls={canvasControls} visible={uiVisible} />
                 )}
             </div>
+
+            {/* Video Overlay */}
+            {timelapseVideoUrl && (
+                <div className="absolute inset-4 z-30 flex items-center justify-center bg-black/80 rounded-lg overflow-hidden animate-in fade-in duration-200">
+                    <div className="relative w-full h-full flex items-center justify-center">
+                        <video
+                            src={timelapseVideoUrl}
+                            controls
+                            autoPlay
+                            className="max-w-full max-h-full rounded shadow-lg outline-none"
+                        />
+                        <button
+                            onClick={onCloseTimelapse}
+                            className="absolute top-4 right-4 bg-black/50 text-white p-2 rounded-full hover:bg-black/80 transition-colors"
+                            title="Close Video"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                        </button>
+                    </div>
+                </div>
+            )}
+
 
             {/* Prompt Footer */}
             <PromptComposer
