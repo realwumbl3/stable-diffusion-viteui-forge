@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
-import { Play, ChevronRight, Check, Loader2 } from 'lucide-react';
+import { Play, ChevronRight, Check, Loader2, Folder } from 'lucide-react';
 import { cn, API_BASE_URL } from '../lib/utils';
+import api from '../Api';
 
 
 interface TimelapseControlBarProps {
@@ -17,15 +18,18 @@ export const TimelapseControlBar = ({ workspaceId, onPreview, collapsed }: Timel
     const [settings, setSettings] = useState({
         fps: 40,
         quality: "high",
-        show_timestamp: false,
+        show_timestamp: true,
+        show_source: true,
         zoom_into_partials: true,
-        last_frame_duration: 2.0,
+        last_frame_duration: 5.0,
         frame_duration: 100, // ms
         show_mask: true,
-        mask_duration: 150,
-        use_range: false,
+        mask_duration: 100,
+        use_range: true,
         range_str: "-10..",
         translate_speed: 3.0,
+        calculate_diff: false,
+        source_mask: "mask",
     });
 
     const pollIntervalRef = useRef<number | null>(null);
@@ -223,8 +227,8 @@ export const TimelapseControlBar = ({ workspaceId, onPreview, collapsed }: Timel
                         </div>
                     </div>
 
-                    <div className="space-y-2 pt-1 border-t border-studio-border/50">
-                        <label className="flex items-center gap-2 cursor-pointer group">
+                    <div className="flex flex-col items-start  space-y-2 pt-1 border-t border-studio-border/50">
+                        <label className="flex px-1 items-center gap-2 cursor-pointer group">
                             <div className={cn(
                                 "w-3 h-3 rounded-sm border flex items-center justify-center transition-colors",
                                 settings.show_timestamp ? "bg-studio-accent border-studio-accent" : "border-studio-textSecondary group-hover:border-studio-text"
@@ -240,7 +244,23 @@ export const TimelapseControlBar = ({ workspaceId, onPreview, collapsed }: Timel
                             <span className="text-xs text-studio-textSecondary group-hover:text-studio-text transition-colors">Show Timestamp</span>
                         </label>
 
-                        <label className="flex items-center gap-2 cursor-pointer group">
+                        <label className="flex px-1 items-center gap-2 cursor-pointer group">
+                            <div className={cn(
+                                "w-3 h-3 rounded-sm border flex items-center justify-center transition-colors",
+                                settings.show_source ? "bg-studio-accent border-studio-accent" : "border-studio-textSecondary group-hover:border-studio-text"
+                            )}>
+                                {settings.show_source && <Check size={10} className="text-studio-bg" strokeWidth={3} />}
+                            </div>
+                            <input
+                                type="checkbox"
+                                checked={settings.show_source}
+                                onChange={(e) => setSettings({ ...settings, show_source: e.target.checked })}
+                                className="hidden"
+                            />
+                            <span className="text-xs text-studio-textSecondary group-hover:text-studio-text transition-colors">Show Source</span>
+                        </label>
+
+                        <label className="flex px-1 items-center gap-2 cursor-pointer group">
                             <div className={cn(
                                 "w-3 h-3 rounded-sm border flex items-center justify-center transition-colors",
                                 settings.zoom_into_partials ? "bg-studio-accent border-studio-accent" : "border-studio-textSecondary group-hover:border-studio-text"
@@ -256,8 +276,24 @@ export const TimelapseControlBar = ({ workspaceId, onPreview, collapsed }: Timel
                             <span className="text-xs text-studio-textSecondary group-hover:text-studio-text transition-colors">Zoom into Partials</span>
                         </label>
 
+                        <label className="flex px-1 items-center gap-2 cursor-pointer group">
+                            <div className={cn(
+                                "w-3 h-3 rounded-sm border flex items-center justify-center transition-colors",
+                                settings.calculate_diff ? "bg-studio-accent border-studio-accent" : "border-studio-textSecondary group-hover:border-studio-text"
+                            )}>
+                                {settings.calculate_diff && <Check size={10} className="text-studio-bg" strokeWidth={3} />}
+                            </div>
+                            <input
+                                type="checkbox"
+                                checked={settings.calculate_diff}
+                                onChange={(e) => setSettings({ ...settings, calculate_diff: e.target.checked })}
+                                className="hidden"
+                            />
+                            <span className="text-xs text-studio-textSecondary group-hover:text-studio-text transition-colors">Auto-Calculate Diff</span>
+                        </label>
+
                         <div className="flex items-center gap-2">
-                            <label className="flex items-center gap-2 cursor-pointer group">
+                            <label className="flex px-1 items-center gap-2 cursor-pointer group">
                                 <div className={cn(
                                     "w-3 h-3 rounded-sm border flex items-center justify-center transition-colors",
                                     settings.show_mask ? "bg-studio-accent border-studio-accent" : "border-studio-textSecondary group-hover:border-studio-text"
@@ -274,21 +310,32 @@ export const TimelapseControlBar = ({ workspaceId, onPreview, collapsed }: Timel
                             </label>
 
                             {settings.show_mask && (
-                                <div className="flex items-center gap-1 animate-in slide-in-from-left-2 fade-in duration-200">
-                                    <input
-                                        type="number"
-                                        value={settings.mask_duration}
-                                        onChange={(e) => setSettings({ ...settings, mask_duration: Number(e.target.value) })}
-                                        className="w-12 bg-studio-surface border border-studio-border rounded px-1 py-0.5 text-xs text-studio-text focus:border-studio-accent outline-none"
-                                        min={10} step={10}
-                                    />
-                                    <span className="text-[10px] text-studio-textSecondary">ms</span>
+                                <div className="flex items-center gap-2 animate-in slide-in-from-left-2 fade-in duration-200">
+                                    <div className="flex items-center gap-1">
+                                        <input
+                                            type="number"
+                                            value={settings.mask_duration}
+                                            onChange={(e) => setSettings({ ...settings, mask_duration: Number(e.target.value) })}
+                                            className="w-12 bg-studio-surface border border-studio-border rounded px-1 py-0.5 text-xs text-studio-text focus:border-studio-accent outline-none"
+                                            min={10} step={10}
+                                        />
+                                        <span className="text-[10px] text-studio-textSecondary">ms</span>
+                                    </div>
+                                    <select
+                                        value={settings.source_mask}
+                                        onChange={(e) => setSettings({ ...settings, source_mask: e.target.value })}
+                                        className="bg-studio-surface border border-studio-border rounded px-1 py-0.5 text-[10px] text-studio-text focus:border-studio-accent outline-none"
+                                        title="Mask Source"
+                                    >
+                                        <option value="diffMask">diffMask</option>
+                                        <option value="mask">Mask</option>
+                                    </select>
                                 </div>
                             )}
                         </div>
 
                         <div className="flex items-center gap-2">
-                            <label className="flex items-center gap-2 cursor-pointer group">
+                            <label className="flex px-1 items-center gap-2 cursor-pointer group">
                                 <div className={cn(
                                     "w-3 h-3 rounded-sm border flex items-center justify-center transition-colors",
                                     settings.use_range ? "bg-studio-accent border-studio-accent" : "border-studio-textSecondary group-hover:border-studio-text"
@@ -370,13 +417,22 @@ const ExistingTimelapsesList = ({ workspaceId, onPreview, isOpen }: { workspaceI
                         <span className="text-xs text-studio-text truncate flex-1" title={t.name}>
                             {t.name.replace('timelapse_', '').replace('.mp4', '').replace('_', ' ')}
                         </span>
-                        <button
-                            onClick={() => onPreview(`${API_BASE_URL}/api/viteapi/timelapse/file/${workspaceId}/${t.name}`)}
-                            className="p-1 hover:bg-studio-accent hover:text-studio-bg rounded text-studio-textSecondary transition-colors"
-                            title="Play"
-                        >
-                            <Play size={10} fill="currentColor" />
-                        </button>
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button
+                                onClick={() => onPreview(`${API_BASE_URL}/api/viteapi/timelapse/file/${workspaceId}/${t.name}`)}
+                                className="p-1 hover:bg-studio-accent hover:text-studio-bg rounded text-studio-textSecondary transition-colors"
+                                title="Play"
+                            >
+                                <Play size={10} fill="currentColor" />
+                            </button>
+                            <button
+                                onClick={() => api.revealWorkspacePath(workspaceId, `timelapse/${t.name}`, false)}
+                                className="p-1 hover:bg-studio-accent hover:text-studio-bg rounded text-studio-textSecondary transition-colors"
+                                title="Open in Explorer"
+                            >
+                                <Folder size={10} />
+                            </button>
+                        </div>
                     </div>
                 ))}
             </div>

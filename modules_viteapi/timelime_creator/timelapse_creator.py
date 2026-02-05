@@ -10,7 +10,7 @@ from pathlib import Path
 from datetime import datetime
 from typing import Optional, List, Dict
 from fastapi import Request, HTTPException
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageChops, ImageFilter
 import numpy as np
 import cv2
 import asyncio
@@ -129,6 +129,7 @@ class TimelapseCreator:
         mask_duration = float(payload.get("mask_duration", 0)) # ms to show mask
         show_timestamp = bool(payload.get("show_timestamp", False))
         zoom_into_partials = bool(payload.get("zoom_into_partials", False))
+        calculate_diff = bool(payload.get("calculate_diff", False))
         optimization = payload.get("optimization", "high") # high, low
 
         job_id = str(uuid.uuid4())
@@ -151,6 +152,7 @@ class TimelapseCreator:
             "mask_duration": mask_duration,
             "show_timestamp": show_timestamp,
             "zoom_into_partials": zoom_into_partials,
+            "calculate_diff": calculate_diff,
             "optimization": optimization,
             "progress": 0,
             "message": "Initializing...",
@@ -162,14 +164,14 @@ class TimelapseCreator:
         # Start background thread
         thread = threading.Thread(
             target=self._create_timelapse_worker,
-            args=(job_id, workspace_name, commit_range, fps, max_side, last_frame_duration, width, height, show_timestamp, zoom_into_partials, frame_duration, translate_speed, zoom_padding, quality, show_mask, mask_duration, optimization, source_mask, show_source),
+            args=(job_id, workspace_name, commit_range, fps, max_side, last_frame_duration, width, height, show_timestamp, zoom_into_partials, frame_duration, translate_speed, zoom_padding, quality, show_mask, mask_duration, optimization, source_mask, show_source, calculate_diff),
             daemon=True
         )
         thread.start()
 
         return {"job_id": job_id, "status": "started"}
 
-    def _create_timelapse_worker(self, job_id: str, workspace_name: str, commit_range: Optional[str], fps: float = 1, max_side: int = 0, last_frame_duration: float = 0, width: int = 0, height: int = 0, show_timestamp: bool = False, zoom_into_partials: bool = False, frame_duration: float = 0, translate_speed: float = 1.0, zoom_padding: int = 32, quality: str = "medium", show_mask: bool = False, mask_duration: float = 0, optimization: str = "high", source_mask: str = "mask", show_source: bool = False):
+    def _create_timelapse_worker(self, job_id: str, workspace_name: str, commit_range: Optional[str], fps: float = 1, max_side: int = 0, last_frame_duration: float = 0, width: int = 0, height: int = 0, show_timestamp: bool = False, zoom_into_partials: bool = False, frame_duration: float = 0, translate_speed: float = 1.0, zoom_padding: int = 32, quality: str = "medium", show_mask: bool = False, mask_duration: float = 0, optimization: str = "high", source_mask: str = "mask", show_source: bool = False, calculate_diff: bool = False):
         try:
             self.jobs[job_id]["status"] = "in_progress"
             
@@ -434,6 +436,10 @@ class TimelapseCreator:
 
                         next_image_data = next_image_future.result()
                         next_img = next_image_data["img"]
+
+                        # Calculate diff on the fly if missing and requested
+                        if calculate_diff and not next_image_data.get("partial_info"):
+                            next_image_data["partial_info"] = self._calculate_diff_info(img, next_img)
                         
                         is_partial_zoom = False
                         if zoom_into_partials:
@@ -772,6 +778,53 @@ class TimelapseCreator:
         
         return (px / img_w, py / img_h, pw / img_w, ph / img_h)
 
+    def _calculate_diff_info(self, img_source, img_target):
+        """Calculates diff between two images and returns partial_info structure"""
+        if img_source.size != img_target.size:
+            img_source = img_source.resize(img_target.size, Image.Resampling.LANCZOS)
+
+        diff = ImageChops.difference(img_source, img_target)
+        diff_gray = diff.convert("L")
+        
+        # Threshold to find changed areas
+        threshold = 2 
+        mask_arr = np.array(diff_gray)
+        binary_mask = (mask_arr > threshold).astype(np.uint8) * 255
+        
+        if not np.any(binary_mask):
+            return None
+
+        # Find bounding box of changes
+        coords = np.argwhere(binary_mask)
+        y0, x0 = coords.min(axis=0)
+        y1, x1 = coords.max(axis=0)
+        
+        # Add padding
+        padding = 16
+        x0 = max(0, x0 - padding)
+        y0 = max(0, y0 - padding)
+        x1 = min(img_target.width - 1, x1 + padding)
+        y1 = min(img_target.height - 1, y1 + padding)
+        
+        w = x1 - x0 + 1
+        h = y1 - y0 + 1
+        
+        paste_to = [int(x0), int(y0), int(w), int(h)]
+
+        # Convert full mask to base64
+        mask_img = Image.fromarray(binary_mask).filter(ImageFilter.GaussianBlur(radius=4))
+        buffered = io.BytesIO()
+        mask_img.save(buffered, format="PNG")
+        mask_base64 = base64.b64encode(buffered.getvalue()).decode('utf-8')
+
+        return [
+            {
+                "paste_to": paste_to,
+                "mask_blur": 4,
+                "mask": mask_base64
+            }
+        ]
+
     def _decode_base64_to_image(self, base64_str):
         try:
             if "," in base64_str:
@@ -801,6 +854,7 @@ if __name__ == "__main__":
     parser.add_argument("--show_timestamp", action="store_true", help="Show timestamp on frames")
     parser.add_argument("--show_source", action="store_true", help="Show generation source (txt2img, etc) on frames")
     parser.add_argument("--zoom_into_partials", action="store_true", help="Zoom into partial candidates")
+    parser.add_argument("--calculate_diff", action="store_true", help="Calculate diff from previous commit if missing")
     parser.add_argument("--optimization", type=str, choices=["high", "low"], default="high", help="Optimization level (default: high)")
     parser.add_argument("--workspace_root", type=str, default="workspaces", help="Path to workspaces root")
 

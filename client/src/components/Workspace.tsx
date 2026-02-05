@@ -235,6 +235,8 @@ const Workspace = ({ workspaceId, isActive }: {
         if (workspaceInfo && workspaceInfo.path) {
             try {
                 await api.refreshGenerationFromSource(workspaceId, workspaceInfo.path);
+                // Refresh generations to see the new commit in timeline and update canvas
+                await loadWorkspaceGenerations();
             } catch (error) {
                 console.error("Failed to refresh generation from source:", error);
             }
@@ -254,7 +256,7 @@ const Workspace = ({ workspaceId, isActive }: {
         const workspaceInfo = parseWorkspaceImage(canvas.currentImage);
         if (workspaceInfo && workspaceInfo.path) {
             try {
-                await api.revealWorkspacePath(workspaceId, workspaceInfo.path);
+                await api.revealWorkspacePath(workspaceId, workspaceInfo.path, true);
             } catch (error) {
                 console.error("Failed to reveal workspace path:", error);
             }

@@ -54,7 +54,7 @@ const TimelineItem = ({
         event.stopPropagation();
         if (!workspaceActionsAvailable) return;
         try {
-            await api.revealWorkspacePath(item.workspace, workspaceAssetPath);
+            await api.revealWorkspacePath(item.workspace, workspaceAssetPath, false);
         } catch (error) {
             console.warn("Failed to open generation in file explorer", error);
         }

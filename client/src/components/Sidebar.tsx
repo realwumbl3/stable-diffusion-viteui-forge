@@ -54,7 +54,7 @@ const Sidebar = ({
   onUpscale: (item: { id: string; image: string; type: 'timeline' | 'canvas' }) => void
   getGenerationImageUrl?: (generation: Generation | null) => string | null
   onRefreshTimeline?: () => void
-  onRefreshCanvas?: () => void
+  onRefreshCanvas?: () => Promise<void>
   onEditCanvas?: () => void
   canvasRefreshKey: number
   isComposingPartial: boolean
@@ -371,8 +371,13 @@ const Sidebar = ({
                             if (isEditing) {
                               // Already editing, so this is a "Refresh" action
                               if (onRefreshCanvas) {
-                                onRefreshCanvas();
-                                // We keep it as "Refresh" button
+                                await onRefreshCanvas();
+                                // Exit editing mode after refresh creates a new commit
+                                setEditingImages(prev => {
+                                  const newSet = new Set(prev);
+                                  newSet.delete(imageKey);
+                                  return newSet;
+                                });
                               }
                             } else {
                               // Not editing yet, so this is an "Edit" action

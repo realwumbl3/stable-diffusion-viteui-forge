@@ -748,8 +748,10 @@ class WorkspaceManager:
         if not file_path.exists():
             raise HTTPException(status_code=404, detail=f"Path not found: {relative_path}")
 
-        # Convert webp files to lossless png copies before revealing
-        if file_path.suffix.lower() == '.webp':
+        create_png = payload.get("create_png", False)
+
+        # Convert webp files to lossless png copies before revealing if requested
+        if create_png and file_path.suffix.lower() == '.webp':
             png_path = file_path.with_suffix('.png')
             # Check if PNG already exists to avoid overwriting edits
             if not png_path.exists():
@@ -787,6 +789,7 @@ class WorkspaceManager:
 
         # resolving the webp path given by frontend
         webp_path = self.resolve_workspace_file(name, relative_path)
+        original_folder = webp_path.parent
         
         # Determine the source PNG path
         png_path = webp_path.with_suffix('.png')
@@ -795,15 +798,45 @@ class WorkspaceManager:
             return {"success": False, "message": "No source PNG found for this generation"}
 
         try:
-            # Convert PNG back to WEBP, overwriting the existing one
-            with Image.open(png_path) as img:
-                img.save(webp_path, format="WEBP", lossless=True, quality=100)
+            # Load original metadata if it exists
+            meta_path = original_folder / "meta.json"
+            original_metadata = {}
+            if meta_path.exists():
+                try:
+                    original_metadata = json.loads(meta_path.read_text(encoding="utf-8"))
+                except Exception as e:
+                    print(f"Warning: Failed to load original metadata: {e}")
+
+            # Create a new candidate folder for the edit
+            workspace_path = self._resolve_workspace_path(name)
+            candidates_root = workspace_path / "candidates"
+            candidates_root.mkdir(parents=True, exist_ok=True)
+
+            timestamp_str = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+            candidate_id = f"{timestamp_str}_{datetime.now().microsecond:06d}_edit"
+            candidate_path = candidates_root / candidate_id
+            candidate_path.mkdir(parents=True, exist_ok=False)
+
+            # Save the PNG as full.webp and generate preview in the new candidate folder
+            result = self.workspace_images.save_image_with_preview_and_meta(png_path, candidate_path)
+
+            # Prepare new metadata
+            new_metadata = original_metadata.copy()
+            new_metadata.update(result["metadata"])
+            new_metadata["timestamp"] = int(datetime.now().timestamp() * 1000)
+            new_metadata["source"] = "manual-edit"
+            # Remove partial candidates info as this is a full manual edit
+            new_metadata.pop("partial_candidates_info", None)
+
+            # Save updated metadata
+            new_meta_path = candidate_path / "meta.json"
+            new_meta_path.write_text(json.dumps(new_metadata, indent=2), encoding="utf-8")
+
+            # Commit the new candidate
+            # workspace_relative_candidate_full_webp = f"candidates/{candidate_id}/full.webp"
+            commit_result = self.commit_candidate(name, f"candidates/{candidate_id}/full.webp")
             
-            # Update the preview as well? ideally yes but for now let's just do the main image
-            # The frontend will reload the image which might trigger new preview generation if implemented elsewhere
-            # or simply display the new WEBP
-            
-            return {"success": True, "path": relative_path}
+            return {"success": True, "path": commit_result["path"]}
         except Exception as e:
              raise HTTPException(status_code=500, detail=f"Failed to refresh from source: {str(e)}")
 

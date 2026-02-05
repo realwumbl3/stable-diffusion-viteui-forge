@@ -398,10 +398,10 @@ class StableDiffusionAPI {
     });
   }
 
-  async revealWorkspacePath(workspaceName: string, path: string): Promise<{ success: boolean; path: string }> {
+  async revealWorkspacePath(workspaceName: string, path: string, createPng: boolean = false): Promise<{ success: boolean; path: string }> {
     return this.request(`/workspaces/${encodeURIComponent(workspaceName)}/reveal`, {
       method: 'POST',
-      body: JSON.stringify({ path }),
+      body: JSON.stringify({ path, create_png: createPng }),
     });
   }
 
